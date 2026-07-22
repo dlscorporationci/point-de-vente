@@ -64,6 +64,8 @@ class AuthController extends Controller
         // Création du token Sanctum
         $token = $user->createToken('pos-auth-token')->plainTextToken;
 
+        $effectiveRoleSlug = ($user->role && $user->role->slug === 'super-admin' && $user->company_id !== null && $user->email !== 'superadmin@dls.com') ? 'admin' : ($user->role->slug ?? 'caissier');
+
         return response()->json([
             'token' => $token,
             'user' => [
@@ -71,8 +73,8 @@ class AuthController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'status' => $user->status,
-                'role' => $user->role->slug,
-                'permissions' => $user->role->permissions->pluck('slug'),
+                'role' => $effectiveRoleSlug,
+                'permissions' => $user->role ? $user->role->permissions->pluck('slug') : [],
                 'company_id' => $user->company_id,
                 'company' => $company ? [
                     'id' => $company->id,
@@ -206,13 +208,15 @@ class AuthController extends Controller
 
         $activeBranch = $tenantManager->getBranch();
 
+        $effectiveRoleSlug = ($user->role && $user->role->slug === 'super-admin' && $user->company_id !== null && $user->email !== 'superadmin@dls.com') ? 'admin' : ($user->role->slug ?? 'caissier');
+
         return response()->json([
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
             'status' => $user->status,
-            'role' => $user->role->slug,
-            'permissions' => $user->role->permissions->pluck('slug'),
+            'role' => $effectiveRoleSlug,
+            'permissions' => $user->role ? $user->role->permissions->pluck('slug') : [],
             'company_id' => $user->company_id,
             'company' => $company ? [
                 'id' => $company->id,
