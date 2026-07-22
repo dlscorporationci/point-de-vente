@@ -343,7 +343,7 @@ CREATE TABLE `companies` (
   `timezone` varchar(50) NOT NULL DEFAULT 'Africa/Dakar',
   `currency` varchar(10) NOT NULL DEFAULT 'XOF',
   `tax_settings` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`tax_settings`)),
-  `status` enum('active','suspended','archived') NOT NULL DEFAULT 'active',
+  `status` varchar(50) NOT NULL DEFAULT 'active',
   `subscription_plan` varchar(255) NOT NULL DEFAULT 'basic',
   `subscription_expires_at` timestamp NULL DEFAULT NULL,
   `logo_path` varchar(255) DEFAULT NULL,
@@ -360,7 +360,7 @@ CREATE TABLE `companies` (
 
 LOCK TABLES `companies` WRITE;
 /*!40000 ALTER TABLE `companies` DISABLE KEYS */;
-INSERT INTO `companies` VALUES (1,'DLS Corporation','C5J6-ZS9H','Africa/Dakar','XOF','{\"tax_rate\":18,\"enable_tax\":true}','active','premium','2026-08-09 10:50:18',NULL,'2026-07-09 12:36:22','2026-07-21 13:50:06'),(3,'premmar Boutiques','LLEQ-O7EZ','Africa/Dakar','XOF',NULL,'active','basic',NULL,NULL,'2026-07-20 07:57:47','2026-07-20 07:57:47'),(4,'Test Quincaillerie Express','8OUW-AXFY','Africa/Dakar','XOF',NULL,'active','basic',NULL,NULL,'2026-07-20 08:07:37','2026-07-20 08:07:37'),(5,'Librairie de France','MFQN-2RIX','Africa/Dakar','XOF','{\"tax_rate\":0,\"enable_tax\":false}','active','basic',NULL,NULL,'2026-07-20 15:04:48','2026-07-22 10:10:08'),(6,'shoppinglow','KFAL-G3OK','Africa/Dakar','XOF',NULL,'active','basic',NULL,NULL,'2026-07-21 15:52:04','2026-07-21 15:52:04'),(7,'Fruitfox','WC1P-CEME','Africa/Dakar','XOF',NULL,'active','basic',NULL,NULL,'2026-07-22 10:38:18','2026-07-22 10:38:18'),(8,'rivermontain','ZY8X-UIDI','Africa/Dakar','XOF',NULL,'active','basic',NULL,NULL,'2026-07-22 10:46:02','2026-07-22 10:46:02');
+INSERT INTO `companies` VALUES (1,'DLS Corporation','C5J6-ZS9H','Africa/Dakar','XOF','{\"tax_rate\":18,\"enable_tax\":true}','inactive','premium','2026-08-09 10:50:18',NULL,'2026-07-09 12:36:22','2026-07-22 12:28:11'),(3,'premmar Boutiques','LLEQ-O7EZ','Africa/Dakar','XOF',NULL,'active','basic',NULL,NULL,'2026-07-20 07:57:47','2026-07-20 07:57:47'),(4,'Test Quincaillerie Express','8OUW-AXFY','Africa/Dakar','XOF',NULL,'active','basic',NULL,NULL,'2026-07-20 08:07:37','2026-07-20 08:07:37'),(5,'Librairie de France','MFQN-2RIX','Africa/Dakar','XOF','{\"tax_rate\":0,\"enable_tax\":false}','active','basic',NULL,NULL,'2026-07-20 15:04:48','2026-07-22 10:10:08'),(6,'shoppinglow','KFAL-G3OK','Africa/Dakar','XOF',NULL,'active','basic',NULL,NULL,'2026-07-21 15:52:04','2026-07-21 15:52:04'),(7,'Fruitfox','WC1P-CEME','Africa/Dakar','XOF',NULL,'active','basic',NULL,NULL,'2026-07-22 10:38:18','2026-07-22 10:38:18'),(8,'rivermontain','ZY8X-UIDI','Africa/Dakar','XOF',NULL,'active','basic',NULL,NULL,'2026-07-22 10:46:02','2026-07-22 10:46:02');
 /*!40000 ALTER TABLE `companies` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1241,4 +1241,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-07-22 11:53:26
+-- Dump completed on 2026-07-22 12:28:34
