@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import posTerminalImg from '/home/aizen/.gemini/antigravity/brain/b9f0f6d0-ea7a-45b8-b70d-8981af5172b1/pos_terminal_1783616808314.png';
-import customersListImg from '/home/aizen/.gemini/antigravity/brain/b9f0f6d0-ea7a-45b8-b70d-8981af5172b1/customers_list_1783617744528.png';
-import salesHistoryImg from '/home/aizen/.gemini/antigravity/brain/b9f0f6d0-ea7a-45b8-b70d-8981af5172b1/sales_history_1783617712203.png';
-import superadminDashboardImg from '/home/aizen/.gemini/antigravity/brain/b9f0f6d0-ea7a-45b8-b70d-8981af5172b1/superadmin_dashboard_1783616831876.png';
-import settingsPanelImg from '/home/aizen/.gemini/antigravity/brain/b9f0f6d0-ea7a-45b8-b70d-8981af5172b1/settings_panel_1783616847903.png';
+import posTerminalImg from '../assets/pos_terminal_1783616808314.png';
+import customersListImg from '../assets/customers_list_1783617744528.png';
+import salesHistoryImg from '../assets/sales_history_1783617712203.png';
+import superadminDashboardImg from '../assets/superadmin_dashboard_1783616831876.png';
+import settingsPanelImg from '../assets/settings_panel_1783616847903.png';
 
 export const UserGuide = () => {
   const [activeSection, setActiveSection] = useState('intro');
