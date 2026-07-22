@@ -7,7 +7,12 @@ export const getImageUrl = (imagePath) => {
   if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
     return imagePath;
   }
-  const cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
+  let cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
+  
+  // Ajouter le préfixe /storage/ pour Nginx si nécessaire
+  if (!cleanPath.startsWith('/storage/')) {
+    cleanPath = `/storage${cleanPath}`;
+  }
 
   // Si l'application tourne sur localhost avec le serveur Vite dev (port 5173)
   if (typeof window !== 'undefined') {
