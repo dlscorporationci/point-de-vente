@@ -75,8 +75,18 @@ export const Login = ({ setActiveTab }) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+
+    // Vider les anciens en-têtes tenant résiduels
+    delete axios.defaults.headers.common['X-Company-ID'];
+    delete axios.defaults.headers.common['X-Branch-ID'];
+    localStorage.removeItem('company-id');
+    localStorage.removeItem('branch-id');
+
     try {
-      const response = await axios.post('/v1/auth/login', { email, password });
+      const response = await axios.post('/v1/auth/login', {
+        email: email.trim(),
+        password
+      });
       login(response.data.user, response.data.token);
       setSuccessMsg('Connexion réussie !');
     } catch (err) {
