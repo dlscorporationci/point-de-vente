@@ -17,7 +17,7 @@ class StockController extends Controller
      */
     public function movements(Request $request)
     {
-        $query = StockMovement::with(['product', 'branch']);
+        $query = StockMovement::whereHas('product')->with(['product', 'branch']);
 
         if ($request->has('product_id') && !empty($request->product_id)) {
             $query->where('product_id', $request->product_id);
@@ -35,7 +35,7 @@ class StockController extends Controller
      */
     public function currentStock(Request $request)
     {
-        $query = BranchProduct::with(['product', 'branch']);
+        $query = BranchProduct::whereHas('product')->with(['product', 'branch']);
 
         if ($request->has('branch_id') && !empty($request->branch_id)) {
             $query->where('branch_id', $request->branch_id);

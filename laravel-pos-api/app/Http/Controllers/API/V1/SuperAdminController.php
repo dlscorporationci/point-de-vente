@@ -342,7 +342,7 @@ class SuperAdminController extends Controller
         $sqlContent .= "SET FOREIGN_KEY_CHECKS=0;\n\n";
 
         foreach ($tables as $tableObj) {
-            $tableName = $tableObj->$dbKey ?? values(get_object_vars($tableObj))[0];
+            $tableName = $tableObj->$dbKey ?? array_values(get_object_vars($tableObj))[0];
             $createTable = \Illuminate\Support\Facades\DB::select("SHOW CREATE TABLE `{$tableName}`");
             $sqlContent .= "DROP TABLE IF EXISTS `{$tableName}`;\n";
             $sqlContent .= $createTable[0]->{'Create Table'} . ";\n\n";
@@ -353,7 +353,7 @@ class SuperAdminController extends Controller
                 $cols = array_map(fn($c) => "`$c`", array_keys($rowArr));
                 $vals = array_map(function($v) {
                     if (is_null($v)) return "NULL";
-                    return "'" . addslashes($v) . "'";
+                    return "'" . addslashes(str_replace(["\r", "\n"], ["\\r", "\\n"], $v)) . "'";
                 }, array_values($rowArr));
 
                 $sqlContent .= "INSERT INTO `{$tableName}` (" . implode(', ', $cols) . ") VALUES (" . implode(', ', $vals) . ");\n";

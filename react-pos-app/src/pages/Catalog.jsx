@@ -7,7 +7,17 @@ export const getImageUrl = (imagePath) => {
   if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
     return imagePath;
   }
-  return `http://127.0.0.1:8000${imagePath.startsWith('/') ? '' : '/'}${imagePath}`;
+  const cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
+
+  // Si l'application tourne sur localhost avec le serveur Vite dev (port 5173)
+  if (typeof window !== 'undefined') {
+    if ((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.location.port === '5173') {
+      return `http://127.0.0.1:8000${cleanPath}`;
+    }
+    return `${window.location.origin}${cleanPath}`;
+  }
+
+  return cleanPath;
 };
 
 export const Catalog = () => {
