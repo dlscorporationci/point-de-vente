@@ -22,6 +22,32 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*'),
         );
+
+        // Traduction des erreurs fréquentes en français
+        $exceptions->render(function (\Illuminate\Http\Exceptions\ThrottleRequestsException $e, Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json([
+                    'error' => 'Trop de tentatives de connexion. Veuillez patienter 1 minute avant de réessayer.'
+                ], 429);
+            }
+        });
+
+        $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json([
+                    'error' => 'Session expirée ou accès non autorisé. Veuillez vous re-connecter.'
+                ], 401);
+            }
+        });
+
+        $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\NotFoundHttpException $e, Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json([
+                    'error' => 'La ressource ou la page demandée est introuvable.'
+                ], 404);
+            }
+        });
+
         $exceptions->report(function (\Throwable $e) {
             try {
                 if (request()->is('api/*')) {
