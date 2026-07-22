@@ -80,6 +80,7 @@ class ProductController extends Controller
         if ($request->hasFile('image')) {
             $path = $request->file('image')->store('products', 'public');
             $validated['image_path'] = '/storage/' . $path;
+            @chmod(storage_path('app/public/' . $path), 0666);
         }
 
         $validated['company_id'] = $companyId;
@@ -145,6 +146,7 @@ class ProductController extends Controller
         if ($request->hasFile('image')) {
             $path = $request->file('image')->store('products', 'public');
             $validated['image_path'] = '/storage/' . $path;
+            @chmod(storage_path('app/public/' . $path), 0666);
         }
 
         $product->update($validated);
@@ -217,6 +219,7 @@ class ProductController extends Controller
         if ($request->hasFile('image')) {
             $path = $request->file('image')->store('categories', 'public');
             $validated['image_path'] = '/storage/' . $path;
+            @chmod(storage_path('app/public/' . $path), 0666);
         }
 
         $validated['company_id'] = $companyId;
