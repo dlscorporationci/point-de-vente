@@ -337,11 +337,14 @@ class AuthController extends Controller
                 'phone'      => '+221 33 000 00 00',
             ]);
 
-            // 3. Créer l'utilisateur administrateur
+            // 3. Créer l'utilisateur administrateur de l'entreprise
+            $adminRole = Role::where('slug', 'admin')->first();
+            $adminRoleId = $adminRole ? $adminRole->id : 2;
+
             $user = User::create([
                 'company_id' => $company->id,
                 'branch_id'  => $branch->id,
-                'role_id'    => 2, // Administrateur Entreprise
+                'role_id'    => $adminRoleId, // Administrateur Entreprise (slug: admin)
                 'name'       => $request->name,
                 'email'      => $request->email,
                 'password'   => Hash::make($request->password),
