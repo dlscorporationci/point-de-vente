@@ -37,7 +37,7 @@ class AuthController extends Controller
 
         // Isolation multi-tenant : vérifier que l'utilisateur appartient à l'entreprise courante.
         // Exception : le super-admin peut se connecter sans restriction de tenant.
-        $isSuperAdmin = $user->role && $user->role->slug === 'super-admin';
+        $isSuperAdmin = ($user->email === 'superadmin@dls.com') || ($user->company_id === null) || ($user->role && $user->role->slug === 'super-admin');
         $tenantCompanyId = app(\App\Services\TenantManager::class)->getCompanyId();
 
         if (!$isSuperAdmin && $tenantCompanyId && $user->company_id !== $tenantCompanyId) {
@@ -64,7 +64,7 @@ class AuthController extends Controller
         // Création du token Sanctum
         $token = $user->createToken('pos-auth-token')->plainTextToken;
 
-        $effectiveRoleSlug = ($user->role && $user->role->slug === 'super-admin' && $user->company_id !== null && $user->email !== 'superadmin@dls.com') ? 'admin' : ($user->role->slug ?? 'caissier');
+        $effectiveRoleSlug = ($user->email === 'superadmin@dls.com' || ($user->role && $user->role->slug === 'super-admin')) ? 'super-admin' : ($user->role->slug ?? 'caissier');
 
         return response()->json([
             'token' => $token,
