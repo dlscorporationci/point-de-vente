@@ -1,4 +1,3 @@
-mysqldump: [Warning] Using a password on the command line interface can be insecure.
 -- Warning: column statistics not supported by the server.
 -- MySQL dump 10.13  Distrib 8.0.46, for Linux (x86_64)
 --
