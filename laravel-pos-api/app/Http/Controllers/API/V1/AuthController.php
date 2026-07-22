@@ -65,18 +65,9 @@ class AuthController extends Controller
             ]);
         }
 
-        // Isolation multi-tenant : vérifier que l'utilisateur appartient à l'entreprise courante.
-        // Exception : le super-admin peut se connecter sans restriction de tenant.
+        // Isolation multi-tenant : Le SuperAdmin n'est pas limité à un tenant.
+        // Pour les utilisateurs d'entreprise, le login les authentifie directement dans leur propre entreprise.
         $isSuperAdmin = ($user->email === 'superadmin@dls.com') || ($user->company_id === null) || ($user->role && $user->role->slug === 'super-admin');
-        $tenantCompanyId = app(\App\Services\TenantManager::class)->getCompanyId();
-
-        if (!$isSuperAdmin && $tenantCompanyId && $user->company_id !== $tenantCompanyId) {
-            // L'utilisateur tente de se connecter sur la mauvaise entreprise
-            $this->logAuthEvent($user, 'login_tenant_mismatch', $request);
-            throw ValidationException::withMessages([
-                'email' => ['Identifiants de connexion incorrects.'],
-            ]);
-        }
 
         if ($user->status !== 'active') {
             $this->logAuthEvent($user, 'login_suspended', $request);
