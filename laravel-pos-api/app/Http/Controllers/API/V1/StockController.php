@@ -40,21 +40,40 @@ class StockController extends Controller
      */
     public function currentStock(Request $request)
     {
-        $query = BranchProduct::whereHas('product')->with(['product', 'branch']);
-
+        $tenantCompanyId = app(\App\Services\TenantManager::class)->getCompanyId();
         $branchId = $request->input('branch_id');
         if (empty($branchId) || $branchId === 'undefined') {
             $branchId = $request->header('X-Branch-ID');
         }
 
         if ($branchId && $branchId !== 'all') {
-            $query->where('branch_id', $branchId);
+            // Récupérer les produits existants de l'entreprise
+            $companyProducts = Product::when($tenantCompanyId, function($q) use ($tenantCompanyId) {
+                $q->where('company_id', $tenantCompanyId);
+            })->get();
+
+            // Auto-initialiser à 0.00 les produits qui n'ont pas encore de ligne de stock pour cette boutique
+            foreach ($companyProducts as $prod) {
+                BranchProduct::firstOrCreate([
+                    'branch_id'  => $branchId,
+                    'product_id' => $prod->id,
+                ], [
+                    'quantity'   => 0.00,
+                ]);
+            }
+
+            $query = BranchProduct::whereHas('product')
+                ->where('branch_id', $branchId)
+                ->with(['product', 'branch']);
+
+            if ($request->has('product_id') && !empty($request->product_id)) {
+                $query->where('product_id', $request->product_id);
+            }
+
+            return response()->json($query->get());
         }
 
-        if ($request->has('product_id') && !empty($request->product_id)) {
-            $query->where('product_id', $request->product_id);
-        }
-
+        $query = BranchProduct::whereHas('product')->with(['product', 'branch']);
         return response()->json($query->get());
     }
 
