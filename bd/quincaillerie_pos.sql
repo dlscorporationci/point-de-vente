@@ -360,7 +360,7 @@ CREATE TABLE `companies` (
 
 LOCK TABLES `companies` WRITE;
 /*!40000 ALTER TABLE `companies` DISABLE KEYS */;
-INSERT INTO `companies` VALUES (1,'DLS Corporation','C5J6-ZS9H','Africa/Dakar','XOF','{\"tax_rate\":18,\"enable_tax\":true}','inactive','premium','2026-08-09 10:50:18',NULL,'2026-07-09 12:36:22','2026-07-22 12:28:11'),(3,'premmar Boutiques','LLEQ-O7EZ','Africa/Dakar','XOF',NULL,'active','basic',NULL,NULL,'2026-07-20 07:57:47','2026-07-20 07:57:47'),(4,'Test Quincaillerie Express','8OUW-AXFY','Africa/Dakar','XOF',NULL,'active','basic',NULL,NULL,'2026-07-20 08:07:37','2026-07-20 08:07:37'),(5,'Librairie de France','MFQN-2RIX','Africa/Dakar','XOF','{\"tax_rate\":0,\"enable_tax\":false}','active','basic',NULL,NULL,'2026-07-20 15:04:48','2026-07-22 10:10:08'),(6,'shoppinglow','KFAL-G3OK','Africa/Dakar','XOF',NULL,'active','basic',NULL,NULL,'2026-07-21 15:52:04','2026-07-21 15:52:04'),(7,'Fruitfox','WC1P-CEME','Africa/Dakar','XOF',NULL,'active','basic',NULL,NULL,'2026-07-22 10:38:18','2026-07-22 10:38:18'),(8,'rivermontain','ZY8X-UIDI','Africa/Dakar','XOF',NULL,'active','basic',NULL,NULL,'2026-07-22 10:46:02','2026-07-22 10:46:02');
+INSERT INTO `companies` VALUES (1,'DLS Corporation','C5J6-ZS9H','Africa/Dakar','XOF','{\"tax_rate\":18,\"enable_tax\":true}','active','premium','2026-08-09 10:50:18',NULL,'2026-07-09 12:36:22','2026-07-22 12:28:11'),(3,'premmar Boutiques','LLEQ-O7EZ','Africa/Dakar','XOF',NULL,'active','basic',NULL,NULL,'2026-07-20 07:57:47','2026-07-20 07:57:47'),(4,'Test Quincaillerie Express','8OUW-AXFY','Africa/Dakar','XOF',NULL,'active','basic',NULL,NULL,'2026-07-20 08:07:37','2026-07-20 08:07:37'),(5,'Librairie de France','MFQN-2RIX','Africa/Dakar','XOF','{\"tax_rate\":0,\"enable_tax\":false}','active','basic',NULL,NULL,'2026-07-20 15:04:48','2026-07-22 10:10:08'),(6,'shoppinglow','KFAL-G3OK','Africa/Dakar','XOF',NULL,'active','basic',NULL,NULL,'2026-07-21 15:52:04','2026-07-21 15:52:04'),(7,'Fruitfox','WC1P-CEME','Africa/Dakar','XOF',NULL,'active','basic',NULL,NULL,'2026-07-22 10:38:18','2026-07-22 10:38:18'),(8,'rivermontain','ZY8X-UIDI','Africa/Dakar','XOF',NULL,'active','basic',NULL,NULL,'2026-07-22 10:46:02','2026-07-22 10:46:02');
 /*!40000 ALTER TABLE `companies` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1241,4 +1241,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-07-22 12:28:34
+-- Dump completed on 2026-07-22 15:28:52
