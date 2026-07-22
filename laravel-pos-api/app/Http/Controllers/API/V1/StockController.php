@@ -23,8 +23,13 @@ class StockController extends Controller
             $query->where('product_id', $request->product_id);
         }
 
-        if ($request->has('branch_id') && !empty($request->branch_id)) {
-            $query->where('branch_id', $request->branch_id);
+        $branchId = $request->input('branch_id');
+        if (empty($branchId) || $branchId === 'undefined') {
+            $branchId = $request->header('X-Branch-ID');
+        }
+
+        if ($branchId && $branchId !== 'all') {
+            $query->where('branch_id', $branchId);
         }
 
         return response()->json($query->orderBy('created_at', 'desc')->paginate(20));
@@ -37,8 +42,13 @@ class StockController extends Controller
     {
         $query = BranchProduct::whereHas('product')->with(['product', 'branch']);
 
-        if ($request->has('branch_id') && !empty($request->branch_id)) {
-            $query->where('branch_id', $request->branch_id);
+        $branchId = $request->input('branch_id');
+        if (empty($branchId) || $branchId === 'undefined') {
+            $branchId = $request->header('X-Branch-ID');
+        }
+
+        if ($branchId && $branchId !== 'all') {
+            $query->where('branch_id', $branchId);
         }
 
         if ($request->has('product_id') && !empty($request->product_id)) {
