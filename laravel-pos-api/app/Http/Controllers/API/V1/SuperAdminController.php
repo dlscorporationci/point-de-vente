@@ -139,23 +139,23 @@ class SuperAdminController extends Controller
     {
         $this->authorizeSuperAdmin($request);
 
-        $company = Company::findOrFail($id);
+        $company = Company::withoutGlobalScopes()->findOrFail($id);
 
         $request->validate([
-            'name' => 'sometimes|string|max:100',
-            'status' => 'sometimes|in:active,inactive',
-            'logo' => 'sometimes|image|max:5120',
+            'name'   => 'sometimes|nullable|string|max:100',
+            'status' => 'sometimes|nullable|in:active,inactive',
+            'logo'   => 'sometimes|nullable|image|max:5120',
         ]);
 
-        if ($request->has('name')) {
+        if ($request->filled('name')) {
             $company->name = $request->name;
         }
 
-        if ($request->has('status')) {
+        if ($request->filled('status')) {
             $company->status = $request->status;
         }
 
-        if ($request->has('code')) {
+        if ($request->filled('code')) {
             $request->validate(['code' => 'required|string|max:20|unique:companies,code,' . $company->id]);
             $company->code = strtoupper(trim(str_replace(' ', '', $request->code)));
         }

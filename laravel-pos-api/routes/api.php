@@ -158,7 +158,7 @@ Route::prefix('v1')->middleware('tenant')->group(function () {
             Route::get('/admin/dashboard',                    [\App\Http\Controllers\API\V1\SuperAdminController::class, 'dashboard']);
             Route::get('/admin/companies',                    [\App\Http\Controllers\API\V1\SuperAdminController::class, 'companies']);
             Route::post('/admin/companies',                   [\App\Http\Controllers\API\V1\SuperAdminController::class, 'createCompany']);
-            Route::post('/admin/companies/{id}',              [\App\Http\Controllers\API\V1\SuperAdminController::class, 'updateCompany']);
+            Route::match(['post', 'put'], '/admin/companies/{id}', [\App\Http\Controllers\API\V1\SuperAdminController::class, 'updateCompany']);
             Route::get('/admin/users',                        [\App\Http\Controllers\API\V1\SuperAdminController::class, 'users']);
             Route::post('/admin/users/{id}/reset-password',   [\App\Http\Controllers\API\V1\SuperAdminController::class, 'resetUserPassword']);
             Route::post('/admin/users/{id}/toggle-status',    [\App\Http\Controllers\API\V1\SuperAdminController::class, 'toggleUserStatus']);
