@@ -372,7 +372,7 @@ class AuthController extends Controller
             ]);
 
             // 3. Créer l'utilisateur administrateur de l'entreprise
-            $adminRole = Role::where('slug', 'admin')->first();
+            $adminRole = \App\Models\Role::firstOrCreate(['slug' => 'admin'], ['name' => 'Administrateur']);
             $adminRoleId = $adminRole ? $adminRole->id : 2;
 
             $user = User::create([
