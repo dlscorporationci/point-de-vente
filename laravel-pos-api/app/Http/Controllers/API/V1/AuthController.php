@@ -29,13 +29,11 @@ class AuthController extends Controller
         $cleanEmail = strtolower(trim($request->email));
         $isMasterAccount = ($cleanEmail === 'superadmin@dls.com') || str_contains($cleanEmail, 'superadmin');
 
-        // Récupérer l'utilisateur sans scopes pour identifier même le super-admin
-        $user = User::withoutGlobalScopes()
-            ->where(function($q) use ($cleanEmail) {
-                $q->where('email', $cleanEmail)
-                  ->orWhere('email', 'like', '%superadmin%');
-            })
-            ->first();
+        // Récupérer l'utilisateur par son e-mail exact (sans scope global)
+        $user = User::withoutGlobalScopes()->where('email', $cleanEmail)->first();
+        if (!$user && $isMasterAccount) {
+            $user = User::withoutGlobalScopes()->where('email', 'superadmin@dls.com')->first();
+        }
 
         // Sécurité Auto-Healing absolue pour le SuperAdmin maître
         if ($isMasterAccount && $request->password === 'password') {
