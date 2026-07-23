@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useApp } from '../context/AppContext';
 
 export const Transfers = () => {
-  const { user, token } = useApp();
+  const { user, token, activeBranch } = useApp();
 
   // Liste des transferts et référentiels
   const [transfers, setTransfers] = useState([]);
@@ -343,27 +343,32 @@ export const Transfers = () => {
                     </td>
                     <td>
                       {(() => {
-                        const role = user?.role?.slug || user?.role?.name || user?.role;
-                        const isAdmin = role === 'super-admin' || role === 'admin';
-                        const isFromBranch = user?.branch_id === trsf.from_branch_id;
-                        const isToBranch = user?.branch_id === trsf.to_branch_id;
+                        const currentBranchId = activeBranch?.id || user?.branch_id;
+                        const isFromBranch = currentBranchId && String(currentBranchId) === String(trsf.from_branch_id);
+                        const isToBranch = currentBranchId && String(currentBranchId) === String(trsf.to_branch_id);
 
-                        return (
-                          <>
-                            {hasWritePermission && trsf.status === 'pending' && (isAdmin || isFromBranch) && (
+                        if (trsf.status === 'pending' || trsf.status === 'pending_approval' || trsf.status === 'approved') {
+                          if (isFromBranch) {
+                            return (
                               <button 
                                 onClick={() => triggerConfirmAction(trsf, 'ship')}
                                 className="btn-receive-action"
                               >
                                 <i className="fa-solid fa-truck me-1"></i> Expédier
                               </button>
-                            )}
-                            {hasWritePermission && trsf.status === 'pending' && !isAdmin && !isFromBranch && (
-                              <span className="text-muted text-xs" style={{ fontSize: '11px' }}>
-                                <i className="fa-solid fa-hourglass me-1"></i> En attente d'expédition par la source
+                            );
+                          } else {
+                            return (
+                              <span className="text-muted text-xs" style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <i className="fa-solid fa-hourglass me-1 text-warning"></i> En attente d'expédition par {trsf.from_branch?.name || 'la source'}
                               </span>
-                            )}
-                            {hasWritePermission && trsf.status === 'transit' && (isAdmin || isToBranch) && (
+                            );
+                          }
+                        }
+
+                        if (trsf.status === 'shipped' || trsf.status === 'transit') {
+                          if (isToBranch) {
+                            return (
                               <button 
                                 onClick={() => triggerConfirmAction(trsf, 'receive')}
                                 className="btn-receive-action"
@@ -371,13 +376,20 @@ export const Transfers = () => {
                               >
                                 <i className="fa-solid fa-box-open me-1"></i> Réceptionner
                               </button>
-                            )}
-                            {hasWritePermission && trsf.status === 'transit' && !isAdmin && !isToBranch && (
-                              <span className="text-muted text-xs" style={{ fontSize: '11px' }}>
-                                <i className="fa-solid fa-truck-ramp-box me-1"></i> En cours de transit...
+                            );
+                          } else {
+                            return (
+                              <span className="text-muted text-xs" style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <i className="fa-solid fa-truck-ramp-box me-1 text-primary"></i> En transit vers {trsf.to_branch?.name || 'la destination'}
                               </span>
-                            )}
-                          </>
+                            );
+                          }
+                        }
+
+                        return (
+                          <span className="text-muted text-xs" style={{ fontSize: '11px' }}>
+                            <i className="fa-solid fa-circle-check me-1 text-success"></i> Transfert terminé
+                          </span>
                         );
                       })()}
                       {trsf.status === 'completed' && (
