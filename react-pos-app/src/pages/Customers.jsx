@@ -68,7 +68,8 @@ export const Customers = () => {
       address: '',
       credit_limit: '500000',
       debt_balance: '0',
-      loyalty_points: '0'
+      loyalty_points: '0',
+      is_global: true
     });
     setError(null);
     setShowModal(true);
@@ -83,7 +84,8 @@ export const Customers = () => {
       address: cust.address || '',
       credit_limit: cust.credit_limit,
       debt_balance: cust.debt_balance,
-      loyalty_points: cust.loyalty_points
+      loyalty_points: cust.loyalty_points,
+      is_global: !cust.branch_id && (!cust.branches || cust.branches.length === 0)
     });
     setError(null);
     setShowModal(true);
@@ -194,9 +196,16 @@ export const Customers = () => {
                   <tr key={cust.id}>
                     <td>
                       <div className="fw-bold text-main">{cust.name}</div>
-                      <div className="text-muted small">
-                        {cust.phone && <><i className="fa-solid fa-phone me-1"></i>{cust.phone}</>}
-                        {cust.email && <><i className="fa-solid fa-envelope ms-2 me-1"></i>{cust.email}</>}
+                      <div className="small">
+                        {cust.email && <span className="me-2 text-muted"><i className="fa-solid fa-envelope me-1"></i>{cust.email}</span>}
+                        {cust.phone && <span className="text-muted"><i className="fa-solid fa-phone me-1"></i>{cust.phone}</span>}
+                      </div>
+                      <div className="mt-1">
+                        {!cust.branch_id && (!cust.branches || cust.branches.length === 0) ? (
+                          <span className="badge bg-primary me-1"><i className="fa-solid fa-globe me-1"></i>Global (Toutes boutiques)</span>
+                        ) : (
+                          <span className="badge bg-info text-dark me-1"><i className="fa-solid fa-shop me-1"></i>{cust.branch?.name || 'Multi-boutiques'}</span>
+                        )}
                       </div>
                     </td>
                     <td className="text-main">{cust.address || '-'}</td>
@@ -304,6 +313,26 @@ export const Customers = () => {
                   value={formData.address} 
                   onChange={(e) => setFormData({...formData, address: e.target.value})} 
                 />
+              </div>
+
+              <div className="form-group my-3 p-3 border rounded bg-input">
+                <div className="form-check form-switch">
+                  <input
+                    className="form-check-input"
+                    type="checkbox"
+                    id="isGlobalCheck"
+                    checked={formData.is_global}
+                    onChange={(e) => setFormData({...formData, is_global: e.target.checked})}
+                  />
+                  <label className="form-check-label fw-bold text-main ms-2" htmlFor="isGlobalCheck">
+                    <i className="fa-solid fa-globe me-1 text-primary"></i> Client Global (Disponible dans toutes les boutiques)
+                  </label>
+                </div>
+                <div className="text-muted small mt-1">
+                  {formData.is_global 
+                    ? "Ce client sera visible et utilisable sur le POS de toutes les boutiques de l'entreprise."
+                    : "Ce client sera strictement réservé et visible dans la boutique actuelle uniquement."}
+                </div>
               </div>
 
               <div className="form-row-grid">

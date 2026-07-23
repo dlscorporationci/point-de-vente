@@ -43,4 +43,14 @@ class Branch extends Model
     {
         return $this->hasMany(CashRegister::class);
     }
+
+    public function suppliers()
+    {
+        return $this->belongsToMany(Supplier::class, 'supplier_branches')->withTimestamps();
+    }
+
+    public function customers()
+    {
+        return $this->belongsToMany(Customer::class, 'customer_branches')->withTimestamps();
+    }
 }

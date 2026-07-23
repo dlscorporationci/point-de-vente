@@ -13,9 +13,25 @@ class SupplierController extends Controller
     /**
      * Liste des fournisseurs avec recherche et pagination.
      */
+    /**
+     * Liste des fournisseurs avec recherche, filtrage par boutique affectée et pagination.
+     */
     public function index(Request $request)
     {
-        $query = Supplier::query();
+        $query = Supplier::with('branches');
+
+        $branchId = $request->input('branch_id');
+        if (empty($branchId) || $branchId === 'undefined') {
+            $branchId = app(\App\Services\TenantManager::class)->getBranchId();
+        }
+
+        if ($branchId && $branchId !== 'all') {
+            $query->where(function($q) use ($branchId) {
+                $q->whereHas('branches', function($b) use ($branchId) {
+                    $b->where('branches.id', $branchId);
+                })->orDoesntHave('branches'); // Si aucun pivot n'est défini, le fournisseur est global à l'entreprise
+            });
+        }
 
         if ($request->has('search') && !empty($request->search)) {
             $search = $request->search;
@@ -51,13 +67,22 @@ class SupplierController extends Controller
             'phone' => 'nullable|string|max:30',
             'address' => 'nullable|string|max:255',
             'debt_balance' => 'nullable|numeric',
+            'branch_ids' => 'nullable|array',
+            'branch_ids.*' => 'exists:branches,id',
         ]);
+
+        $branchIds = $request->input('branch_ids');
+        unset($validated['branch_ids']);
 
         $supplier = Supplier::create($validated);
 
+        if (!empty($branchIds) && is_array($branchIds)) {
+            $supplier->branches()->sync($branchIds);
+        }
+
         return response()->json([
             'message' => 'Fournisseur créé avec succès.',
-            'supplier' => $supplier
+            'supplier' => $supplier->load('branches')
         ], 201);
     }
 
@@ -66,7 +91,7 @@ class SupplierController extends Controller
      */
     public function show(string $id)
     {
-        $supplier = Supplier::findOrFail($id);
+        $supplier = Supplier::with('branches')->findOrFail($id);
         return response()->json($supplier);
     }
 
@@ -93,13 +118,22 @@ class SupplierController extends Controller
             'phone' => 'nullable|string|max:30',
             'address' => 'nullable|string|max:255',
             'debt_balance' => 'nullable|numeric',
+            'branch_ids' => 'nullable|array',
+            'branch_ids.*' => 'exists:branches,id',
         ]);
+
+        $branchIds = $request->input('branch_ids');
+        unset($validated['branch_ids']);
 
         $supplier->update($validated);
 
+        if ($request->has('branch_ids')) {
+            $supplier->branches()->sync($branchIds ?: []);
+        }
+
         return response()->json([
             'message' => 'Fournisseur mis à jour avec succès.',
-            'supplier' => $supplier
+            'supplier' => $supplier->load('branches')
         ]);
     }
 

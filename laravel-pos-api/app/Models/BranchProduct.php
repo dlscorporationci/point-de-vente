@@ -12,6 +12,7 @@ class BranchProduct extends Model
         'branch_id',
         'product_id',
         'quantity',
+        'is_active',
     ];
 
     public function branch()

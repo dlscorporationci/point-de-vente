@@ -20,4 +20,9 @@ class Supplier extends Model
         'address',
         'debt_balance',
     ];
+
+    public function branches()
+    {
+        return $this->belongsToMany(Branch::class, 'supplier_branches')->withTimestamps();
+    }
 }

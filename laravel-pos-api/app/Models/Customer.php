@@ -13,6 +13,7 @@ class Customer extends Model
 
     protected $fillable = [
         'company_id',
+        'branch_id',
         'name',
         'email',
         'phone',
@@ -21,6 +22,16 @@ class Customer extends Model
         'debt_balance',
         'loyalty_points',
     ];
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
+    }
+
+    public function branches()
+    {
+        return $this->belongsToMany(Branch::class, 'customer_branches')->withTimestamps();
+    }
 
     public function sales()
     {

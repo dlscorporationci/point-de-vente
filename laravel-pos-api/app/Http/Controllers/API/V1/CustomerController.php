@@ -12,9 +12,32 @@ class CustomerController extends Controller
     /**
      * Liste des clients avec recherche et pagination.
      */
+    /**
+     * Liste des clients avec recherche, filtrage par boutique active (Double Scénario) et pagination.
+     */
     public function index(Request $request)
     {
-        $query = Customer::query();
+        $query = Customer::with(['branch', 'branches']);
+
+        $branchId = $request->input('branch_id');
+        if (empty($branchId) || $branchId === 'undefined') {
+            $branchId = app(\App\Services\TenantManager::class)->getBranchId();
+        }
+
+        if ($branchId && $branchId !== 'all') {
+            $query->where(function($q) use ($branchId) {
+                // Scenario A: Client affecté dans la table pivot customer_branches
+                $q->whereHas('branches', function($b) use ($branchId) {
+                    $b->where('branches.id', $branchId);
+                })
+                // Scenario B: Client local avec branch_id direct
+                ->orWhere('customers.branch_id', $branchId)
+                // Scenario C: Client global (sans branch_id direct et sans pivot)
+                ->orWhere(function($subQ) {
+                    $subQ->whereNull('customers.branch_id')->whereDoesntHave('branches');
+                });
+            });
+        }
 
         if ($request->has('search') && !empty($request->search)) {
             $search = $request->search;
@@ -34,6 +57,7 @@ class CustomerController extends Controller
     public function store(Request $request)
     {
         $companyId = app(\App\Services\TenantManager::class)->getCompanyId();
+        $activeBranchId = app(\App\Services\TenantManager::class)->getBranchId();
 
         $validated = $request->validate([
             'name' => 'required|string|max:100',
@@ -48,13 +72,31 @@ class CustomerController extends Controller
             'credit_limit' => 'nullable|numeric|min:0',
             'debt_balance' => 'nullable|numeric|min:0',
             'loyalty_points' => 'nullable|integer|min:0',
+            'branch_id' => 'nullable|exists:branches,id',
+            'is_global' => 'nullable|boolean',
+            'branch_ids' => 'nullable|array',
+            'branch_ids.*' => 'exists:branches,id',
         ]);
+
+        $isGlobal = $request->boolean('is_global');
+        $branchIds = $request->input('branch_ids');
+        unset($validated['is_global'], $validated['branch_ids']);
+
+        if (!$isGlobal && empty($validated['branch_id']) && empty($branchIds) && $activeBranchId) {
+            $validated['branch_id'] = $activeBranchId;
+        } elseif ($isGlobal) {
+            $validated['branch_id'] = null;
+        }
 
         $customer = Customer::create($validated);
 
+        if (!$isGlobal && !empty($branchIds) && is_array($branchIds)) {
+            $customer->branches()->sync($branchIds);
+        }
+
         return response()->json([
             'message' => 'Client créé avec succès.',
-            'customer' => $customer
+            'customer' => $customer->load(['branch', 'branches'])
         ], 201);
     }
 
@@ -63,7 +105,7 @@ class CustomerController extends Controller
      */
     public function show(string $id)
     {
-        $customer = Customer::with(['sales.details.product', 'sales.user', 'sales.branch'])->findOrFail($id);
+        $customer = Customer::with(['branch', 'branches', 'sales.details.product', 'sales.user', 'sales.branch'])->findOrFail($id);
         return response()->json($customer);
     }
 
@@ -88,13 +130,31 @@ class CustomerController extends Controller
             'credit_limit' => 'nullable|numeric|min:0',
             'debt_balance' => 'nullable|numeric|min:0',
             'loyalty_points' => 'nullable|integer|min:0',
+            'branch_id' => 'nullable|exists:branches,id',
+            'is_global' => 'nullable|boolean',
+            'branch_ids' => 'nullable|array',
+            'branch_ids.*' => 'exists:branches,id',
         ]);
+
+        $isGlobal = $request->boolean('is_global');
+        $branchIds = $request->input('branch_ids');
+        unset($validated['is_global'], $validated['branch_ids']);
+
+        if ($isGlobal) {
+            $validated['branch_id'] = null;
+        }
 
         $customer->update($validated);
 
+        if ($isGlobal) {
+            $customer->branches()->detach();
+        } elseif ($request->has('branch_ids')) {
+            $customer->branches()->sync($branchIds ?: []);
+        }
+
         return response()->json([
             'message' => 'Client mis à jour avec succès.',
-            'customer' => $customer
+            'customer' => $customer->load(['branch', 'branches'])
         ]);
     }
 

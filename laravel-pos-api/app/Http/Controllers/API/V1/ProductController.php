@@ -14,9 +14,24 @@ class ProductController extends Controller
     /**
      * Liste des produits avec filtres (recherche et catégorie) et pagination.
      */
+    /**
+     * Liste des produits avec filtres (recherche, catégorie et boutique affectée) et pagination.
+     */
     public function index(Request $request)
     {
-        $query = Product::with('category');
+        $query = Product::with(['category', 'branchProducts']);
+
+        // Filtre par boutique affectée
+        $branchId = $request->input('branch_id');
+        if (empty($branchId) || $branchId === 'undefined') {
+            $branchId = app(\App\Services\TenantManager::class)->getBranchId();
+        }
+
+        if ($branchId && $branchId !== 'all') {
+            $query->whereHas('branchProducts', function($bp) use ($branchId) {
+                $bp->where('branch_id', $branchId)->where('is_active', true);
+            });
+        }
 
         // Filtre recherche par Nom, SKU ou Code-barres
         if ($request->has('search') && !empty($request->search)) {
@@ -64,18 +79,21 @@ class ProductController extends Controller
             ],
             'description' => 'nullable|string',
             'selling_price' => 'required|numeric|min:0',
+            'cost_price' => 'nullable|numeric|min:0',
             'tax_rate' => 'nullable|numeric|min:0|max:100',
             'alert_quantity' => 'nullable|numeric|min:0',
             'status' => 'nullable|in:active,inactive',
             'image' => 'nullable|file|mimes:jpeg,jpg,png,gif,webp,svg,bmp|max:5120',
+            'branch_ids' => 'nullable|array',
+            'branch_ids.*' => 'exists:branches,id',
         ], [
             'image.mimes' => 'L\'image doit être au format JPEG, PNG, GIF, WebP, SVG ou BMP.',
             'image.max' => 'L\'image ne doit pas dépasser 5 Mo.',
             'image.file' => 'Le fichier image est invalide.',
         ]);
 
-        // Retirer le champ 'image' des données validées (ce n'est pas une colonne de la table)
-        unset($validated['image']);
+        $branchIds = $request->input('branch_ids');
+        unset($validated['image'], $validated['branch_ids']);
 
         if ($request->hasFile('image')) {
             $path = $request->file('image')->store('products', 'public');
@@ -86,9 +104,24 @@ class ProductController extends Controller
         $validated['company_id'] = $companyId;
         $product = Product::create($validated);
 
+        // Affectation aux boutiques
+        $targetBranches = (!empty($branchIds) && is_array($branchIds)) 
+            ? $branchIds 
+            : \App\Models\Branch::where('company_id', $companyId)->pluck('id')->toArray();
+
+        foreach ($targetBranches as $bId) {
+            \App\Models\BranchProduct::updateOrCreate([
+                'branch_id' => $bId,
+                'product_id' => $product->id,
+            ], [
+                'quantity' => 0.00,
+                'is_active' => true,
+            ]);
+        }
+
         return response()->json([
-            'message' => 'Produit créé avec succès.',
-            'product' => $product->load('category')
+            'message' => 'Produit créé et affecté avec succès.',
+            'product' => $product->load(['category', 'branchProducts'])
         ], 201);
     }
 
