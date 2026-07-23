@@ -84,8 +84,10 @@ class ProductController extends Controller
             'alert_quantity' => 'nullable|numeric|min:0',
             'status' => 'nullable|in:active,inactive',
             'image' => 'nullable|file|mimes:jpeg,jpg,png,gif,webp,svg,bmp|max:5120',
+            'scope' => 'nullable|in:current,all,custom',
             'branch_ids' => 'nullable|array',
             'branch_ids.*' => 'exists:branches,id',
+            'initial_stock' => 'nullable|numeric|min:0',
         ], [
             'image.mimes' => 'L\'image doit être au format JPEG, PNG, GIF, WebP, SVG ou BMP.',
             'image.max' => 'L\'image ne doit pas dépasser 5 Mo.',
@@ -93,7 +95,9 @@ class ProductController extends Controller
         ]);
 
         $branchIds = $request->input('branch_ids');
-        unset($validated['image'], $validated['branch_ids']);
+        $scope = $request->input('scope', 'current');
+        $initialStock = floatval($request->input('initial_stock', 0));
+        unset($validated['image'], $validated['branch_ids'], $validated['scope'], $validated['initial_stock']);
 
         if ($request->hasFile('image')) {
             $path = $request->file('image')->store('products', 'public');
@@ -104,20 +108,48 @@ class ProductController extends Controller
         $validated['company_id'] = $companyId;
         $product = Product::create($validated);
 
-        // Affectation aux boutiques (uniquement la boutique active par défaut si branch_ids est omis)
-        $activeBranchId = app(\App\Services\TenantManager::class)->getBranchId();
-        $targetBranches = (!empty($branchIds) && is_array($branchIds)) 
-            ? $branchIds 
-            : ($activeBranchId ? [$activeBranchId] : \App\Models\Branch::where('company_id', $companyId)->pluck('id')->toArray());
+        // Déterminer les boutiques d'affectation selon le rôle de l'utilisateur
+        $user = $request->user();
+        $userRole = is_object($user->role) ? $user->role->slug : $user->role;
+        $activeBranchId = app(\App\Services\TenantManager::class)->getBranchId() ?: $user->branch_id;
+
+        if (in_array($userRole, ['gerant', 'caissier'])) {
+            // Le Gérant crée TOUJOURS un produit exclusivement pour sa propre boutique
+            $targetBranches = $activeBranchId ? [$activeBranchId] : [];
+        } else {
+            // L'Admin a le choix de la portée
+            if ($scope === 'all') {
+                $targetBranches = \App\Models\Branch::where('company_id', $companyId)->pluck('id')->toArray();
+            } elseif (!empty($branchIds) && is_array($branchIds)) {
+                $targetBranches = $branchIds;
+            } else {
+                $targetBranches = $activeBranchId ? [$activeBranchId] : \App\Models\Branch::where('company_id', $companyId)->pluck('id')->toArray();
+            }
+        }
 
         foreach ($targetBranches as $bId) {
+            $qty = ($bId == $activeBranchId && $initialStock > 0) ? $initialStock : 0.00;
             \App\Models\BranchProduct::updateOrCreate([
                 'branch_id' => $bId,
                 'product_id' => $product->id,
             ], [
-                'quantity' => 0.00,
+                'quantity' => $qty,
                 'is_active' => true,
             ]);
+
+            if ($bId == $activeBranchId && $initialStock > 0) {
+                \Illuminate\Support\Facades\DB::table('stock_movements')->insert([
+                    'company_id'   => $companyId,
+                    'branch_id'    => $bId,
+                    'product_id'   => $product->id,
+                    'type'         => 'initial',
+                    'quantity'     => $initialStock,
+                    'reference_id' => $product->id,
+                    'description'  => "Stock initial création de produit par {$user->name}",
+                    'created_at'   => now(),
+                    'updated_at'   => now(),
+                ]);
+            }
         }
 
         return response()->json([

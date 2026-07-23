@@ -28,9 +28,13 @@ export const getImageUrl = (imagePath) => {
 export const Catalog = () => {
   const { user, token } = useApp();
 
+  const role = user?.role?.slug || user?.role?.name || user?.role;
+  const isAdmin = role === 'admin' || role === 'super-admin';
+
   // Liste des produits et catégories depuis l'API
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [branches, setBranches] = useState([]);
   
   // États de recherche et filtres
   const [search, setSearch] = useState('');
@@ -49,6 +53,11 @@ export const Catalog = () => {
   const [newProductCategoryId, setNewProductCategoryId] = useState('');
   const [newProductDescription, setNewProductDescription] = useState('');
   const [newProductAlertQty, setNewProductAlertQty] = useState('10');
+  const [initialStock, setInitialStock] = useState('0');
+
+  // États de portée de boutique pour l'Admin
+  const [productScope, setProductScope] = useState('current'); // 'current', 'all', 'custom'
+  const [selectedBranchIds, setSelectedBranchIds] = useState([]);
 
   // Scanner de Code-Barres par Caméra
   const [showScannerModal, setShowScannerModal] = useState(false);
@@ -157,6 +166,10 @@ export const Catalog = () => {
       const catRes = await axios.get('/v1/categories');
       setCategories(catRes.data);
 
+      if (isAdmin) {
+        axios.get('/v1/branches').then(r => setBranches(r.data.data || r.data || [])).catch(() => {});
+      }
+
       // 2. Charger les produits (avec filtres optionnels)
       let url = '/v1/products';
       const params = [];
@@ -246,6 +259,13 @@ export const Catalog = () => {
         if (newProductDescription) formData.append('description', newProductDescription);
         if (newProductAlertQty) formData.append('alert_quantity', newProductAlertQty);
         formData.append('image', newProductImage);
+        if (isAdmin) {
+          formData.append('scope', productScope);
+          if (productScope === 'custom' && selectedBranchIds.length > 0) {
+            selectedBranchIds.forEach(id => formData.append('branch_ids[]', id));
+          }
+        }
+        if (initialStock) formData.append('initial_stock', initialStock);
 
         res = await axios.post('/v1/products', formData, {
           headers: { 'Content-Type': 'multipart/form-data' }
@@ -259,7 +279,10 @@ export const Catalog = () => {
           selling_price: parseFloat(newProductPrice),
           category_id: parseInt(newProductCategoryId),
           description: newProductDescription || null,
-          alert_quantity: newProductAlertQty ? parseFloat(newProductAlertQty) : 10.00
+          alert_quantity: newProductAlertQty ? parseFloat(newProductAlertQty) : 10.00,
+          scope: isAdmin ? productScope : 'current',
+          branch_ids: (isAdmin && productScope === 'custom') ? selectedBranchIds : undefined,
+          initial_stock: initialStock ? parseFloat(initialStock) : 0
         });
       }
       setSuccess(`Produit "${res.data.product.name}" ajouté avec succès !`);
@@ -272,6 +295,9 @@ export const Catalog = () => {
       setNewProductCategoryId('');
       setNewProductDescription('');
       setNewProductAlertQty('10');
+      setInitialStock('0');
+      setProductScope('current');
+      setSelectedBranchIds([]);
       setNewProductImage(null);
       setShowProductForm(false);
       
@@ -598,6 +624,79 @@ export const Catalog = () => {
                     />
                   </div>
                 </div>
+
+                {!editingProduct && (
+                  <div className="form-group">
+                    <label className="form-label">Quantité initiale en stock ({role === 'gerant' ? 'dans votre boutique' : 'boutique active'})</label>
+                    <input 
+                      type="number" 
+                      className="form-control" 
+                      value={initialStock}
+                      onChange={(e) => setInitialStock(e.target.value)}
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                    />
+                  </div>
+                )}
+
+                {isAdmin && !editingProduct && (
+                  <div className="form-group" style={{ background: 'var(--bg-input)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)', marginBottom: '16px' }}>
+                    <label className="form-label font-bold" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
+                      <i className="fa-solid fa-store text-primary"></i> Disponibilité dans les boutiques
+                    </label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px' }}>
+                        <input 
+                          type="radio" 
+                          name="productScope" 
+                          value="current" 
+                          checked={productScope === 'current'} 
+                          onChange={() => setProductScope('current')} 
+                        />
+                        <span>🎯 Boutique courante uniquement</span>
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px' }}>
+                        <input 
+                          type="radio" 
+                          name="productScope" 
+                          value="all" 
+                          checked={productScope === 'all'} 
+                          onChange={() => setProductScope('all')} 
+                        />
+                        <span>🌐 Toutes les boutiques de l'entreprise</span>
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px' }}>
+                        <input 
+                          type="radio" 
+                          name="productScope" 
+                          value="custom" 
+                          checked={productScope === 'custom'} 
+                          onChange={() => setProductScope('custom')} 
+                        />
+                        <span>🎛️ Sélectionner des boutiques spécifiques...</span>
+                      </label>
+
+                      {productScope === 'custom' && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px', paddingLeft: '24px' }}>
+                          {branches.map(b => (
+                            <label key={b.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', background: 'var(--card-bg)', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--border-color)', cursor: 'pointer' }}>
+                              <input 
+                                type="checkbox"
+                                checked={selectedBranchIds.includes(b.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) setSelectedBranchIds([...selectedBranchIds, b.id]);
+                                  else setSelectedBranchIds(selectedBranchIds.filter(id => id !== b.id));
+                                }}
+                              />
+                              <span>{b.name}</span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <div className="form-group">
                   <label className="form-label">Description</label>
