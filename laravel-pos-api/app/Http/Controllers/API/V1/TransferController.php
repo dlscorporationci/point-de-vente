@@ -219,9 +219,10 @@ class TransferController extends Controller
                         'branch_id' => $transfer->to_branch_id,
                         'product_id' => $detail->product_id
                     ],
-                    ['quantity' => 0.00]
+                    ['quantity' => 0.00, 'is_active' => true]
                 );
                 
+                $branchProduct->update(['is_active' => true]);
                 $branchProduct->increment('quantity', $detail->quantity);
 
                 StockMovement::create([
