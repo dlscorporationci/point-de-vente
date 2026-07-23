@@ -19,6 +19,19 @@ class TransferController extends Controller
     public function index(Request $request)
     {
         $query = StockTransfer::with(['fromBranch', 'toBranch', 'details.product']);
+
+        $branchId = $request->input('branch_id');
+        if (empty($branchId) || $branchId === 'undefined') {
+            $branchId = app(\App\Services\TenantManager::class)->getBranchId() ?: $request->header('X-Branch-ID');
+        }
+
+        if ($branchId && $branchId !== 'all') {
+            $query->where(function($q) use ($branchId) {
+                $q->where('from_branch_id', $branchId)
+                  ->orWhere('to_branch_id', $branchId);
+            });
+        }
+
         return response()->json($query->orderBy('created_at', 'desc')->paginate(15));
     }
 
