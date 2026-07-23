@@ -37,10 +37,15 @@ class Product extends Model
         return $this->belongsTo(Company::class);
     }
 
+    public function branchProducts()
+    {
+        return $this->hasMany(BranchProduct::class);
+    }
+
     public function branches()
     {
         return $this->belongsToMany(Branch::class, 'branch_products')
-                    ->withPivot('quantity')
+                    ->withPivot(['quantity', 'is_active'])
                     ->withTimestamps();
     }
 }
