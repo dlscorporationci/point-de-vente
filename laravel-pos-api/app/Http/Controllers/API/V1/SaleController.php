@@ -192,10 +192,12 @@ class SaleController extends Controller
                 }
             }
 
+            $activeBranchId = app(\App\Services\TenantManager::class)->getBranchId() ?: ($user->branch_id ?: $session->branch_id);
+
             // Créer la vente
             $sale = Sale::create([
-                'company_id'      => $user->company_id,
-                'branch_id'       => $user->branch_id,
+                'company_id'      => $user->company_id ?: $session->company_id,
+                'branch_id'       => $activeBranchId,
                 'user_id'         => $user->id,
                 'cash_session_id' => $session->id,
                 'customer_id'     => $customer ? $customer->id : null,
@@ -212,15 +214,21 @@ class SaleController extends Controller
                 'amount_change'   => $request->payment_method === 'credit' ? 0 : $change,
             ]);
 
-            $activeBranchId = app(\App\Services\TenantManager::class)->getBranchId() ?: $user->branch_id;
-
             // Créer les détails et décrémenter le stock avec verrouillage pessimiste lockForUpdate()
             foreach ($details as $d) {
                 $sale->details()->create($d);
 
-                // Verrouiller la ligne de stock pour éviter les accès simultanés concourants
-                $branchProduct = \App\Models\BranchProduct::where('branch_id', $activeBranchId)
-                    ->where('product_id', $d['product_id'])
+                // Auto-initialiser la ligne de stock si elle n'existe pas encore
+                $branchProduct = \App\Models\BranchProduct::firstOrCreate([
+                    'branch_id'  => $activeBranchId,
+                    'product_id' => $d['product_id'],
+                ], [
+                    'quantity'  => 0.00,
+                    'is_active' => true,
+                ]);
+
+                // Verrouiller la ligne de stock pour la transaction
+                $branchProduct = \App\Models\BranchProduct::where('id', $branchProduct->id)
                     ->lockForUpdate()
                     ->first();
 

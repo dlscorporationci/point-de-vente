@@ -104,10 +104,11 @@ class ProductController extends Controller
         $validated['company_id'] = $companyId;
         $product = Product::create($validated);
 
-        // Affectation aux boutiques
+        // Affectation aux boutiques (uniquement la boutique active par défaut si branch_ids est omis)
+        $activeBranchId = app(\App\Services\TenantManager::class)->getBranchId();
         $targetBranches = (!empty($branchIds) && is_array($branchIds)) 
             ? $branchIds 
-            : \App\Models\Branch::where('company_id', $companyId)->pluck('id')->toArray();
+            : ($activeBranchId ? [$activeBranchId] : \App\Models\Branch::where('company_id', $companyId)->pluck('id')->toArray());
 
         foreach ($targetBranches as $bId) {
             \App\Models\BranchProduct::updateOrCreate([
