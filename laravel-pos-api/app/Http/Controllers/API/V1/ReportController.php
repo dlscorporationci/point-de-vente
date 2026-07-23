@@ -25,7 +25,18 @@ class ReportController extends Controller
 
         $startDate = $request->input('start_date') ? Carbon::parse($request->input('start_date'))->startOfDay() : Carbon::now()->startOfMonth();
         $endDate   = $request->input('end_date') ? Carbon::parse($request->input('end_date'))->endOfDay() : Carbon::now()->endOfDay();
-        $branchId  = $request->input('branch_id') ?: $user->branch_id;
+        $tenantBranchId = app(\App\Services\TenantManager::class)->getBranchId();
+        $inputBranchId = $request->input('branch_id');
+
+        if ($user->role && $user->role->slug === 'gerant') {
+            $branchId = $user->branch_id ?: $tenantBranchId;
+        } else {
+            if ($inputBranchId === 'all') {
+                $branchId = null; // Vue consolidée multi-boutiques pour Admin
+            } else {
+                $branchId = $inputBranchId ?: ($tenantBranchId ?: $user->branch_id);
+            }
+        }
 
         // 1. Statistiques des ventes
         $salesQuery = Sale::where('company_id', $user->company_id)

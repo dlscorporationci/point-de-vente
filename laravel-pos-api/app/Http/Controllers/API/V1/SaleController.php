@@ -19,7 +19,14 @@ class SaleController extends Controller
     {
         $query = Sale::with(['details.product', 'user', 'branch', 'customer']);
 
-        // Filtre par méthode de paiement
+        $branchId = $request->input('branch_id');
+        if (empty($branchId) || $branchId === 'undefined') {
+            $branchId = app(\App\Services\TenantManager::class)->getBranchId();
+        }
+
+        if ($branchId && $branchId !== 'all') {
+            $query->where('branch_id', $branchId);
+        }
         if ($request->filled('payment_method')) {
             $query->where('payment_method', $request->payment_method);
         }

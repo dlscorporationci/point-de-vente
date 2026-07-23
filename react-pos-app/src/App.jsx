@@ -22,9 +22,10 @@ import { UsersManagement } from './pages/UsersManagement'
 import { UserGuide } from './pages/UserGuide'
 import { AnimatedBubbles } from './components/AnimatedBubbles'
 import logo from './assets/logo.jpg'
+import { BranchSelectionPage } from './pages/BranchSelectionPage'
 
 function MainContent() {
-  const { user } = useApp()
+  const { user, activeBranch } = useApp()
   const [activeTab, setActiveTab] = useState('home')
   const [menuOpen, setMenuOpen] = useState(false)
   const drawerRef = useRef(null)
@@ -56,12 +57,18 @@ function MainContent() {
   const role = user?.role?.slug || user?.role?.name || user?.role
   const isSuperAdmin = role === 'super-admin'
   const isAdminOrGerant = role === 'admin' || role === 'gerant'
+  const isAdmin = role === 'admin' || isSuperAdmin
 
   const renderContent = () => {
+    if (user && isAdmin && !activeBranch && activeTab !== 'select-branch' && !isSuperAdmin) {
+      return <BranchSelectionPage onSelectBranch={() => navigate('home')} />
+    }
+
     switch (activeTab) {
       case 'home':          return <Home setActiveTab={setActiveTab} />
       case 'register':      return <Register setActiveTab={setActiveTab} />
       case 'auth':          return <Login setActiveTab={setActiveTab} />
+      case 'select-branch': return <BranchSelectionPage onSelectBranch={() => navigate('home')} />
       case 'catalog':       return <Catalog />
       case 'suppliers':     return <Suppliers />
       case 'customers':     return <Customers />
@@ -81,8 +88,6 @@ function MainContent() {
       default:              return <Home setActiveTab={setActiveTab} />
     }
   }
-
-  const isAdmin = role === 'admin'
 
   const navLinks = [
     { tab: 'home',          icon: 'fa-house',           label: 'Accueil',       show: true },
@@ -121,6 +126,26 @@ function MainContent() {
               <span className="logo-text-pos">POS</span>
             </span>
           </div>
+
+          {/* BADGE DE BOUTIQUE ACTIVE / SÉLECTEUR */}
+          {user && !isSuperAdmin && (
+            isAdmin ? (
+              <button 
+                className="navbar-branch-pill-btn" 
+                onClick={() => navigate('select-branch')}
+                title="Changer d'espace de travail / boutique active"
+              >
+                <i className="fa-solid fa-store text-primary"></i>
+                <span className="branch-pill-name">{activeBranch?.name || 'Sélectionner une boutique'}</span>
+                <i className="fa-solid fa-chevron-down ms-1 text-muted" style={{ fontSize: '10px' }}></i>
+              </button>
+            ) : (
+              <div className="navbar-branch-badge-readonly">
+                <i className="fa-solid fa-shop text-success me-1"></i>
+                <span>{activeBranch?.name || user?.branch?.name || 'Ma Boutique'}</span>
+              </div>
+            )
+          )}
         </div>
         <div className="navbar-links">
           {navLinks.map(({ tab, icon, label }) => (
@@ -317,6 +342,36 @@ function MainContent() {
         }
         .navbar-tab-btn:hover { color: var(--text-main); background: var(--bg-input); }
         .navbar-tab-btn.active { color: #fff; background: var(--color-primary); }
+
+        /* BRANCH SELECTOR PILL */
+        .navbar-branch-pill-btn {
+          display: flex; align-items: center; gap: 8px;
+          background: rgba(59,130,246,0.08);
+          border: 1px solid rgba(59,130,246,0.25);
+          color: var(--text-main);
+          padding: 5px 12px; border-radius: 20px;
+          font-family: var(--font-title); font-weight: 600; font-size: 13px;
+          cursor: pointer; transition: all var(--transition-fast);
+          margin-left: 10px;
+        }
+        .navbar-branch-pill-btn:hover {
+          background: rgba(59,130,246,0.18);
+          border-color: var(--color-primary);
+          transform: translateY(-1px);
+        }
+        .branch-pill-name {
+          max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+
+        .navbar-branch-badge-readonly {
+          display: flex; align-items: center; gap: 6px;
+          background: rgba(16,185,129,0.08);
+          border: 1px solid rgba(16,185,129,0.25);
+          color: var(--text-main);
+          padding: 4px 10px; border-radius: 20px;
+          font-family: var(--font-title); font-weight: 600; font-size: 12px;
+          margin-left: 10px;
+        }
 
         /* MOBILE */
         @media (max-width: 768px) {

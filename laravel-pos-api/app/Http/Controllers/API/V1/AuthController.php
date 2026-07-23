@@ -85,6 +85,22 @@ class AuthController extends Controller
 
         $effectiveRoleSlug = ($user->email === 'superadmin@dls.com' || ($user->role && $user->role->slug === 'super-admin')) ? 'super-admin' : ($user->role->slug ?? 'caissier');
 
+        $assignedBranchesList = $user->assignedBranches()->map(function ($b) {
+            return [
+                'id' => $b->id,
+                'name' => $b->name,
+                'type' => $b->type,
+                'status' => $b->status,
+            ];
+        })->values();
+
+        $activeBranchObj = null;
+        if ($user->branch) {
+            $activeBranchObj = $user->branch;
+        } elseif ($assignedBranchesList->count() === 1) {
+            $activeBranchObj = Branch::find($assignedBranchesList->first()['id']);
+        }
+
         return response()->json([
             'token' => $token,
             'user' => [
@@ -104,6 +120,14 @@ class AuthController extends Controller
                 'branch' => $user->branch ? [
                     'id' => $user->branch->id,
                     'name' => $user->branch->name,
+                ] : null,
+                'assigned_branches' => $assignedBranchesList,
+                'active_branch' => $activeBranchObj ? [
+                    'id' => $activeBranchObj->id,
+                    'name' => $activeBranchObj->name,
+                    'type' => $activeBranchObj->type,
+                    'status' => $activeBranchObj->status,
+                    'settings' => $activeBranchObj->settings,
                 ] : null,
             ]
         ]);

@@ -22,6 +22,15 @@ class PurchaseController extends Controller
     {
         $query = Purchase::with(['branch', 'supplier']);
 
+        $branchId = $request->input('branch_id');
+        if (empty($branchId) || $branchId === 'undefined') {
+            $branchId = app(\App\Services\TenantManager::class)->getBranchId();
+        }
+
+        if ($branchId && $branchId !== 'all') {
+            $query->where('branch_id', $branchId);
+        }
+
         if ($request->has('supplier_id') && !empty($request->supplier_id)) {
             $query->where('supplier_id', $request->supplier_id);
         }
