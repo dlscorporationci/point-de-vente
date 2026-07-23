@@ -3,9 +3,16 @@ import axios from 'axios';
 
 const AppContext = createContext(null);
 
-// En production, Nginx sert frontend + API sur le même port.
-// En développement local, définir VITE_API_URL=http://localhost:8000/api dans un fichier .env.local
-axios.defaults.baseURL = import.meta.env.VITE_API_URL || '/api';
+const getApiBaseUrl = () => {
+  if (typeof window !== 'undefined') {
+    if ((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (window.location.port === '5173' || window.location.port === '3000')) {
+      return 'http://127.0.0.1:8000/api';
+    }
+  }
+  return '/api';
+};
+
+axios.defaults.baseURL = getApiBaseUrl();
 
 export const AppProvider = ({ children }) => {
   // 1. Gestion du thème et du UI Kit
