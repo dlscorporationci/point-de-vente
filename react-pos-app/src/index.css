@@ -980,17 +980,42 @@ p {
     margin-bottom: 4px !important;
   }
 
+  @page {
+    size: auto;
+    margin: 0;
+  }
+
   /* 3. CAS DÉDIÉ : SI UN TICKET THERMIQUE EST PRÉSENT DANS LE DOM */
+  .modal-overlay,
+  .modal-card {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .modal-card > h3,
+  .modal-card > p,
+  .modal-card > .no-print,
+  .modal-actions {
+    display: none !important;
+  }
+
   #thermal-receipt,
   #printable-receipt,
-  .receipt-print-zone {
-    position: fixed !important;
-    left: 0 !important;
+  .receipt-print-zone,
+  .thermal-receipt-container {
+    position: absolute !important;
+    left: 50% !important;
     top: 0 !important;
-    width: 76mm !important;
-    max-width: 76mm !important;
-    margin: 0 !important;
-    padding: 2mm 3mm !important;
+    transform: translateX(-50%) !important;
+    width: 80mm !important;
+    max-width: 80mm !important;
+    margin: 0 auto !important;
+    padding: 3mm 4mm !important;
     background: #ffffff !important;
     color: #000000 !important;
     font-family: 'Courier New', Courier, monospace !important;
@@ -999,6 +1024,9 @@ p {
     border: none !important;
     box-shadow: none !important;
     z-index: 999999 !important;
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
+    overflow: hidden !important;
   }
 
   .receipt-header h2,
