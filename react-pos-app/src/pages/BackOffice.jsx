@@ -223,10 +223,11 @@ export const BackOffice = () => {
     setError(null);
     setSuccess(null);
     try {
-      const res = await axios.post('/v1/admin/system/backup');
-      setSuccess(`Sauvegarde réussie : Fichier ${res.data.backup_file} créé.`);
+      const res = await axios.post('/v1/admin/backups/generate');
+      setSuccess(`Sauvegarde réussie : Fichier ${res.data.backup_file} créé (${res.data.size}).`);
+      if (typeof loadBackups === 'function') loadBackups();
     } catch (err) {
-      setError("Erreur de sauvegarde.");
+      setError(err.response?.data?.error || err.response?.data?.message || "Erreur lors de la génération de la sauvegarde.");
     } finally {
       setBackupLoading(false);
     }
