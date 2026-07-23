@@ -326,71 +326,58 @@ class SuperAdminController extends Controller
     {
         $this->authorizeSuperAdmin($request);
 
-        $backupDir = storage_path('app/backups');
-        if (!file_exists($backupDir)) {
-            mkdir($backupDir, 0755, true);
-        }
-
-        $filename = 'backup-quincaillerie-' . date('Y-m-d_H-i-s') . '.sql';
-        $filepath = $backupDir . '/' . $filename;
-
-        $dbConfig = config('database.connections.mysql');
-        $dbName = $dbConfig['database'];
-        $dbUser = $dbConfig['username'];
-        $dbPass = $dbConfig['password'];
-        $dbHost = $dbConfig['host'];
-
-        // Exporter la base de données SQL via PHPpdo / mysqldump
-        $tables = \Illuminate\Support\Facades\DB::select('SHOW TABLES');
-        $dbKey = "Tables_in_" . $dbName;
-
-        $sqlContent = "-- ApexPOS Database Dump --\n";
-        $sqlContent .= "-- Generated at: " . date('Y-m-d H:i:s') . " --\n\n";
-        $sqlContent .= "SET FOREIGN_KEY_CHECKS=0;\n\n";
-
-        foreach ($tables as $tableObj) {
-            $tableName = $tableObj->$dbKey ?? array_values(get_object_vars($tableObj))[0];
-            $createTable = \Illuminate\Support\Facades\DB::select("SHOW CREATE TABLE `{$tableName}`");
-            $sqlContent .= "DROP TABLE IF EXISTS `{$tableName}`;\n";
-            $sqlContent .= $createTable[0]->{'Create Table'} . ";\n\n";
-
-            $rows = \Illuminate\Support\Facades\DB::table($tableName)->get();
-            foreach ($rows as $row) {
-                $rowArr = (array)$row;
-                $cols = array_map(fn($c) => "`$c`", array_keys($rowArr));
-                $vals = array_map(function($v) {
-                    if (is_null($v)) return "NULL";
-                    return "'" . addslashes(str_replace(["\r", "\n"], ["\\r", "\\n"], $v)) . "'";
-                }, array_values($rowArr));
-
-                $sqlContent .= "INSERT INTO `{$tableName}` (" . implode(', ', $cols) . ") VALUES (" . implode(', ', $vals) . ");\n";
-            }
-            $sqlContent .= "\n";
-        }
-        $sqlContent .= "SET FOREIGN_KEY_CHECKS=1;\n";
-
-        file_put_contents($filepath, $sqlContent);
-
         try {
-            AuditLog::create([
-                'company_id' => 1,
-                'user_id' => $request->user()->id,
-                'auditable_type' => Company::class,
-                'auditable_id' => 1,
-                'action' => 'system_backup',
-                'new_values' => ['backup_file' => $filename, 'size_bytes' => filesize($filepath), 'status' => 'completed'],
-                'ip_address' => $request->ip(),
-                'user_agent' => $request->userAgent(),
-                'created_at' => now(),
-            ]);
-        } catch (\Exception $e) {}
+            $backupDir = storage_path('app/backups');
+            if (!file_exists($backupDir)) {
+                @mkdir($backupDir, 0775, true);
+            }
 
-        return response()->json([
-            'message' => 'Sauvegarde complète de la base de données effectuée avec succès.',
-            'backup_file' => $filename,
-            'size' => round(filesize($filepath) / 1024, 2) . ' KB',
-            'created_at' => date('Y-m-d H:i:s'),
-        ]);
+            $filename = 'backup-quincaillerie-' . date('Y-m-d_H-i-s') . '.sql';
+            $filepath = $backupDir . '/' . $filename;
+
+            $tables = \Illuminate\Support\Facades\DB::select('SHOW TABLES');
+
+            $sqlContent = "-- ApexPOS Database Dump --\n";
+            $sqlContent .= "-- Generated at: " . date('Y-m-d H:i:s') . " --\n\n";
+            $sqlContent .= "SET FOREIGN_KEY_CHECKS=0;\n\n";
+
+            foreach ($tables as $tableObj) {
+                $tableArr = (array)$tableObj;
+                $tableName = array_values($tableArr)[0];
+
+                $createTable = \Illuminate\Support\Facades\DB::select("SHOW CREATE TABLE `{$tableName}`");
+                $createTableArr = (array)$createTable[0];
+                $sqlContent .= "DROP TABLE IF EXISTS `{$tableName}`;\n";
+                $sqlContent .= ($createTableArr['Create Table'] ?? array_values($createTableArr)[1]) . ";\n\n";
+
+                $rows = \Illuminate\Support\Facades\DB::table($tableName)->get();
+                foreach ($rows as $row) {
+                    $rowArr = (array)$row;
+                    $cols = array_map(fn($c) => "`$c`", array_keys($rowArr));
+                    $vals = array_map(function($v) {
+                        if (is_null($v)) return "NULL";
+                        return "'" . addslashes(str_replace(["\r", "\n"], ["\\r", "\\n"], $v)) . "'";
+                    }, array_values($rowArr));
+
+                    $sqlContent .= "INSERT INTO `{$tableName}` (" . implode(', ', $cols) . ") VALUES (" . implode(', ', $vals) . ");\n";
+                }
+                $sqlContent .= "\n";
+            }
+            $sqlContent .= "SET FOREIGN_KEY_CHECKS=1;\n";
+
+            file_put_contents($filepath, $sqlContent);
+
+            return response()->json([
+                'message' => 'Sauvegarde complète de la base de données effectuée avec succès.',
+                'backup_file' => $filename,
+                'size' => round(filesize($filepath) / 1024, 2) . ' KB',
+                'created_at' => date('Y-m-d H:i:s'),
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error' => 'Erreur lors de la génération de la sauvegarde : ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**

@@ -34,7 +34,7 @@ function MainContent() {
     if (user) {
       const role = user.role?.slug || user.role?.name || user.role
       const isSuperAdmin = role === 'super-admin'
-      const forbiddenTabs = ['catalog','suppliers','customers','purchases','stocks','transfers','cash-sessions','sales','pos','reports','settings','branches']
+      const forbiddenTabs = ['catalog','suppliers','customers','purchases','stocks','transfers','cash-sessions','sales','pos','reports','settings','branches','users-mgmt']
       if (isSuperAdmin && forbiddenTabs.includes(activeTab)) setActiveTab('backoffice')
     }
   }, [user, activeTab])
@@ -103,7 +103,7 @@ function MainContent() {
     { tab: 'sales',         icon: 'fa-receipt',         label: 'Ventes',        show: !!(user && !isSuperAdmin) },
     { tab: 'pos',           icon: 'fa-cash-register',   label: 'POS',           show: !!(user && !isSuperAdmin) },
     { tab: 'branches',      icon: 'fa-store',           label: 'Boutiques',     show: !!(user && !isSuperAdmin && (role === 'admin' || role === 'gerant')) },
-    { tab: 'users-mgmt',    icon: 'fa-users-gear',      label: 'Personnel',     show: !!(user && isAdmin) },
+    { tab: 'users-mgmt',    icon: 'fa-users-gear',      label: 'Personnel',     show: !!(user && !isSuperAdmin && (role === 'admin' || role === 'gerant')) },
     { tab: 'audit',         icon: 'fa-shield-halved',   label: 'Audit',         show: !!(user && (isSuperAdmin || isAdminOrGerant)) },
     { tab: 'reports',       icon: 'fa-chart-line',      label: 'Rapports',      show: !!(user && isAdminOrGerant) },
     { tab: 'backoffice',    icon: 'fa-gears',           label: 'Back-office',   show: !!(user && isSuperAdmin) },
