@@ -5,8 +5,8 @@ import { useApp } from '../context/AppContext';
 export const Branches = () => {
   const { token, user } = useApp();
 
-  const isAdmin = user?.role === 'admin' || user?.role?.slug === 'admin' ||
-                  user?.role === 'gerant' || user?.role?.slug === 'gerant';
+  const userRole = user?.role?.slug || user?.role?.name || user?.role;
+  const isAdmin = userRole === 'admin' || userRole === 'super-admin' || userRole === 'gerant';
 
   const [branches, setBranches]           = useState([]);
   const [loading, setLoading]             = useState(false);
