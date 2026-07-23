@@ -48,11 +48,11 @@ class Company extends Model
 
     public function branches()
     {
-        return $this->hasMany(Branch::class);
+        return $this->hasMany(Branch::class)->withoutGlobalScopes();
     }
 
     public function users()
     {
-        return $this->hasMany(User::class);
+        return $this->hasMany(User::class)->withoutGlobalScopes();
     }
 }
