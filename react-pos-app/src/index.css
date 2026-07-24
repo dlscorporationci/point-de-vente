@@ -979,7 +979,128 @@ p {
     text-transform: uppercase !important;
     margin-bottom: 4px !important;
   }
+}
 
+/* ==========================================================================
+   STYLING ÉCRAN UNIFIÉ DES TICKETS DE CAISSE THERMIQUES (POS & VENTES)
+   ========================================================================== */
+
+.thermal-receipt-container,
+.receipt-print-zone,
+#thermal-receipt,
+#printable-receipt {
+  background: #ffffff !important;
+  color: #000000 !important;
+  font-family: 'Courier New', Courier, monospace !important;
+  font-size: 12px !important;
+  line-height: 1.3 !important;
+  padding: 16px !important;
+  border-radius: 6px !important;
+  border: 1px dashed #cbd5e1 !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12) !important;
+  max-width: 360px !important;
+  margin: 0 auto !important;
+  text-align: left !important;
+  color-scheme: light !important;
+}
+
+/* Immunité absolue contre le Mode Sombre : Tout le texte du ticket reste NOIR sur BLANC */
+.thermal-receipt-container *,
+.receipt-print-zone *,
+#thermal-receipt *,
+#printable-receipt * {
+  color: #000000 !important;
+  background-color: transparent !important;
+}
+
+.receipt-header,
+.receipt-header-block {
+  text-align: center !important;
+  margin-bottom: 12px !important;
+}
+
+.receipt-header h2,
+.receipt-title {
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  margin: 0 0 4px 0 !important;
+  letter-spacing: 0.5px !important;
+}
+
+.receipt-header p,
+.receipt-meta p {
+  font-size: 11px !important;
+  margin: 2px 0 !important;
+}
+
+.receipt-divider {
+  border-top: 1px dashed #000000 !important;
+  margin: 10px 0 !important;
+  width: 100% !important;
+  height: 0 !important;
+}
+
+.receipt-items-table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  font-size: 11px !important;
+  margin: 8px 0 !important;
+}
+
+.receipt-items-table th {
+  border-bottom: 1px solid #000000 !important;
+  padding: 4px 0 !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+}
+
+.receipt-items-table td {
+  padding: 4px 0 !important;
+  vertical-align: top !important;
+}
+
+.item-unit-price {
+  font-size: 10px !important;
+  font-style: italic !important;
+}
+
+.receipt-totals {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+  margin: 8px 0 !important;
+}
+
+.receipt-total-row {
+  display: flex !important;
+  justify-content: space-between !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+}
+
+.receipt-total-row.grand-total {
+  font-weight: 800 !important;
+  font-size: 14px !important;
+  border-top: 1px solid #000000 !important;
+  border-bottom: 1px double #000000 !important;
+  padding: 6px 0 !important;
+  margin-top: 4px !important;
+}
+
+.receipt-payment-info p {
+  margin: 3px 0 !important;
+  font-size: 11px !important;
+}
+
+.receipt-footer {
+  text-align: center !important;
+  margin-top: 14px !important;
+  font-size: 10px !important;
+  line-height: 1.4 !important;
+}
+
+@media print {
   @page {
     size: auto;
     margin: 0;
@@ -1026,56 +1147,7 @@ p {
     z-index: 999999 !important;
     page-break-after: avoid !important;
     page-break-inside: avoid !important;
-    overflow: hidden !important;
-  }
-
-  .receipt-header h2,
-  .receipt-title {
-    font-size: 14px !important;
-    font-weight: bold !important;
-    text-transform: uppercase !important;
-    margin-bottom: 2px !important;
-  }
-
-  .receipt-header p,
-  .receipt-meta p {
-    font-size: 10px !important;
-    margin: 1px 0 !important;
-  }
-
-  .receipt-items-table {
-    width: 100% !important;
-    font-size: 10px !important;
-    border-collapse: collapse !important;
-    margin: 4px 0 !important;
-  }
-
-  .receipt-items-table th {
-    border-bottom: 1px dashed #000000 !important;
-    padding: 2px 0 !important;
-    font-weight: bold !important;
-  }
-
-  .receipt-items-table td {
-    padding: 3px 0 !important;
-    vertical-align: top !important;
-  }
-
-  .receipt-divider {
-    border-bottom: 1px dashed #000000 !important;
-    margin: 4px 0 !important;
-  }
-
-  .receipt-total-row {
-    display: flex !important;
-    justify-content: space-between !important;
-    font-size: 11px !important;
-    font-weight: bold !important;
-  }
-
-  .receipt-footer {
-    text-align: center !important;
-    font-size: 9px !important;
-    margin-top: 6px !important;
+    overflow: visible !important;
+    max-height: none !important;
   }
 }

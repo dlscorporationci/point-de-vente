@@ -1769,18 +1769,9 @@ Error generating stack: `+e.message+`
           to { transform: rotate(360deg); }
         }
 
-        /* Styles Reçu Thermique */
         .thermal-receipt-container {
-          background: #FFF;
-          color: #000;
-          padding: 16px;
-          font-family: 'Courier New', Courier, monospace;
-          font-size: 12px;
-          border: 1px solid var(--border-color);
-          border-radius: 4px;
-          max-height: 350px;
+          max-height: 480px;
           overflow-y: auto;
-          text-align: left;
         }
 
         .receipt-header {
