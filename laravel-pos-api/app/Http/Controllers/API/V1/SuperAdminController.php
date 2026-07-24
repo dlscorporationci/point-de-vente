@@ -129,7 +129,7 @@ class SuperAdminController extends Controller
             'name' => 'Admin ' . $company->name,
             'email' => 'admin_' . $company->id . '@' . \Illuminate\Support\Str::slug($company->name ?: 'company') . '.com',
             'password' => \Illuminate\Support\Facades\Hash::make('password'),
-            'pin_code' => \Illuminate\Support\Facades\Hash::make('1234'),
+            'pin_code' => '1234',
             'status' => 'active',
         ]);
 

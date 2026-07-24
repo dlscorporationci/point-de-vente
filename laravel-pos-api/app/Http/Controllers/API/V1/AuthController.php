@@ -169,7 +169,15 @@ class AuthController extends Controller
 
         $matchedUser = null;
         foreach ($users as $u) {
-            if ($u->pin_code && Hash::check($request->pin_code, $u->pin_code)) {
+            if (!$u->pin_code) continue;
+
+            $isMatch = Hash::check($request->pin_code, $u->pin_code) || ($u->pin_code === $request->pin_code);
+            if ($isMatch) {
+                // Auto-healing : si le PIN était en clair en BDD, le ré-enregistrer pour qu'il se hache automatiquement
+                if ($u->pin_code === $request->pin_code) {
+                    $u->pin_code = $request->pin_code;
+                    $u->save();
+                }
                 $matchedUser = $u;
                 break;
             }
