@@ -212,6 +212,14 @@ function MainContent() {
               </div>
             )
           )}
+
+          {/* ── ANIMATION FLOTTANTE DU PANIER (VA ET VIENT AU MILIEU) ── */}
+          <div className="navbar-cart-track d-none d-xl-flex" onClick={() => navigate('pos')} style={{ cursor: 'pointer' }} title="Caisse Tactile en Direct — Cliquer pour ouvrir le POS">
+            <div className="navbar-cart-animated">
+              <i className="fa-solid fa-cart-shopping navbar-cart-icon"></i>
+              <span className="navbar-cart-text">ApexPOS en Direct 🛒</span>
+            </div>
+          </div>
         </div>
 
         <div className="navbar-links" style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'nowrap', overflowX: 'auto', whiteSpace: 'nowrap', maxWidth: '45vw', padding: '2px 0', flexShrink: 1 }}>

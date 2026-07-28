@@ -38,6 +38,71 @@
   --glass-spheres: none;
 }
 
+/* ── ANIMATION DU PANIER FLOTTANT (VA ET VIENT DANS LE MIDDLE HEADER) ── */
+.navbar-cart-track {
+  position: relative;
+  flex: 1;
+  max-width: 320px;
+  height: 36px;
+  margin: 0 15px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  background: var(--bg-input, rgba(255, 255, 255, 0.05));
+  border: 1px dashed var(--border-color);
+  border-radius: 20px;
+  padding: 0 6px;
+  overflow: hidden;
+}
+
+.navbar-cart-animated {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(16, 185, 129, 0.12));
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.15);
+  white-space: nowrap;
+  animation: cartGlide 10s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite alternate;
+  user-select: none;
+}
+
+.navbar-cart-icon {
+  font-size: 13px;
+  color: var(--color-primary, #2563eb);
+  animation: cartBounce 1.5s ease-in-out infinite;
+}
+
+.navbar-cart-text {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-main);
+  letter-spacing: 0.3px;
+}
+
+@keyframes cartGlide {
+  0% {
+    transform: translateX(0) scale(0.98);
+  }
+  50% {
+    transform: translateX(130px) scale(1.02);
+  }
+  100% {
+    transform: translateX(0) scale(0.98);
+  }
+}
+
+@keyframes cartBounce {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-2px) rotate(-6deg);
+  }
+}
+
 /* 1. Kit 1 : Classique & Institutionnel ("Corporate") - Mode Clair */
 [data-ui-kit="corporate"][data-theme="light"] {
   --bg-app: #F3F4F6;
