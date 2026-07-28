@@ -35,10 +35,24 @@ function MainContent() {
     if (role === 'super-admin') return 'backoffice'
     return 'dashboard'
   })
-  const [menuOpen, setMenuOpen] = useState(false)
-  const drawerRef = useRef(null)
+  const [tabHistory, setTabHistory] = useState([])
 
-  const navigate = (tab) => { setActiveTab(tab); setMenuOpen(false) }
+  const navigate = (newTab) => {
+    if (newTab !== activeTab) {
+      setTabHistory(prev => [...prev, activeTab])
+      setActiveTab(newTab)
+    }
+    setMenuOpen(false)
+  }
+
+  const goBack = () => {
+    if (tabHistory.length > 0) {
+      const prevTab = tabHistory[tabHistory.length - 1]
+      setTabHistory(prev => prev.slice(0, -1))
+      setActiveTab(prevTab)
+    }
+    setMenuOpen(false)
+  }
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -136,6 +150,30 @@ function MainContent() {
           <button className="burger-btn" onClick={() => setMenuOpen(true)} aria-label="Ouvrir le menu">
             <span></span><span></span><span></span>
           </button>
+          {tabHistory.length > 0 && (
+            <button 
+              className="navbar-goback-btn" 
+              onClick={goBack} 
+              title="Retour à la page précédente"
+              style={{
+                background: 'var(--bg-input, rgba(255,255,255,0.08))',
+                border: '1px solid var(--border-color)',
+                borderRadius: '6px',
+                padding: '4px 9px',
+                fontSize: '12px',
+                fontWeight: 600,
+                color: 'var(--text-main)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                cursor: 'pointer'
+              }}
+            >
+              <i className="fa-solid fa-arrow-left text-primary"></i>
+              <span>Retour</span>
+            </button>
+          )}
+
           <div className="navbar-logo" onClick={() => navigate('home')} style={{ cursor: 'pointer' }}>
             <img src={logo} alt="Logo" className="navbar-logo-img" />
             <span>
@@ -199,6 +237,21 @@ function MainContent() {
         </div>
 
         <div className="drawer-links">
+          {tabHistory.length > 0 && (
+            <button 
+              className="drawer-link-btn" 
+              onClick={goBack} 
+              style={{ 
+                borderBottom: '1px dashed var(--border-color)', 
+                marginBottom: '8px', 
+                color: 'var(--primary-color)', 
+                fontWeight: 700 
+              }}
+            >
+              <i className="fa-solid fa-arrow-left"></i>
+              <span>Retour (Page précédente)</span>
+            </button>
+          )}
           {navLinks.map(({ tab, icon, label }) => (
             <button key={tab} className={`drawer-link-btn ${activeTab === tab ? 'active' : ''}`} onClick={() => navigate(tab)}>
               <i className={`fa-solid ${icon}`}></i>

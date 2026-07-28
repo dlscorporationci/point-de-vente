@@ -41,19 +41,22 @@ class DashboardController extends Controller
         $todayCa = (float) $todaySales->sum('total');
         $todaySalesCount = $todaySales->count();
 
-        // 2. Alertes de Stock (Produits en rupture ou stock <= min_stock)
+        // 2. Alertes de Stock (Produits en rupture ou quantité <= alert_quantity)
         $lowStockCount = 0;
         $totalProductsCount = 0;
 
         if ($branchId) {
             $totalProductsCount = BranchProduct::where('branch_id', $branchId)->count();
-            $lowStockCount = BranchProduct::where('branch_id', $branchId)
-                ->whereRaw('stock_quantity <= min_stock_alert')
+            $lowStockCount = BranchProduct::join('products', 'branch_products.product_id', '=', 'products.id')
+                ->where('branch_products.branch_id', $branchId)
+                ->whereRaw('branch_products.quantity <= COALESCE(products.alert_quantity, 5)')
                 ->count();
         } else {
             $totalProductsCount = Product::where('company_id', $companyId)->count();
             $lowStockCount = Product::where('company_id', $companyId)
-                ->whereRaw('stock_quantity <= min_stock_alert')
+                ->whereHas('branchProducts', function ($q) {
+                    $q->whereRaw('branch_products.quantity <= COALESCE(products.alert_quantity, 5)');
+                })
                 ->count();
         }
 
