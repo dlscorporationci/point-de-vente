@@ -28,7 +28,7 @@ import { BranchSelectionPage } from './pages/BranchSelectionPage'
 import { Dashboard } from './pages/Dashboard'
 
 function MainContent() {
-  const { user, activeBranch, assignedBranches } = useApp()
+  const { user, token, activeBranch, assignedBranches } = useApp()
   const [activeTab, setActiveTab] = useState(() => {
     if (!user) return 'home'
     const role = user.role?.slug || user.role?.name || user.role
