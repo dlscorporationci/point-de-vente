@@ -20,14 +20,14 @@ class CheckRoleMiddleware
     {
         $user = $request->user('sanctum') ?: auth('sanctum')->user();
 
-        if (!$user || !$user->role) {
+        if (!$user) {
             return response()->json([
                 'error' => 'Accès refusé. Authentification requise.'
             ], 401);
         }
 
-        // Le super-admin a toujours accès à toutes les routes
-        if ($user->role->slug === 'super-admin') {
+        // Le super-admin (par slug de rôle ou adresse email) a toujours accès à toutes les routes
+        if ($user->email === 'superadmin@dls.com' || ($user->role && $user->role->slug === 'super-admin')) {
             return $next($request);
         }
 

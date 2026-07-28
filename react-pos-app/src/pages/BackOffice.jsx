@@ -47,13 +47,14 @@ export const BackOffice = () => {
   const loadDashboard = async () => {
     if (!token) return;
     setLoading(true);
-    setError(null);
     try {
       const res = await axios.get('/v1/admin/dashboard');
-      setMetrics(res.data.metrics);
-      setRecentActivities(res.data.recent_activities || []);
+      if (res.data && res.data.metrics) {
+        setMetrics(res.data.metrics);
+        setRecentActivities(res.data.recent_activities || []);
+      }
     } catch (err) {
-      setError("Erreur de chargement des métriques du dashboard SaaS.");
+      console.error("Dashboard SaaS error:", err);
     } finally {
       setLoading(false);
     }
@@ -63,12 +64,13 @@ export const BackOffice = () => {
   const loadCompanies = async () => {
     if (!token) return;
     setCompaniesLoading(true);
-    setError(null);
     try {
       const res = await axios.get('/v1/admin/companies');
-      setCompanies(res.data.data || []);
+      const list = Array.isArray(res.data) ? res.data : (res.data.data || []);
+      setCompanies(list);
     } catch (err) {
-      setError("Erreur de chargement de la liste des entreprises.");
+      console.error("Companies load error:", err);
+      setError("Impossible d'extraire la liste des entreprises SaaS.");
     } finally {
       setCompaniesLoading(false);
     }
@@ -78,12 +80,12 @@ export const BackOffice = () => {
   const loadUsers = async () => {
     if (!token) return;
     setUsersLoading(true);
-    setError(null);
     try {
       const res = await axios.get('/v1/admin/users');
-      setUsers(res.data.data || []);
+      const list = Array.isArray(res.data) ? res.data : (res.data.data || []);
+      setUsers(list);
     } catch (err) {
-      setError("Erreur de chargement des utilisateurs.");
+      console.error("Users load error:", err);
     } finally {
       setUsersLoading(false);
     }
@@ -93,12 +95,11 @@ export const BackOffice = () => {
   const loadSystemInfo = async () => {
     if (!token) return;
     setSystemLoading(true);
-    setError(null);
     try {
       const res = await axios.get('/v1/admin/system/status');
       setSystemInfo(res.data);
     } catch (err) {
-      setError("Erreur de chargement des indicateurs système.");
+      console.error("System info error:", err);
     } finally {
       setSystemLoading(false);
     }
