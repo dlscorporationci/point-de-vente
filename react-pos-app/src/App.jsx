@@ -25,10 +25,16 @@ import { NotificationBell } from './components/NotificationBell'
 import { AnimatedBubbles } from './components/AnimatedBubbles'
 import logo from './assets/logo.jpg'
 import { BranchSelectionPage } from './pages/BranchSelectionPage'
+import { Dashboard } from './pages/Dashboard'
 
 function MainContent() {
-  const { user, activeBranch } = useApp()
-  const [activeTab, setActiveTab] = useState('home')
+  const { user, activeBranch, assignedBranches } = useApp()
+  const [activeTab, setActiveTab] = useState(() => {
+    if (!user) return 'home'
+    const role = user.role?.slug || user.role?.name || user.role
+    if (role === 'super-admin') return 'backoffice'
+    return 'dashboard'
+  })
   const [menuOpen, setMenuOpen] = useState(false)
   const drawerRef = useRef(null)
 
@@ -62,15 +68,16 @@ function MainContent() {
   const isAdmin = role === 'admin' || isSuperAdmin
 
   const renderContent = () => {
-    if (user && isAdmin && !activeBranch && activeTab !== 'select-branch' && !isSuperAdmin) {
-      return <BranchSelectionPage onSelectBranch={() => navigate('home')} />
+    if (user && !activeBranch && activeTab !== 'select-branch' && !isSuperAdmin && (assignedBranches?.length > 1 || isAdmin || role === 'gerant')) {
+      return <BranchSelectionPage onSelectBranch={() => navigate('dashboard')} />
     }
 
     switch (activeTab) {
       case 'home':          return <Home setActiveTab={setActiveTab} />
+      case 'dashboard':     return <Dashboard setActiveTab={setActiveTab} />
       case 'register':      return <Register setActiveTab={setActiveTab} />
       case 'auth':          return <Login setActiveTab={setActiveTab} />
-      case 'select-branch': return <BranchSelectionPage onSelectBranch={() => navigate('home')} />
+      case 'select-branch': return <BranchSelectionPage onSelectBranch={() => navigate('dashboard')} />
       case 'catalog':       return <Catalog />
       case 'suppliers':     return <Suppliers />
       case 'customers':     return <Customers />
@@ -88,12 +95,14 @@ function MainContent() {
       case 'users-mgmt':    return <UsersManagement />
       case 'userguide':     return <UserGuide />
       case 'notifications': return <Notifications setActiveTab={setActiveTab} />
-      default:              return <Home setActiveTab={setActiveTab} />
+      default:              return user ? (isSuperAdmin ? <BackOffice /> : <Dashboard setActiveTab={setActiveTab} />) : <Home setActiveTab={setActiveTab} />
     }
   }
 
   const navLinks = [
-    { tab: 'home',          icon: 'fa-house',           label: 'Accueil',       show: true },
+    { tab: 'home',          icon: 'fa-house',           label: 'Accueil',       show: !user },
+    { tab: 'dashboard',     icon: 'fa-gauge-high',      label: 'Dashboard',     show: !!(user && !isSuperAdmin) },
+    { tab: 'pos',           icon: 'fa-cash-register',   label: 'POS',           show: !!(user && !isSuperAdmin) },
     { tab: 'auth',          icon: user ? 'fa-user' : 'fa-key', label: user ? 'Mon Profil' : 'Connexion', show: true },
     { tab: 'register',      icon: 'fa-pen-to-square',   label: "S'inscrire",    show: !user },
     { tab: 'catalog',       icon: 'fa-box',             label: 'Catalogue',     show: !!(user && !isSuperAdmin) },
@@ -104,7 +113,6 @@ function MainContent() {
     { tab: 'transfers',     icon: 'fa-right-left',      label: 'Transferts',    show: !!(user && !isSuperAdmin) },
     { tab: 'cash-sessions', icon: 'fa-money-bill-wave', label: 'Caisses',       show: !!(user && !isSuperAdmin) },
     { tab: 'sales',         icon: 'fa-receipt',         label: 'Ventes',        show: !!(user && !isSuperAdmin) },
-    { tab: 'pos',           icon: 'fa-cash-register',   label: 'POS',           show: !!(user && !isSuperAdmin) },
     { tab: 'branches',      icon: 'fa-store',           label: 'Boutiques',     show: !!(user && !isSuperAdmin && (role === 'admin' || role === 'gerant')) },
     { tab: 'users-mgmt',    icon: 'fa-users-gear',      label: 'Personnel',     show: !!(user && !isSuperAdmin && (role === 'admin' || role === 'gerant')) },
     { tab: 'audit',         icon: 'fa-shield-halved',   label: 'Audit',         show: !!(user && (isSuperAdmin || isAdminOrGerant)) },

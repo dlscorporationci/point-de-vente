@@ -34,6 +34,11 @@ Route::prefix('v1')->middleware('tenant')->group(function () {
         Route::post('/auth/switch-branch', [AuthController::class, 'switchBranch']);
 
         // -----------------------------------------------------------------------
+        // Dashboard & Statistiques Contextuelles
+        // -----------------------------------------------------------------------
+        Route::get('/dashboard/stats', [\App\Http\Controllers\API\V1\DashboardController::class, 'stats']);
+
+        // -----------------------------------------------------------------------
         // Notifications Système
         // -----------------------------------------------------------------------
         Route::get('/notifications',              [\App\Http\Controllers\API\V1\NotificationController::class, 'index']);
