@@ -247,10 +247,9 @@ function MainContent() {
               <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-main)' }}>ApexPOS en Direct 🛒</span>
             </div>
 
-            {/* 3. Badge Système Synchro */}
-            <div className="d-none d-xl-inline-flex" style={{ alignItems: 'center', gap: '5px', padding: '4px 10px', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '15px', color: '#10b981', fontSize: '11px', fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>
-              <i className="fa-solid fa-signal"></i>
-              <span>Système Synchro</span>
+            {/* 3. Cloche de Notifications (remplace Système Synchro) */}
+            <div style={{ flexShrink: 0 }}>
+              <NotificationBell onNavigate={navigate} />
             </div>
           </div>
         </div>
@@ -325,7 +324,9 @@ function MainContent() {
             </button>
           )}
 
-          <NotificationBell onNavigate={navigate} />
+          <div className="d-lg-none">
+            <NotificationBell onNavigate={navigate} />
+          </div>
         </div>
       </header>
 
