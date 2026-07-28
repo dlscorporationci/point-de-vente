@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import ReactDOM from 'react-dom';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
 
@@ -234,9 +235,9 @@ export const NotificationBell = ({ onNavigate }) => {
         </div>
       )}
 
-      {/* MODAL DETAIL INTÉGRAL DE NOTIFICATION */}
-      {selectedNotification && (
-        <div className="modal-overlay" style={{ zIndex: 1100 }}>
+      {/* MODAL DETAIL via PORTAL (hors navbar, niveau racine) */}
+      {selectedNotification && ReactDOM.createPortal(
+        <div className="modal-overlay" style={{ zIndex: 9999 }}>
           <div className="modal-card card" style={{ maxWidth: '520px', textAlign: 'left' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -298,7 +299,8 @@ export const NotificationBell = ({ onNavigate }) => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
