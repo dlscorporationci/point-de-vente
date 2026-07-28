@@ -38,6 +38,21 @@ function MainContent() {
   const [menuOpen, setMenuOpen] = useState(false)
   const drawerRef = useRef(null)
 
+  const navigate = (tab) => { setActiveTab(tab); setMenuOpen(false) }
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (menuOpen && drawerRef.current && !drawerRef.current.contains(e.target)) setMenuOpen(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [menuOpen])
+
+  useEffect(() => {
+    document.body.style.overflow = menuOpen ? 'hidden' : ''
+    return () => { document.body.style.overflow = '' }
+  }, [menuOpen])
+
   // Note : Tous les utilisateurs connectés conservent l'accès aux modules opérationnels (POS, Catalogue, Stocks, etc.)
   const role = user?.role?.slug || user?.role?.name || user?.role
   const isSuperAdmin = role === 'super-admin' || user?.email === 'superadmin@dls.com'
