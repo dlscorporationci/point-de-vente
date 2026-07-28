@@ -68,13 +68,25 @@ function MainContent() {
   const isAdmin = role === 'admin' || isSuperAdmin
 
   const renderContent = () => {
-    if (user && !activeBranch && activeTab !== 'select-branch' && !isSuperAdmin && (assignedBranches?.length > 1 || isAdmin || role === 'gerant')) {
+    // Si l'utilisateur n'est pas connecté
+    if (!user) {
+      switch (activeTab) {
+        case 'register': return <Register setActiveTab={setActiveTab} />
+        case 'auth':     return <Login setActiveTab={setActiveTab} />
+        case 'home':
+        default:         return <Home setActiveTab={setActiveTab} />
+      }
+    }
+
+    // Si l'utilisateur est connecté mais doit choisir sa boutique
+    if (!activeBranch && activeTab !== 'select-branch' && !isSuperAdmin && (assignedBranches?.length > 1 || isAdmin || role === 'gerant')) {
       return <BranchSelectionPage onSelectBranch={() => navigate('dashboard')} />
     }
 
+    // Utilisateur connecté : Rendu des pages autorisées
     switch (activeTab) {
       case 'home':          return <Home setActiveTab={setActiveTab} />
-      case 'dashboard':     return <Dashboard setActiveTab={setActiveTab} />
+      case 'dashboard':     return isSuperAdmin ? <BackOffice /> : <Dashboard setActiveTab={setActiveTab} />
       case 'register':      return <Register setActiveTab={setActiveTab} />
       case 'auth':          return <Login setActiveTab={setActiveTab} />
       case 'select-branch': return <BranchSelectionPage onSelectBranch={() => navigate('dashboard')} />
@@ -95,12 +107,12 @@ function MainContent() {
       case 'users-mgmt':    return <UsersManagement />
       case 'userguide':     return <UserGuide />
       case 'notifications': return <Notifications setActiveTab={setActiveTab} />
-      default:              return user ? (isSuperAdmin ? <BackOffice /> : <Dashboard setActiveTab={setActiveTab} />) : <Home setActiveTab={setActiveTab} />
+      default:              return isSuperAdmin ? <BackOffice /> : <Dashboard setActiveTab={setActiveTab} />
     }
   }
 
   const navLinks = [
-    { tab: 'home',          icon: 'fa-house',           label: 'Accueil',       show: !user },
+    { tab: 'home',          icon: 'fa-house',           label: 'Accueil',       show: true },
     { tab: 'dashboard',     icon: 'fa-gauge-high',      label: 'Dashboard',     show: !!(user && !isSuperAdmin) },
     { tab: 'pos',           icon: 'fa-cash-register',   label: 'POS',           show: !!(user && !isSuperAdmin) },
     { tab: 'auth',          icon: user ? 'fa-user' : 'fa-key', label: user ? 'Mon Profil' : 'Connexion', show: true },
