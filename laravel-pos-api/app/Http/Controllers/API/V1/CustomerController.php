@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Customer;
 use Illuminate\Validation\Rule;
+use App\Events\Customer\CustomerCreated;
 
 class CustomerController extends Controller
 {
@@ -56,6 +57,11 @@ class CustomerController extends Controller
      */
     public function store(Request $request)
     {
+        // Permission : les caissiers et gérants peuvent créer des clients
+        if (!$request->user()->hasPermission('customers.create')) {
+            return response()->json(['error' => 'Action non autorisée.'], 403);
+        }
+
         $companyId = app(\App\Services\TenantManager::class)->getCompanyId();
         $activeBranchId = app(\App\Services\TenantManager::class)->getBranchId();
 
@@ -94,9 +100,17 @@ class CustomerController extends Controller
             $customer->branches()->sync($branchIds);
         }
 
+        $customer->load(['branch', 'branches']);
+
+        try {
+            event(new CustomerCreated($customer, $request->user()));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('CustomerCreated event error: ' . $e->getMessage());
+        }
+
         return response()->json([
             'message' => 'Client créé avec succès.',
-            'customer' => $customer->load(['branch', 'branches'])
+            'customer' => $customer
         ], 201);
     }
 
@@ -114,6 +128,10 @@ class CustomerController extends Controller
      */
     public function update(Request $request, string $id)
     {
+        if (!$request->user()->hasPermission('customers.update')) {
+            return response()->json(['error' => 'Action non autorisée.'], 403);
+        }
+
         $customer = Customer::findOrFail($id);
         $companyId = app(\App\Services\TenantManager::class)->getCompanyId();
 

@@ -4,10 +4,13 @@ namespace App\Http\Controllers\API\V1;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-
 use App\Models\CashSession;
 use App\Models\CashSessionTransaction;
 use Illuminate\Support\Facades\DB;
+use App\Events\CashSession\CashSessionOpened;
+use App\Events\CashSession\CashSessionClosed;
+use App\Events\CashSession\CashSessionValidated;
+use App\Events\CashSession\CashSessionTransactionAdded;
 
 class CashSessionController extends Controller
 {
@@ -76,20 +79,10 @@ class CashSessionController extends Controller
         ]);
 
         try {
-            \App\Services\NotificationService::send(
-                $companyId ?: $request->user()->company_id,
-                $branchId,
-                null,
-                'cash_session',
-                "Ouverture de Caisse #{$session->id}",
-                "Caisse #{$session->id} ouverte par {$request->user()->name} avec un fond de {$validated['opening_balance']} XOF.",
-                'info',
-                null,
-                'cash-sessions',
-                ['session_id' => $session->id],
-                $request->user()->id
-            );
-        } catch (\Throwable $e) {}
+            event(new CashSessionOpened($session, $request->user()));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('CashSessionOpened event error: ' . $e->getMessage());
+        }
 
         return response()->json([
             'message' => 'Session de caisse ouverte avec succès.',
@@ -120,6 +113,12 @@ class CashSessionController extends Controller
             'amount' => $validated['amount'],
             'description' => $validated['description'],
         ]);
+
+        try {
+            event(new CashSessionTransactionAdded($session, $transaction, $request->user()));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('CashSessionTransactionAdded event error: ' . $e->getMessage());
+        }
 
         return response()->json([
             'message' => $validated['type'] === 'deposit' ? 'Dépôt enregistré.' : 'Retrait enregistré.',
@@ -164,21 +163,14 @@ class CashSessionController extends Controller
             'notes' => $validated['notes'] ?? $session->notes,
         ]);
 
+        // Calculer l'écart caisse (différence entre théorique et compté)
+        $gap = floatval($validated['closing_balance']) - floatval($theoreticalBalance);
+
         try {
-            \App\Services\NotificationService::send(
-                $session->company_id,
-                $session->branch_id,
-                null,
-                'cash_session',
-                "Fermeture de Caisse #{$session->id}",
-                "Caisse #{$session->id} fermée par {$request->user()->name} (Solde compté : {$validated['closing_balance']} XOF).",
-                'info',
-                null,
-                'cash-sessions',
-                ['session_id' => $session->id],
-                $request->user()->id
-            );
-        } catch (\Throwable $e) {}
+            event(new CashSessionClosed($session, $request->user(), $gap));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('CashSessionClosed event error: ' . $e->getMessage());
+        }
 
         return response()->json([
             'message' => 'Caisse fermée avec succès.',
@@ -211,6 +203,12 @@ class CashSessionController extends Controller
             'validated_at' => now(),
             'validation_notes' => $validated['validation_notes'] ?? null,
         ]);
+
+        try {
+            event(new CashSessionValidated($session, $request->user()));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('CashSessionValidated event error: ' . $e->getMessage());
+        }
 
         return response()->json([
             'message' => 'Écarts validés et régularisés.',

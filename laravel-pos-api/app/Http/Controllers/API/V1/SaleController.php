@@ -9,6 +9,8 @@ use App\Models\CashSession;
 use App\Models\CashSessionTransaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Events\Sale\SaleCreated;
+use App\Events\Stock\StockLow;
 
 class SaleController extends Controller
 {
@@ -265,23 +267,35 @@ class SaleController extends Controller
 
             $sale->load('details.product', 'user', 'branch');
 
-            // Notification système en temps réel pour l'activité de vente
+            // ── Événement SaleCreated → NotifySaleEvents listener (ciblé par rôle) ──
             try {
-                \App\Services\NotificationService::send(
-                    $user->company_id ?: $session->company_id,
-                    $activeBranchId,
-                    null,
-                    'sale',
-                    "Nouvelle Vente #{$saleNumber}",
-                    "Vente #{$saleNumber} d'un montant de {$total} XOF validée par {$user->name}.",
-                    'info',
-                    null,
-                    'sales',
-                    ['sale_id' => $sale->id, 'total' => $total],
-                    $user->id
-                );
+                event(new SaleCreated($sale, $user));
             } catch (\Throwable $e) {
-                // Log silencieux pour ne jamais bloquer l'encaissement
+                \Illuminate\Support\Facades\Log::error('SaleCreated event error: ' . $e->getMessage());
+            }
+
+            // ── Détection automatique de stock faible après la vente ──
+            try {
+                foreach ($details as $d) {
+                    $bp = \App\Models\BranchProduct::where('branch_id', $activeBranchId)
+                        ->where('product_id', $d['product_id'])
+                        ->first();
+                    $product = \App\Models\Product::find($d['product_id']);
+                    if ($bp && $product && $product->alert_quantity !== null) {
+                        if (floatval($bp->quantity) <= floatval($product->alert_quantity)) {
+                            event(new StockLow(
+                                $user->company_id,
+                                $activeBranchId,
+                                $product->id,
+                                $product->name,
+                                floatval($bp->quantity),
+                                floatval($product->alert_quantity)
+                            ));
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('StockLow event error: ' . $e->getMessage());
             }
 
             return response()->json([

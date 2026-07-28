@@ -4,9 +4,9 @@ namespace App\Http\Controllers\API\V1;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-
 use App\Models\Supplier;
 use Illuminate\Validation\Rule;
+use App\Events\Supplier\SupplierCreated;
 
 class SupplierController extends Controller
 {
@@ -80,9 +80,17 @@ class SupplierController extends Controller
             $supplier->branches()->sync($branchIds);
         }
 
+        $supplier->load('branches');
+
+        try {
+            event(new SupplierCreated($supplier, $request->user()));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('SupplierCreated event error: ' . $e->getMessage());
+        }
+
         return response()->json([
             'message' => 'Fournisseur créé avec succès.',
-            'supplier' => $supplier->load('branches')
+            'supplier' => $supplier
         ], 201);
     }
 

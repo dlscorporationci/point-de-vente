@@ -4,12 +4,18 @@ namespace App\Http\Controllers\API\V1;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-
 use App\Models\StockTransfer;
 use App\Models\StockTransferDetail;
 use App\Models\BranchProduct;
 use App\Models\StockMovement;
 use Illuminate\Support\Facades\DB;
+use App\Events\Transfer\TransferCreated;
+use App\Events\Transfer\TransferApproved;
+use App\Events\Transfer\TransferShipped;
+use App\Events\Transfer\TransferReceived;
+use App\Events\Transfer\TransferRejected;
+use App\Events\Transfer\TransferCancelled;
+use App\Events\Stock\StockLow;
 
 class TransferController extends Controller
 {
@@ -37,16 +43,21 @@ class TransferController extends Controller
 
     /**
      * Création d'une demande de transfert (Status: pending).
+     * Permission : transfers.create
      */
     public function store(Request $request)
     {
+        if (!$request->user()->hasPermission('transfers.create')) {
+            return response()->json(['error' => 'Action non autorisée.'], 403);
+        }
+
         $validated = $request->validate([
             'from_branch_id' => 'required|exists:branches,id',
-            'to_branch_id' => 'required|exists:branches,id|different:from_branch_id',
-            'notes' => 'nullable|string',
-            'items' => 'required|array|min:1',
+            'to_branch_id'   => 'required|exists:branches,id|different:from_branch_id',
+            'notes'          => 'nullable|string',
+            'items'          => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
-            'items.*.quantity' => 'required|numeric|min:0.01',
+            'items.*.quantity'   => 'required|numeric|min:0.01',
         ]);
 
         $companyId = app(\App\Services\TenantManager::class)->getCompanyId();
@@ -55,60 +66,36 @@ class TransferController extends Controller
             $transferNumber = 'TRSF-' . time() . '-' . rand(100, 999);
 
             $transfer = StockTransfer::create([
-                'company_id' => $companyId,
-                'from_branch_id' => $validated['from_branch_id'],
-                'to_branch_id' => $validated['to_branch_id'],
+                'company_id'      => $companyId,
+                'from_branch_id'  => $validated['from_branch_id'],
+                'to_branch_id'    => $validated['to_branch_id'],
                 'transfer_number' => $transferNumber,
-                'status' => 'pending',
-                'notes' => $validated['notes'] ?? null,
+                'status'          => 'pending',
+                'notes'           => $validated['notes'] ?? null,
             ]);
 
             foreach ($validated['items'] as $item) {
                 StockTransferDetail::create([
                     'stock_transfer_id' => $transfer->id,
-                    'product_id' => $item['product_id'],
-                    'quantity' => $item['quantity'],
+                    'product_id'        => $item['product_id'],
+                    'quantity'          => $item['quantity'],
                 ]);
             }
 
-            $transfer->load(['fromBranch', 'toBranch']);
-
-            // Notification pour la boutique source (Info)
-            \App\Services\NotificationService::send(
-                $companyId,
-                $transfer->from_branch_id,
-                null,
-                'transfer_created',
-                'Demande de transfert enregistrée',
-                "La demande de transfert {$transfer->transfer_number} vers {$transfer->toBranch->name} a été créée.",
-                'info',
-                'products.update',
-                'transfers',
-                ['transfer_id' => $transfer->id, 'transfer_number' => $transfer->transfer_number],
-                $request->user()->id
-            );
-
-            // Notification pour la boutique destination (Important)
-            \App\Services\NotificationService::send(
-                $companyId,
-                $transfer->to_branch_id,
-                null,
-                'transfer_incoming',
-                'Nouveau transfert entrant',
-                "Un nouveau transfert {$transfer->transfer_number} provenant de {$transfer->fromBranch->name} a été créé.",
-                'important',
-                'products.update',
-                'transfers',
-                ['transfer_id' => $transfer->id, 'transfer_number' => $transfer->transfer_number],
-                $request->user()->id
-            );
-
-            return $transfer;
+            return $transfer->load(['fromBranch', 'toBranch', 'details.product']);
         });
 
+        // ── Événement TransferCreated → NotifyTransferEvents listener ──
+        // Notifie boutique A (origine) ET boutique B (destination) avec messages distincts
+        try {
+            event(new TransferCreated($transfer, $request->user()));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('TransferCreated event error: ' . $e->getMessage());
+        }
+
         return response()->json([
-            'message' => 'Demande de transfert créée avec succès.',
-            'transfer' => $transfer->load(['fromBranch', 'toBranch', 'details.product'])
+            'message'  => 'Demande de transfert créée avec succès.',
+            'transfer' => $transfer,
         ], 201);
     }
 
@@ -122,11 +109,12 @@ class TransferController extends Controller
     }
 
     /**
-     * Valider une demande de transfert (Passage de pending_approval -> approved ou pending -> approved).
+     * Valider une demande de transfert (pending → approved).
+     * Permission : transfers.manage
      */
     public function approve(Request $request, string $id)
     {
-        if (!$request->user()->hasPermission('products.update')) {
+        if (!$request->user()->hasPermission('transfers.manage')) {
             return response()->json(['error' => 'Action non autorisée.'], 403);
         }
 
@@ -136,32 +124,31 @@ class TransferController extends Controller
         }
 
         $transfer->update(['status' => 'approved']);
+        $transfer->load(['fromBranch', 'toBranch', 'details.product']);
 
-        \App\Services\NotificationService::send(
-            $transfer->company_id,
-            $transfer->from_branch_id,
-            null,
-            'transfer_approved',
-            'Transfert de stock validé',
-            "Le transfert {$transfer->transfer_number} a été validé et est prêt pour expédition."
-        );
+        try {
+            event(new TransferApproved($transfer, $request->user()));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('TransferApproved event error: ' . $e->getMessage());
+        }
 
         return response()->json([
-            'message' => 'Transfert de stock validé avec succès.',
-            'transfer' => $transfer->load(['fromBranch', 'toBranch', 'details.product'])
+            'message'  => 'Transfert de stock validé avec succès.',
+            'transfer' => $transfer,
         ]);
     }
 
     /**
-     * Expédition du transfert : débite le stock d'origine et passe en statut "shipped" (ou "transit").
+     * Expédition : débite le stock d'origine → statut "shipped".
+     * Permission : transfers.manage
      */
     public function ship(Request $request, string $id)
     {
-        if (!$request->user()->hasPermission('products.update')) {
+        if (!$request->user()->hasPermission('transfers.manage')) {
             return response()->json(['error' => 'Action non autorisée.'], 403);
         }
 
-        $transfer = StockTransfer::findOrFail($id);
+        $transfer = StockTransfer::with('details.product')->findOrFail($id);
 
         if (!in_array($transfer->status, ['pending', 'approved', 'pending_approval'])) {
             return response()->json(['error' => "Ce transfert ne peut plus être expédié (statut actuel : {$transfer->status})."], 422);
@@ -177,70 +164,65 @@ class TransferController extends Controller
                         ->first();
 
                     if (!$branchProduct || $branchProduct->quantity < $detail->quantity) {
-                        $productName = $detail->product->name;
-                        throw new \Exception("Stock insuffisant pour le produit \"{$productName}\" dans la boutique d'origine (Stock disponible: " . ($branchProduct ? $branchProduct->quantity : 0) . ").");
+                        $productName = $detail->product ? $detail->product->name : "Produit #{$detail->product_id}";
+                        throw new \Exception("Stock insuffisant pour \"{$productName}\" dans la boutique d'origine (Disponible: " . ($branchProduct ? $branchProduct->quantity : 0) . ").");
                     }
 
                     // Débiter le stock d'origine
                     $branchProduct->decrement('quantity', $detail->quantity);
 
-                    // Journaliser la sortie de transfert
+                    // Mouvement de sortie
                     StockMovement::create([
-                        'company_id' => $companyId,
-                        'branch_id' => $transfer->from_branch_id,
-                        'product_id' => $detail->product_id,
-                        'quantity' => -$detail->quantity,
-                        'type' => 'transfer',
+                        'company_id'   => $companyId,
+                        'branch_id'    => $transfer->from_branch_id,
+                        'product_id'   => $detail->product_id,
+                        'quantity'     => -$detail->quantity,
+                        'type'         => 'transfer',
                         'reference_id' => $transfer->id,
-                        'description' => "Sortie transfert inter-boutique #{$transfer->id}",
+                        'description'  => "Sortie transfert #{$transfer->transfer_number} → Boutique #{$transfer->to_branch_id}",
                     ]);
                 }
 
                 $transfer->update(['status' => 'shipped']);
-
-                \App\Services\NotificationService::send(
-                    $companyId,
-                    $transfer->to_branch_id,
-                    null,
-                    'transfer_shipped',
-                    'Transfert de stock expédié',
-                    "Un transfert de stock {$transfer->transfer_number} a été expédié vers votre boutique.",
-                    'important',
-                    'products.update',
-                    'transfers',
-                    ['transfer_id' => $transfer->id, 'transfer_number' => $transfer->transfer_number],
-                    $request->user()->id
-                );
             });
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 422);
         }
 
+        $transfer->load(['fromBranch', 'toBranch', 'details.product']);
+
+        try {
+            event(new TransferShipped($transfer, $request->user()));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('TransferShipped event error: ' . $e->getMessage());
+        }
+
         return response()->json([
-            'message' => 'Transfert expédié avec succès (marchandises en transit).',
-            'transfer' => $transfer->load(['fromBranch', 'toBranch', 'details.product'])
+            'message'  => 'Transfert expédié avec succès (marchandises en transit).',
+            'transfer' => $transfer,
         ]);
     }
 
     /**
-     * Réception et validation du transfert : crédite le stock de destination et passe en statut "received" (ou "completed").
+     * Réception : crédite le stock de destination → statut "received".
+     * Permission : transfers.manage
      */
     public function receive(Request $request, string $id)
     {
-        if (!$request->user()->hasPermission('products.update')) {
+        if (!$request->user()->hasPermission('transfers.manage')) {
             return response()->json(['error' => 'Action non autorisée.'], 403);
         }
 
-        $transfer = StockTransfer::findOrFail($id);
+        $transfer = StockTransfer::with('details.product')->findOrFail($id);
 
         if (!in_array($transfer->status, ['shipped', 'transit'])) {
             return response()->json(['error' => 'Ce transfert ne peut pas être réceptionné (statut actuel : ' . $transfer->status . ').'], 422);
         }
 
-        $user = $request->user();
-        $userRole = is_object($user->role) ? $user->role->slug : $user->role;
-        $isAdmin = in_array($userRole, ['super-admin', 'admin']);
-        
+        $user      = $request->user();
+        $userRole  = is_object($user->role) ? $user->role->slug : $user->role;
+        $isAdmin   = in_array($userRole, ['super-admin', 'admin']);
+
         if (!$isAdmin && !$user->hasAccessToBranch($transfer->to_branch_id)) {
             return response()->json([
                 'error' => 'Seul un membre de la boutique de destination peut confirmer la réception de ce transfert.'
@@ -249,76 +231,68 @@ class TransferController extends Controller
 
         $companyId = app(\App\Services\TenantManager::class)->getCompanyId();
 
-        DB::transaction(function () use ($transfer, $companyId, $request) {
+        DB::transaction(function () use ($transfer, $companyId) {
             foreach ($transfer->details as $detail) {
                 $branchProduct = BranchProduct::firstOrCreate(
-                    [
-                        'branch_id' => $transfer->to_branch_id,
-                        'product_id' => $detail->product_id
-                    ],
-                    ['quantity' => 0.00, 'is_active' => true]
+                    ['branch_id' => $transfer->to_branch_id, 'product_id' => $detail->product_id],
+                    ['quantity'  => 0.00, 'is_active' => true]
                 );
-                
+
                 $branchProduct->update(['is_active' => true]);
                 $branchProduct->increment('quantity', $detail->quantity);
 
+                // Mouvement d'entrée
                 StockMovement::create([
-                    'company_id' => $companyId,
-                    'branch_id' => $transfer->to_branch_id,
-                    'product_id' => $detail->product_id,
-                    'quantity' => $detail->quantity,
-                    'type' => 'transfer',
+                    'company_id'   => $companyId,
+                    'branch_id'    => $transfer->to_branch_id,
+                    'product_id'   => $detail->product_id,
+                    'quantity'     => $detail->quantity,
+                    'type'         => 'transfer',
                     'reference_id' => $transfer->id,
-                    'description' => "Entrée transfert inter-boutique #{$transfer->id}",
+                    'description'  => "Entrée transfert #{$transfer->transfer_number} ← Boutique #{$transfer->from_branch_id}",
                 ]);
             }
 
             $transfer->update(['status' => 'received']);
-
-            // Notification pour la boutique d'origine
-            \App\Services\NotificationService::send(
-                $companyId,
-                $transfer->from_branch_id,
-                null,
-                'transfer_received',
-                'Transfert de stock réceptionné',
-                "Le transfert {$transfer->transfer_number} a été réceptionné par la boutique de destination.",
-                'info',
-                'products.update',
-                'transfers',
-                ['transfer_id' => $transfer->id, 'transfer_number' => $transfer->transfer_number],
-                $request->user()->id
-            );
         });
 
+        $transfer->load(['fromBranch', 'toBranch', 'details.product']);
+
+        try {
+            event(new TransferReceived($transfer, $request->user()));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('TransferReceived event error: ' . $e->getMessage());
+        }
+
         return response()->json([
-            'message' => 'Transfert réceptionné avec succès et stock crédité.',
-            'transfer' => $transfer->load(['fromBranch', 'toBranch', 'details.product'])
+            'message'  => 'Transfert réceptionné avec succès et stock crédité.',
+            'transfer' => $transfer,
         ]);
     }
 
     /**
      * Refuser un transfert.
+     * Permission : transfers.manage
      */
     public function reject(Request $request, string $id)
     {
-        if (!$request->user()->hasPermission('products.update')) {
+        if (!$request->user()->hasPermission('transfers.manage')) {
             return response()->json(['error' => 'Action non autorisée.'], 403);
         }
 
-        $transfer = StockTransfer::findOrFail($id);
+        $transfer = StockTransfer::with('details')->findOrFail($id);
 
         if (in_array($transfer->status, ['received', 'completed', 'cancelled', 'rejected'])) {
             return response()->json(['error' => "Ce transfert ne peut pas être refusé dans son statut actuel ({$transfer->status})."], 422);
         }
 
-        // Si déjà expédié, ré-incrémenter le stock de la boutique d'origine
+        // Si déjà expédié, restituer le stock de la boutique d'origine
         if (in_array($transfer->status, ['shipped', 'transit'])) {
             DB::transaction(function () use ($transfer) {
                 foreach ($transfer->details as $detail) {
                     $bp = BranchProduct::firstOrCreate(
                         ['branch_id' => $transfer->from_branch_id, 'product_id' => $detail->product_id],
-                        ['quantity' => 0.00]
+                        ['quantity'  => 0.00]
                     );
                     $bp->increment('quantity', $detail->quantity);
                 }
@@ -326,43 +300,43 @@ class TransferController extends Controller
         }
 
         $transfer->update(['status' => 'rejected']);
+        $transfer->load(['fromBranch', 'toBranch', 'details.product']);
 
-        \App\Services\NotificationService::send(
-            $transfer->company_id,
-            $transfer->from_branch_id,
-            null,
-            'transfer_rejected',
-            'Transfert de stock refusé',
-            "Le transfert {$transfer->transfer_number} a été refusé par la boutique de destination."
-        );
+        try {
+            event(new TransferRejected($transfer, $request->user()));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('TransferRejected event error: ' . $e->getMessage());
+        }
 
         return response()->json([
-            'message' => 'Transfert de stock refusé.',
-            'transfer' => $transfer->load(['fromBranch', 'toBranch', 'details.product'])
+            'message'  => 'Transfert de stock refusé.',
+            'transfer' => $transfer,
         ]);
     }
 
     /**
      * Annuler un transfert.
+     * Permission : transfers.manage
      */
     public function cancel(Request $request, string $id)
     {
-        if (!$request->user()->hasPermission('products.update')) {
+        if (!$request->user()->hasPermission('transfers.manage')) {
             return response()->json(['error' => 'Action non autorisée.'], 403);
         }
 
-        $transfer = StockTransfer::findOrFail($id);
+        $transfer = StockTransfer::with('details')->findOrFail($id);
 
         if (in_array($transfer->status, ['received', 'completed', 'cancelled'])) {
             return response()->json(['error' => "Ce transfert ne peut plus être annulé."], 422);
         }
 
+        // Si expédié, restituer le stock d'origine
         if (in_array($transfer->status, ['shipped', 'transit'])) {
             DB::transaction(function () use ($transfer) {
                 foreach ($transfer->details as $detail) {
                     $bp = BranchProduct::firstOrCreate(
                         ['branch_id' => $transfer->from_branch_id, 'product_id' => $detail->product_id],
-                        ['quantity' => 0.00]
+                        ['quantity'  => 0.00]
                     );
                     $bp->increment('quantity', $detail->quantity);
                 }
@@ -370,10 +344,17 @@ class TransferController extends Controller
         }
 
         $transfer->update(['status' => 'cancelled']);
+        $transfer->load(['fromBranch', 'toBranch', 'details.product']);
+
+        try {
+            event(new TransferCancelled($transfer, $request->user()));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('TransferCancelled event error: ' . $e->getMessage());
+        }
 
         return response()->json([
-            'message' => 'Transfert de stock annulé.',
-            'transfer' => $transfer->load(['fromBranch', 'toBranch', 'details.product'])
+            'message'  => 'Transfert de stock annulé.',
+            'transfer' => $transfer,
         ]);
     }
 }

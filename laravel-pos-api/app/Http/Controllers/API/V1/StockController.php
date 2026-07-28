@@ -4,11 +4,12 @@ namespace App\Http\Controllers\API\V1;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-
 use App\Models\StockMovement;
 use App\Models\BranchProduct;
 use App\Models\Product;
 use Illuminate\Support\Facades\DB;
+use App\Events\Stock\StockAdjusted;
+use App\Events\Stock\StockLow;
 
 class StockController extends Controller
 {
@@ -65,7 +66,7 @@ class StockController extends Controller
      */
     public function adjust(Request $request)
     {
-        if (!$request->user()->hasPermission('products.update')) {
+        if (!$request->user()->hasPermission('stock.adjust')) {
             return response()->json(['error' => 'Action non autorisée.'], 403);
         }
 
@@ -115,20 +116,35 @@ class StockController extends Controller
 
         try {
             $pName = $result->product ? $result->product->name : "Produit #{$validated['product_id']}";
-            \App\Services\NotificationService::send(
+            event(new StockAdjusted(
                 $companyId ?: $request->user()->company_id,
                 $validated['branch_id'],
-                null,
-                'stock_adjustment',
-                "Ajustement de Stock : {$pName}",
-                "Ajustement de stock de ({$validated['quantity']}) sur {$pName} enregistré par {$request->user()->name}.",
-                'info',
-                null,
-                'stocks',
-                ['product_id' => $validated['product_id'], 'quantity' => $validated['quantity']],
-                $request->user()->id
-            );
-        } catch (\Throwable $e) {}
+                $validated['product_id'],
+                $pName,
+                $validated['quantity'],
+                $validated['description'],
+                $request->user()
+            ));
+
+            // Détection stock faible après ajustement
+            $bp = BranchProduct::where('branch_id', $validated['branch_id'])
+                ->where('product_id', $validated['product_id'])->first();
+            $prod = Product::find($validated['product_id']);
+            if ($bp && $prod && $prod->alert_quantity !== null) {
+                if (floatval($bp->quantity) <= floatval($prod->alert_quantity)) {
+                    event(new StockLow(
+                        $companyId ?: $request->user()->company_id,
+                        $validated['branch_id'],
+                        $prod->id,
+                        $prod->name,
+                        floatval($bp->quantity),
+                        floatval($prod->alert_quantity)
+                    ));
+                }
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('StockAdjusted event error: ' . $e->getMessage());
+        }
 
         return response()->json([
             'message' => 'Ajustement de stock enregistré avec succès.',

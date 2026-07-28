@@ -4,10 +4,11 @@ namespace App\Http\Controllers\API\V1;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-
 use App\Models\Product;
 use App\Models\Category;
 use Illuminate\Validation\Rule;
+use App\Events\Product\ProductCreated;
+use App\Events\Product\ProductUpdated;
 
 class ProductController extends Controller
 {
@@ -152,9 +153,18 @@ class ProductController extends Controller
             }
         }
 
+        $product->load(['category', 'branchProducts']);
+
+        // Événement ProductCreated → Notifier admin/gérant de la boutique
+        try {
+            event(new ProductCreated($product, $request->user()));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('ProductCreated event error: ' . $e->getMessage());
+        }
+
         return response()->json([
             'message' => 'Produit créé et affecté avec succès.',
-            'product' => $product->load(['category', 'branchProducts'])
+            'product' => $product
         ], 201);
     }
 
@@ -215,7 +225,17 @@ class ProductController extends Controller
             @chmod(storage_path('app/public/' . $path), 0666);
         }
 
+        // Détecter les champs modifiés (avant save)
+        $changedFields = array_keys($product->getDirty());
+
         $product->update($validated);
+
+        // Événement ProductUpdated → Notifier si prix modifié
+        try {
+            event(new ProductUpdated($product->load('category'), $request->user(), $changedFields));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('ProductUpdated event error: ' . $e->getMessage());
+        }
 
         return response()->json([
             'message' => 'Produit mis à jour avec succès.',

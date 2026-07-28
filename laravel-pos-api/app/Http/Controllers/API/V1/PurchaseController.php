@@ -4,7 +4,6 @@ namespace App\Http\Controllers\API\V1;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-
 use App\Models\Purchase;
 use App\Models\PurchaseDetail;
 use App\Models\BranchProduct;
@@ -12,6 +11,9 @@ use App\Models\StockMovement;
 use App\Models\Product;
 use App\Models\Supplier;
 use Illuminate\Support\Facades\DB;
+use App\Events\Purchase\PurchaseCreated;
+use App\Events\Purchase\PurchaseReceived;
+use App\Events\Stock\StockLow;
 
 class PurchaseController extends Controller
 {
@@ -47,7 +49,7 @@ class PurchaseController extends Controller
      */
     public function store(Request $request)
     {
-        if (!$request->user()->hasPermission('products.create')) { // permission générique d'achat/produit
+        if (!$request->user()->hasPermission('purchases.create')) {
             return response()->json(['error' => 'Action non autorisée.'], 403);
         }
 
@@ -161,21 +163,13 @@ class PurchaseController extends Controller
             return $purchase;
         });
 
+        $purchase->load(['branch', 'supplier', 'details.product']);
+
         try {
-            \App\Services\NotificationService::send(
-                $purchase->company_id,
-                $purchase->branch_id,
-                null,
-                'purchase',
-                "Nouvel Achat #{$purchase->reference_number}",
-                "Achat #{$purchase->reference_number} d'un montant de {$purchase->total_amount} XOF enregistré par {$request->user()->name}.",
-                'info',
-                null,
-                'purchases',
-                ['purchase_id' => $purchase->id, 'total' => $purchase->total_amount],
-                $request->user()->id
-            );
-        } catch (\Throwable $e) {}
+            event(new PurchaseCreated($purchase, $request->user()));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('PurchaseCreated event error: ' . $e->getMessage());
+        }
 
         return response()->json([
             'message' => 'Approvisionnement enregistré avec succès.',
@@ -197,7 +191,7 @@ class PurchaseController extends Controller
      */
     public function receive(Request $request, string $id)
     {
-        if (!$request->user()->hasPermission('products.create')) {
+        if (!$request->user()->hasPermission('purchases.manage')) {
             return response()->json(['error' => 'Action non autorisée.'], 403);
         }
 
@@ -250,9 +244,32 @@ class PurchaseController extends Controller
             }
         });
 
+        $purchase->load(['branch', 'supplier', 'details.product']);
+
+        try {
+            event(new PurchaseReceived($purchase, $request->user()));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('PurchaseReceived event error: ' . $e->getMessage());
+        }
+
+        // Détection stock faible après réception
+        try {
+            foreach ($validated['items'] as $itemData) {
+                $bp = BranchProduct::where('branch_id', $purchase->branch_id)
+                    ->where('product_id', $itemData['product_id'])->first();
+                $prod = Product::find($itemData['product_id']);
+                if ($bp && $prod && $prod->alert_quantity !== null) {
+                    if (floatval($bp->quantity) <= floatval($prod->alert_quantity)) {
+                        event(new StockLow($purchase->company_id, $purchase->branch_id,
+                            $prod->id, $prod->name, floatval($bp->quantity), floatval($prod->alert_quantity)));
+                    }
+                }
+            }
+        } catch (\Throwable $e) {}
+
         return response()->json([
             'message' => 'Commande réceptionnée et stocks mis à jour avec succès.',
-            'purchase' => $purchase->load(['branch', 'supplier', 'details.product'])
+            'purchase' => $purchase
         ]);
     }
 
@@ -306,7 +323,7 @@ class PurchaseController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        if (!$request->user()->hasPermission('products.create')) {
+        if (!$request->user()->hasPermission('purchases.manage')) {
             return response()->json(['error' => 'Action non autorisée.'], 403);
         }
 
