@@ -35,6 +35,8 @@ function MainContent() {
     if (role === 'super-admin') return 'backoffice'
     return 'dashboard'
   })
+  const [menuOpen, setMenuOpen] = useState(false)
+  const drawerRef = useRef(null)
   const [tabHistory, setTabHistory] = useState([])
 
   const navigate = (newTab) => {
