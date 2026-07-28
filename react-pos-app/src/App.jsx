@@ -144,6 +144,15 @@ function MainContent() {
     { tab: 'userguide',     icon: 'fa-book-open',       label: 'Aide & Guide',  show: !!user },
   ].filter(l => l.show)
 
+  const [currentTime, setCurrentTime] = useState(() => new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }))
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }))
+    }, 10000)
+    return () => clearInterval(timer)
+  }, [])
+
   return (
     <>
       {/* ── NAVBAR ── */}
@@ -218,7 +227,63 @@ function MainContent() {
           ))}
         </div>
 
-        <div className="navbar-right-controls" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0, minWidth: '50px' }}>
+        <div className="navbar-right-controls" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+          {/* HORLOGE EN DIRECT & DATE */}
+          <div className="navbar-clock-widget d-none d-lg-flex align-items-center me-1" style={{ fontSize: '12px', color: 'var(--text-muted, #6b7280)', gap: '5px', fontWeight: 600 }}>
+            <i className="fa-solid fa-clock text-primary"></i>
+            <span>{currentTime}</span>
+          </div>
+
+          {/* RACCOURCI POS CASSE RAPIDE */}
+          {user && !isSuperAdmin && (
+            <button 
+              className="btn btn-primary btn-sm d-none d-md-inline-flex align-items-center" 
+              onClick={() => navigate('pos')}
+              style={{ fontWeight: 700, padding: '5px 12px', fontSize: '12px', borderRadius: '8px', whiteSpace: 'nowrap' }}
+            >
+              <i className="fa-solid fa-cash-register me-1"></i> Caisse POS
+            </button>
+          )}
+
+          {/* BADGE / BOUTON PROFIL ET DÉCONNEXION */}
+          {user && (
+            <button 
+              className="navbar-user-profile-btn" 
+              onClick={() => navigate('auth')}
+              title={`Connecté en tant que ${user.name} (${user.email})`}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '7px',
+                padding: '4px 10px',
+                borderRadius: '20px',
+                border: '1px solid var(--border-color)',
+                background: 'var(--bg-input, rgba(255,255,255,0.08))',
+                color: 'var(--text-main)',
+                cursor: 'pointer',
+                fontSize: '12px'
+              }}
+            >
+              <div style={{
+                width: '24px',
+                height: '24px',
+                borderRadius: '50%',
+                background: 'var(--primary-color, #2563eb)',
+                color: '#fff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 800,
+                fontSize: '11px'
+              }}>
+                {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+              </div>
+              <span className="d-none d-sm-inline" style={{ fontWeight: 600, maxWidth: '110px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {user.name}
+              </span>
+            </button>
+          )}
+
           <NotificationBell onNavigate={navigate} />
         </div>
       </header>
