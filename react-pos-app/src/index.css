@@ -373,10 +373,10 @@ textarea.form-control {
   backdrop-filter: blur(4px);
   z-index: 2000;
   display: flex;
-  align-items: flex-start; /* Aligner en haut pour éviter de cacher le haut sous la barre de navigation */
+  align-items: center;
   justify-content: center;
-  padding: 100px 16px 40px 16px; /* Marge supérieure pour dégager la barre de navigation */
-  overflow-y: auto; /* Permettre le défilement vertical complet */
+  padding: 80px 16px 40px 16px;
+  overflow-y: auto;
 }
 
 .modal-card {
