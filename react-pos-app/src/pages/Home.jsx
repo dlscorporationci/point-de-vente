@@ -356,7 +356,7 @@ export const Home = ({ setActiveTab }) => {
           align-items: center;
           justify-content: center;
           gap: 60px;
-          padding: 100px 40px 80px;
+          padding: 40px 40px 80px;
           overflow: hidden;
           flex-wrap: wrap;
         }

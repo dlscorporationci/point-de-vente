@@ -1236,7 +1236,6 @@ p {
 
 /* Conteneur principal sous la navbar */
 .app-main-content {
-  padding-top: 84px !important;
   min-height: 100vh;
   width: 100%;
   box-sizing: border-box;
