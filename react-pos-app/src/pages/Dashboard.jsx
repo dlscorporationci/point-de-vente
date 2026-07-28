@@ -84,7 +84,14 @@ export const Dashboard = ({ setActiveTab }) => {
       {error && (
         <div className="alert alert-danger mb-4 d-flex align-items-center justify-content-between">
           <div><i className="fa-solid fa-triangle-exclamation me-2"></i> {error}</div>
-          <button className="btn btn-sm btn-outline-danger" onClick={fetchDashboardStats}>Réessayer</button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {(error.includes('Session expirée') || error.includes('re-connecter')) && (
+              <button className="btn btn-sm btn-primary" onClick={() => setActiveTab && setActiveTab('auth')}>
+                <i className="fa-solid fa-key me-1"></i> Se Reconnecter
+              </button>
+            )}
+            <button className="btn btn-sm btn-outline-danger" onClick={fetchDashboardStats}>Réessayer</button>
+          </div>
         </div>
       )}
 

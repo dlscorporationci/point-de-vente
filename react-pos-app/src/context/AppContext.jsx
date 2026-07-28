@@ -26,11 +26,19 @@ export const AppProvider = ({ children }) => {
 
   // 2. Gestion du Tenant (Multi-Tenancy)
   const [companyId, setCompanyIdState] = useState(() => {
-    return localStorage.getItem('company-id') || null;
+    const savedCompany = localStorage.getItem('company-id');
+    if (savedCompany) {
+      axios.defaults.headers.common['X-Company-ID'] = savedCompany;
+    }
+    return savedCompany || null;
   });
 
   const [branchId, setBranchIdState] = useState(() => {
-    return localStorage.getItem('branch-id') || null;
+    const savedBranch = localStorage.getItem('branch-id');
+    if (savedBranch) {
+      axios.defaults.headers.common['X-Branch-ID'] = savedBranch;
+    }
+    return savedBranch || null;
   });
 
   // 3. Gestion de l'authentification
@@ -40,7 +48,11 @@ export const AppProvider = ({ children }) => {
   });
 
   const [token, setToken] = useState(() => {
-    return localStorage.getItem('token') || null;
+    const savedToken = localStorage.getItem('token');
+    if (savedToken) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${savedToken}`;
+    }
+    return savedToken || null;
   });
 
   // Appliquer les attributs de thème sur document.documentElement
