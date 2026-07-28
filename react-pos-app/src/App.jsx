@@ -152,7 +152,7 @@ function MainContent() {
           )}
         </div>
 
-        <div className="navbar-links" style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'nowrap', overflowX: 'auto', whiteSpace: 'nowrap', maxWidth: '52vw', padding: '2px 0', flexShrink: 1 }}>
+        <div className="navbar-links" style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'nowrap', overflowX: 'auto', whiteSpace: 'nowrap', maxWidth: '45vw', padding: '2px 0', flexShrink: 1 }}>
           {navLinks.map(({ tab, icon, label }) => (
             <button 
               key={tab} 
@@ -165,7 +165,7 @@ function MainContent() {
           ))}
         </div>
 
-        <div className="navbar-right-controls" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+        <div className="navbar-right-controls" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0, minWidth: '80px' }}>
           <NotificationBell onNavigate={navigate} />
           <ThemeSelector />
         </div>
@@ -415,7 +415,6 @@ function MainContent() {
 function App() {
   return (
     <AppProvider>
-      <ThemeSelector />
       <MainContent />
     </AppProvider>
   )
