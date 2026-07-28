@@ -20,6 +20,8 @@ import { Settings } from './pages/Settings'
 import { Branches } from './pages/Branches'
 import { UsersManagement } from './pages/UsersManagement'
 import { UserGuide } from './pages/UserGuide'
+import { Notifications } from './pages/Notifications'
+import { NotificationBell } from './components/NotificationBell'
 import { AnimatedBubbles } from './components/AnimatedBubbles'
 import logo from './assets/logo.jpg'
 import { BranchSelectionPage } from './pages/BranchSelectionPage'
@@ -85,6 +87,7 @@ function MainContent() {
       case 'branches':      return <Branches />
       case 'users-mgmt':    return <UsersManagement />
       case 'userguide':     return <UserGuide />
+      case 'notifications': return <Notifications setActiveTab={setActiveTab} />
       default:              return <Home setActiveTab={setActiveTab} />
     }
   }
@@ -106,6 +109,7 @@ function MainContent() {
     { tab: 'users-mgmt',    icon: 'fa-users-gear',      label: 'Personnel',     show: !!(user && !isSuperAdmin && (role === 'admin' || role === 'gerant')) },
     { tab: 'audit',         icon: 'fa-shield-halved',   label: 'Audit',         show: !!(user && (isSuperAdmin || isAdminOrGerant)) },
     { tab: 'reports',       icon: 'fa-chart-line',      label: 'Rapports',      show: !!(user && isAdminOrGerant) },
+    { tab: 'notifications', icon: 'fa-bell',            label: 'Notifications', show: !!user },
     { tab: 'backoffice',    icon: 'fa-gears',           label: 'Back-office',   show: !!(user && isSuperAdmin) },
     { tab: 'settings',      icon: 'fa-sliders',         label: 'Paramètres',    show: !!(user && isAdminOrGerant) },
     { tab: 'userguide',     icon: 'fa-book-open',       label: 'Aide & Guide',  show: !!user },
@@ -147,12 +151,18 @@ function MainContent() {
             )
           )}
         </div>
+
         <div className="navbar-links">
           {navLinks.map(({ tab, icon, label }) => (
             <button key={tab} className={`navbar-tab-btn ${activeTab === tab ? 'active' : ''}`} onClick={() => navigate(tab)}>
               <i className={`fa-solid ${icon} me-1`}></i> {label}
             </button>
           ))}
+        </div>
+
+        <div className="navbar-right-controls" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <NotificationBell onNavigate={navigate} />
+          <ThemeSelector />
         </div>
       </header>
 
@@ -193,7 +203,10 @@ function MainContent() {
         )}
       </nav>
 
-      {renderContent()}
+      {/* ── CONTENU PRINCIPAL SANS CHEVAUCHEMENT ── */}
+      <main className="app-main-content">
+        {renderContent()}
+      </main>
       <AnimatedBubbles />
 
       <style>{`

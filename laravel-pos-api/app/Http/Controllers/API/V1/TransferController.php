@@ -71,6 +71,38 @@ class TransferController extends Controller
                 ]);
             }
 
+            $transfer->load(['fromBranch', 'toBranch']);
+
+            // Notification pour la boutique source (Info)
+            \App\Services\NotificationService::send(
+                $companyId,
+                $transfer->from_branch_id,
+                null,
+                'transfer_created',
+                'Demande de transfert enregistrée',
+                "La demande de transfert {$transfer->transfer_number} vers {$transfer->toBranch->name} a été créée.",
+                'info',
+                'products.update',
+                'transfers',
+                ['transfer_id' => $transfer->id, 'transfer_number' => $transfer->transfer_number],
+                $request->user()->id
+            );
+
+            // Notification pour la boutique destination (Important)
+            \App\Services\NotificationService::send(
+                $companyId,
+                $transfer->to_branch_id,
+                null,
+                'transfer_incoming',
+                'Nouveau transfert entrant',
+                "Un nouveau transfert {$transfer->transfer_number} provenant de {$transfer->fromBranch->name} a été créé.",
+                'important',
+                'products.update',
+                'transfers',
+                ['transfer_id' => $transfer->id, 'transfer_number' => $transfer->transfer_number],
+                $request->user()->id
+            );
+
             return $transfer;
         });
 
@@ -172,7 +204,12 @@ class TransferController extends Controller
                     null,
                     'transfer_shipped',
                     'Transfert de stock expédié',
-                    "Un transfert de stock {$transfer->transfer_number} a été expédié vers votre boutique."
+                    "Un transfert de stock {$transfer->transfer_number} a été expédié vers votre boutique.",
+                    'important',
+                    'products.update',
+                    'transfers',
+                    ['transfer_id' => $transfer->id, 'transfer_number' => $transfer->transfer_number],
+                    $request->user()->id
                 );
             });
         } catch (\Exception $e) {
@@ -212,7 +249,7 @@ class TransferController extends Controller
 
         $companyId = app(\App\Services\TenantManager::class)->getCompanyId();
 
-        DB::transaction(function () use ($transfer, $companyId) {
+        DB::transaction(function () use ($transfer, $companyId, $request) {
             foreach ($transfer->details as $detail) {
                 $branchProduct = BranchProduct::firstOrCreate(
                     [
@@ -238,13 +275,19 @@ class TransferController extends Controller
 
             $transfer->update(['status' => 'received']);
 
+            // Notification pour la boutique d'origine
             \App\Services\NotificationService::send(
                 $companyId,
                 $transfer->from_branch_id,
                 null,
                 'transfer_received',
                 'Transfert de stock réceptionné',
-                "Le transfert {$transfer->transfer_number} a été réceptionné par la boutique de destination."
+                "Le transfert {$transfer->transfer_number} a été réceptionné par la boutique de destination.",
+                'info',
+                'products.update',
+                'transfers',
+                ['transfer_id' => $transfer->id, 'transfer_number' => $transfer->transfer_number],
+                $request->user()->id
             );
         });
 

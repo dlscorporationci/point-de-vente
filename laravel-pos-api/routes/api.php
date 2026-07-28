@@ -36,9 +36,10 @@ Route::prefix('v1')->middleware('tenant')->group(function () {
         // -----------------------------------------------------------------------
         // Notifications Système
         // -----------------------------------------------------------------------
-        Route::get('/notifications',             [\App\Http\Controllers\API\V1\NotificationController::class, 'index']);
-        Route::post('/notifications/{id}/read',  [\App\Http\Controllers\API\V1\NotificationController::class, 'markAsRead']);
-        Route::post('/notifications/read-all',   [\App\Http\Controllers\API\V1\NotificationController::class, 'markAllAsRead']);
+        Route::get('/notifications',              [\App\Http\Controllers\API\V1\NotificationController::class, 'index']);
+        Route::get('/notifications/unread-count', [\App\Http\Controllers\API\V1\NotificationController::class, 'unreadCount']);
+        Route::post('/notifications/{id}/read',   [\App\Http\Controllers\API\V1\NotificationController::class, 'markAsRead']);
+        Route::post('/notifications/read-all',    [\App\Http\Controllers\API\V1\NotificationController::class, 'markAllAsRead']);
 
         // -----------------------------------------------------------------------
         // Caisses & Terminaux Physiques

@@ -13,7 +13,11 @@ class Notification extends Model
         'company_id',
         'branch_id',
         'user_id',
+        'actor_id',
         'type',
+        'priority',
+        'permission_required',
+        'target_route',
         'title',
         'message',
         'data',
@@ -38,5 +42,10 @@ class Notification extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function actor()
+    {
+        return $this->belongsTo(User::class, 'actor_id');
     }
 }

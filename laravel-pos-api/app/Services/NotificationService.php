@@ -7,7 +7,7 @@ use App\Models\Notification;
 class NotificationService
 {
     /**
-     * Envoyer/enregistrer une notification système.
+     * Envoyer/enregistrer une notification système ciblée avec sécurité par entreprise, boutique, rôle et permission.
      */
     public static function send(
         int $companyId,
@@ -16,16 +16,24 @@ class NotificationService
         string $type,
         string $title,
         string $message,
-        ?array $data = null
+        string $priority = 'info',
+        ?string $permissionRequired = null,
+        ?string $targetRoute = null,
+        ?array $data = null,
+        ?int $actorId = null
     ): Notification {
         return Notification::create([
-            'company_id' => $companyId,
-            'branch_id' => $branchId,
-            'user_id' => $userId,
-            'type' => $type,
-            'title' => $title,
-            'message' => $message,
-            'data' => $data,
+            'company_id'          => $companyId,
+            'branch_id'           => $branchId,
+            'user_id'             => $userId,
+            'actor_id'            => $actorId,
+            'type'                => $type,
+            'priority'            => in_array($priority, ['info', 'important', 'warning', 'critical']) ? $priority : 'info',
+            'permission_required' => $permissionRequired,
+            'target_route'        => $targetRoute,
+            'title'               => $title,
+            'message'             => $message,
+            'data'                => $data,
         ]);
     }
 }

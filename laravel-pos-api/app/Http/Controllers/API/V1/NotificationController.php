@@ -9,61 +9,184 @@ use Illuminate\Http\Request;
 class NotificationController extends Controller
 {
     /**
-     * Liste des notifications de l'entreprise / boutique active.
+     * Obtenir la liste sécurisée des notifications filtrées par entreprise, boutiques autorisées, rôle et permissions.
      */
     public function index(Request $request)
     {
-        $tenantManager = app(\App\Services\TenantManager::class);
-        $companyId = $tenantManager->getCompanyId();
-        $branchId  = $tenantManager->getBranchId();
-        $userId    = $request->user()->id;
+        $user = $request->user();
+        $userRole = is_object($user->role) ? $user->role->slug : $user->role;
+        $isSuperAdmin = ($userRole === 'super-admin') || ($user->email === 'superadmin@dls.com');
 
-        $query = Notification::where('company_id', $companyId)
-            ->where(function($q) use ($branchId, $userId) {
-                $q->whereNull('branch_id')->orWhere('branch_id', $branchId);
-            })
-            ->where(function($q) use ($userId) {
-                $q->whereNull('user_id')->orWhere('user_id', $userId);
-            });
+        // Récupérer toutes les boutiques accessibles par l'utilisateur
+        $accessibleBranchIds = $user->assignedBranches()->pluck('id')->toArray();
+        if ($user->branch_id && !in_array($user->branch_id, $accessibleBranchIds)) {
+            $accessibleBranchIds[] = $user->branch_id;
+        }
 
-        if ($request->input('unread_only') === 'true') {
+        $query = Notification::withoutGlobalScopes()
+            ->with(['branch:id,name', 'actor:id,name,email']);
+
+        // 1. Filtrage par entreprise
+        if (!$isSuperAdmin) {
+            $query->where('company_id', $user->company_id);
+        }
+
+        // 2. Filtrage par boutique & utilisateur destinataire
+        $query->where(function ($q) use ($user, $accessibleBranchIds, $isSuperAdmin) {
+            $q->where('user_id', $user->id);
+
+            if ($isSuperAdmin) {
+                $q->orWhereNull('user_id');
+            } else {
+                $q->orWhere(function ($sub) use ($accessibleBranchIds) {
+                    $sub->whereNull('user_id')
+                        ->where(function ($b) use ($accessibleBranchIds) {
+                            $b->whereNull('branch_id')
+                              ->orWhereIn('branch_id', $accessibleBranchIds);
+                        });
+                });
+            }
+        });
+
+        // 3. Filtrage par statut de lecture (optionnel)
+        if ($request->input('unread_only') === 'true' || $request->boolean('unread_only')) {
             $query->whereNull('read_at');
         }
 
-        $notifications = $query->orderByDesc('created_at')->limit(50)->get();
+        // 4. Filtrage par priorité (optionnel)
+        if ($request->filled('priority')) {
+            $query->where('priority', $request->priority);
+        }
+
+        // 5. Filtrage par type (optionnel)
+        if ($request->filled('type')) {
+            $query->where('type', $request->type);
+        }
+
+        $allNotifications = $query->orderByDesc('created_at')->get();
+
+        // 6. Filtrage dynamique par permission utilisateur côté backend
+        $filteredNotifications = $allNotifications->filter(function ($n) use ($user, $isSuperAdmin) {
+            if ($isSuperAdmin) return true;
+            if ($n->permission_required) {
+                return $user->hasPermission($n->permission_required);
+            }
+            return true;
+        })->values();
+
+        $unreadCount = $filteredNotifications->whereNull('read_at')->count();
+
+        // Limite pour dropdown vs pagination complète
+        $limit = $request->input('limit') ? intval($request->limit) : 50;
+        $paginated = $filteredNotifications->take($limit);
 
         return response()->json([
-            'notifications' => $notifications,
-            'unread_count'  => $notifications->whereNull('read_at')->count(),
+            'notifications' => $paginated,
+            'unread_count'  => $unreadCount,
+            'total_count'   => $filteredNotifications->count(),
         ]);
     }
 
     /**
-     * Marquer une notification comme lue.
+     * Obtenir le nombre de notifications non lues (Endpoint léger pour le polling de la cloche).
      */
-    public function markAsRead(Request $request, string $id)
+    public function unreadCount(Request $request)
     {
-        $notification = Notification::findOrFail($id);
-        $notification->update(['read_at' => now()]);
+        $user = $request->user();
+        $userRole = is_object($user->role) ? $user->role->slug : $user->role;
+        $isSuperAdmin = ($userRole === 'super-admin') || ($user->email === 'superadmin@dls.com');
 
-        return response()->json(['message' => 'Notification marquée comme lue.']);
+        $accessibleBranchIds = $user->assignedBranches()->pluck('id')->toArray();
+        if ($user->branch_id && !in_array($user->branch_id, $accessibleBranchIds)) {
+            $accessibleBranchIds[] = $user->branch_id;
+        }
+
+        $query = Notification::withoutGlobalScopes()->whereNull('read_at');
+
+        if (!$isSuperAdmin) {
+            $query->where('company_id', $user->company_id);
+        }
+
+        $query->where(function ($q) use ($user, $accessibleBranchIds, $isSuperAdmin) {
+            $q->where('user_id', $user->id);
+            if ($isSuperAdmin) {
+                $q->orWhereNull('user_id');
+            } else {
+                $q->orWhere(function ($sub) use ($accessibleBranchIds) {
+                    $sub->whereNull('user_id')
+                        ->where(function ($b) use ($accessibleBranchIds) {
+                            $b->whereNull('branch_id')
+                              ->orWhereIn('branch_id', $accessibleBranchIds);
+                        });
+                });
+            }
+        });
+
+        $unreadList = $query->get()->filter(function ($n) use ($user, $isSuperAdmin) {
+            if ($isSuperAdmin) return true;
+            if ($n->permission_required) {
+                return $user->hasPermission($n->permission_required);
+            }
+            return true;
+        });
+
+        return response()->json([
+            'unread_count' => $unreadList->count(),
+            'has_critical' => $unreadList->contains('priority', 'critical'),
+            'has_warning'  => $unreadList->contains('priority', 'warning'),
+        ]);
     }
 
     /**
-     * Marquer toutes les notifications comme lues.
+     * Marquer une notification spécifique comme lue.
+     */
+    public function markAsRead(Request $request, string $id)
+    {
+        $notification = Notification::withoutGlobalScopes()->findOrFail($id);
+        $notification->update(['read_at' => now()]);
+
+        return response()->json([
+            'message' => 'Notification marquée comme lue.',
+            'id' => $notification->id
+        ]);
+    }
+
+    /**
+     * Marquer TOUTES les notifications accessibles à l'utilisateur comme lues.
      */
     public function markAllAsRead(Request $request)
     {
-        $tenantManager = app(\App\Services\TenantManager::class);
-        $companyId = $tenantManager->getCompanyId();
-        $branchId  = $tenantManager->getBranchId();
+        $user = $request->user();
+        $userRole = is_object($user->role) ? $user->role->slug : $user->role;
+        $isSuperAdmin = ($userRole === 'super-admin') || ($user->email === 'superadmin@dls.com');
 
-        Notification::where('company_id', $companyId)
-            ->where(function($q) use ($branchId) {
-                $q->whereNull('branch_id')->orWhere('branch_id', $branchId);
-            })
-            ->whereNull('read_at')
-            ->update(['read_at' => now()]);
+        $accessibleBranchIds = $user->assignedBranches()->pluck('id')->toArray();
+        if ($user->branch_id && !in_array($user->branch_id, $accessibleBranchIds)) {
+            $accessibleBranchIds[] = $user->branch_id;
+        }
+
+        $query = Notification::withoutGlobalScopes()->whereNull('read_at');
+
+        if (!$isSuperAdmin) {
+            $query->where('company_id', $user->company_id);
+        }
+
+        $query->where(function ($q) use ($user, $accessibleBranchIds, $isSuperAdmin) {
+            $q->where('user_id', $user->id);
+            if ($isSuperAdmin) {
+                $q->orWhereNull('user_id');
+            } else {
+                $q->orWhere(function ($sub) use ($accessibleBranchIds) {
+                    $sub->whereNull('user_id')
+                        ->where(function ($b) use ($accessibleBranchIds) {
+                            $b->whereNull('branch_id')
+                              ->orWhereIn('branch_id', $accessibleBranchIds);
+                        });
+                });
+            }
+        });
+
+        $query->update(['read_at' => now()]);
 
         return response()->json(['message' => 'Toutes les notifications ont été marquées comme lues.']);
     }
