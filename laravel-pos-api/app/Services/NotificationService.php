@@ -94,11 +94,6 @@ class NotificationService
             ->get();
 
         foreach ($users as $user) {
-            // Ne pas notifier l'auteur de l'action
-            if ($actorId && $user->id === $actorId) {
-                continue;
-            }
-
             // Ne pas notifier les utilisateurs explicitement exclus
             if (in_array($user->id, $excludeUserIds)) {
                 continue;

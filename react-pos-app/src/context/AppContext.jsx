@@ -98,6 +98,24 @@ export const AppProvider = ({ children }) => {
     }
   }, [token]);
 
+  // Intercepteur Axios global : Rafraîchir instantanément les notifications après toute action (POST, PUT, DELETE)
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      (response) => {
+        const method = response.config?.method?.toLowerCase();
+        const url = response.config?.url || '';
+        if (['post', 'put', 'patch', 'delete'].includes(method) && !url.includes('/notifications')) {
+          setTimeout(() => {
+            window.dispatchEvent(new Event('notification-refresh'));
+          }, 300);
+        }
+        return response;
+      },
+      (error) => Promise.reject(error)
+    );
+    return () => axios.interceptors.response.eject(interceptor);
+  }, []);
+
   // Synchroniser l'utilisateur dans le stockage local
   useEffect(() => {
     if (user) {
