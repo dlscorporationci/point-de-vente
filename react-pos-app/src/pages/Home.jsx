@@ -122,9 +122,14 @@ export const Home = ({ setActiveTab }) => {
 
           <div className="hero-actions">
             {user ? (
-              <button onClick={() => setActiveTab('pos')} className="btn-hero-primary">
-                <i className="fa-solid fa-cash-register me-2"></i> Ouvrir la Caisse
-              </button>
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                <button onClick={() => setActiveTab('dashboard')} className="btn-hero-primary">
+                  <i className="fa-solid fa-gauge-high me-2"></i> Accéder au Dashboard
+                </button>
+                <button onClick={() => setActiveTab('pos')} className="btn-hero-secondary">
+                  <i className="fa-solid fa-cash-register me-2"></i> Caisse Tactile
+                </button>
+              </div>
             ) : (
               <>
                 <button onClick={() => setActiveTab('auth')} className="btn-hero-primary">

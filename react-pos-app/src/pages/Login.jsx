@@ -233,10 +233,18 @@ export const Login = ({ setActiveTab }) => {
         {/* Si l'utilisateur est déjà connecté */}
         {user ? (
           <div className="profile-dashboard">
-            <div className="success-banner">
+            <div className="success-banner mb-3">
               <i className="fa-solid fa-circle-check me-1"></i> {successMsg || 'Session Active'}
             </div>
             
+            <button 
+              onClick={() => setActiveTab && setActiveTab('dashboard')} 
+              className="btn btn-primary w-100 mb-3" 
+              style={{ fontWeight: 800, padding: '12px', fontSize: '15px' }}
+            >
+              <i className="fa-solid fa-gauge-high me-2"></i> Accéder au Dashboard de travail
+            </button>
+
             <div className="user-details-card">
               <div className="avatar-large">{user.name.charAt(0)}</div>
               <h3 className="user-name">{user.name}</h3>
