@@ -213,11 +213,38 @@ function MainContent() {
             )
           )}
 
-          {/* ── ANIMATION FLOTTANTE DU PANIER (VA ET VIENT AU MILIEU) ── */}
-          <div className="navbar-cart-track d-none d-xl-flex" onClick={() => navigate('pos')} style={{ cursor: 'pointer' }} title="Caisse Tactile en Direct — Cliquer pour ouvrir le POS">
-            <div className="navbar-cart-animated">
+          {/* ── TRACK CENTRAL COMPLET (RECHERCHE + PANIER GLISSANT 100% LARGEUR + BADGES) ── */}
+          <div className="navbar-cart-track d-none d-lg-flex" title="Barre d'action globale & Caisse Tactile ApexPOS">
+            {/* Recherche Rapide à gauche du track */}
+            <div className="d-flex align-items-center gap-2" style={{ zIndex: 2 }}>
+              <i className="fa-solid fa-magnifying-glass text-primary" style={{ fontSize: '13px' }}></i>
+              <input 
+                type="text" 
+                placeholder="Rechercher produit, vente, client..." 
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  outline: 'none',
+                  fontSize: '12px',
+                  color: 'var(--text-main)',
+                  width: '190px',
+                  fontWeight: 500
+                }}
+                onFocus={() => navigate('catalog')}
+              />
+            </div>
+
+            {/* Le Panier animé qui va et vient sur toute la largeur intermédiaire */}
+            <div className="navbar-cart-animated" onClick={() => navigate('pos')} style={{ cursor: 'pointer' }}>
               <i className="fa-solid fa-cart-shopping navbar-cart-icon"></i>
               <span className="navbar-cart-text">ApexPOS en Direct 🛒</span>
+            </div>
+
+            {/* Badges de statut à droite du track */}
+            <div className="d-none d-xl-flex align-items-center gap-2 ms-auto" style={{ zIndex: 2 }}>
+              <span className="badge bg-success-subtle text-success" style={{ fontSize: '10px', fontWeight: 700, padding: '4px 8px', borderRadius: '12px' }}>
+                <i className="fa-solid fa-signal me-1"></i> Système Synchro
+              </span>
             </div>
           </div>
         </div>
