@@ -153,15 +153,25 @@ function MainContent() {
     return () => clearInterval(timer)
   }, [])
 
+  const isAuthenticated = !!(user && token);
+
   return (
     <>
-      {/* ── NAVBAR ── */}
+      {/* ── NAVBAR (EN-TÊTE PRINCIPAL DE L'APPLICATION) ── */}
       <header className="app-main-navbar" style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '64px', minHeight: '64px', maxHeight: '64px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', flexWrap: 'nowrap', overflow: 'visible', zIndex: 1000 }}>
+        
+        {/* ── SECTEUR GAUCHE : Menu Burger, Bouton Retour, Logo/Titre, Sélecteur de Boutique ── */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
-          <button className="burger-btn" onClick={() => setMenuOpen(true)} aria-label="Ouvrir le menu">
-            <span></span><span></span><span></span>
-          </button>
-          {tabHistory.length > 0 && (
+          
+          {/* CONDITION 1 : Menu Burger (Visible uniquement si utilisateur CONNECTÉ sur mobile/tablette) */}
+          {isAuthenticated && (
+            <button className="burger-btn" onClick={() => setMenuOpen(true)} aria-label="Ouvrir le menu">
+              <span></span><span></span><span></span>
+            </button>
+          )}
+
+          {/* CONDITION 2 : Bouton Retour (Visible uniquement si utilisateur CONNECTÉ et qu'un historique de navigation existe) */}
+          {isAuthenticated && tabHistory.length > 0 && (
             <button 
               className="navbar-goback-btn" 
               onClick={goBack} 
@@ -181,11 +191,12 @@ function MainContent() {
               }}
             >
               <i className="fa-solid fa-arrow-left text-primary"></i>
-              <span>Retour</span>
+              <span className="d-none d-sm-inline">Retour</span>
             </button>
           )}
 
-          <div className="navbar-logo" onClick={() => navigate('home')} style={{ cursor: 'pointer' }}>
+          {/* CONDITION 3 : Logo & Titre ApexPOS (Toujours visible : utilisateur connecté ou déconnecté) */}
+          <div className="navbar-logo" onClick={() => navigate(isAuthenticated ? 'home' : 'auth')} style={{ cursor: 'pointer' }}>
             <img src={logo} alt="Logo" className="navbar-logo-img" />
             <span>
               <span className="logo-text-apex">Apex</span>
@@ -193,11 +204,11 @@ function MainContent() {
             </span>
           </div>
 
-          {/* BADGE DE BOUTIQUE ACTIVE / SÉLECTEUR */}
-          {user && !isSuperAdmin && (
+          {/* CONDITION 4 : Sélecteur / Badge de boutique (Visible uniquement si utilisateur CONNECTÉ et NON super-admin) */}
+          {isAuthenticated && user && !isSuperAdmin && (
             isAdmin ? (
               <button 
-                className="navbar-branch-pill-btn" 
+                className="navbar-branch-pill-btn d-none d-sm-flex" 
                 onClick={() => navigate('select-branch')}
                 title="Changer d'espace de travail / boutique active"
               >
@@ -206,16 +217,19 @@ function MainContent() {
                 <i className="fa-solid fa-chevron-down ms-1 text-muted" style={{ fontSize: '10px' }}></i>
               </button>
             ) : (
-              <div className="navbar-branch-badge-readonly">
+              <div className="navbar-branch-badge-readonly d-none d-sm-flex">
                 <i className="fa-solid fa-shop text-success me-1"></i>
                 <span>{activeBranch?.name || user?.branch?.name || 'Ma Boutique'}</span>
               </div>
             )
           )}
+        </div>
 
-          {/* ── ZONE CENTRALE ENRICHIE ET ESPACÉE (SANS AUCUN CHEVAUCHEMENT) ── */}
+        {/* ── SECTEUR CENTRE : Barre de Recherche & Badge Panier Animé "ApexPOS en Direct" ── */}
+        {/* CONDITION 5 : Zone centrale (Visible uniquement si utilisateur CONNECTÉ sur écrans de taille moyenne/large lg+) */}
+        {isAuthenticated && (
           <div className="navbar-center-area d-none d-lg-flex" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', margin: '0 15px' }}>
-            {/* 1. Recherche Rapide */}
+            {/* Barre de Recherche Rapide Produit/Client */}
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', background: 'var(--bg-input, rgba(255,255,255,0.08))', border: '1px solid var(--border-color)', borderRadius: '20px', padding: '4px 12px', minWidth: '180px', flexShrink: 1 }}>
               <i className="fa-solid fa-magnifying-glass text-primary me-2" style={{ fontSize: '12px' }}></i>
               <input 
@@ -226,7 +240,7 @@ function MainContent() {
               />
             </div>
 
-            {/* 2. Badge Panier Animé Propre (Sans chevauchement !) */}
+            {/* Badge Panier Animé "ApexPOS en Direct 🛒" */}
             <div 
               onClick={() => navigate('pos')} 
               style={{ 
@@ -246,141 +260,157 @@ function MainContent() {
               <i className="fa-solid fa-cart-shopping text-primary" style={{ animation: 'cartBounce 1.8s ease-in-out infinite', fontSize: '13px' }}></i>
               <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-main)' }}>ApexPOS en Direct 🛒</span>
             </div>
-
-            {/* 3. Cloche de Notifications (remplace Système Synchro) */}
-            <div style={{ flexShrink: 0 }}>
-              <NotificationBell onNavigate={navigate} />
-            </div>
           </div>
-        </div>
+        )}
 
-        <div className="navbar-links" style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'nowrap', overflowX: 'auto', whiteSpace: 'nowrap', maxWidth: '45vw', padding: '2px 0', flexShrink: 1 }}>
-          {navLinks.map(({ tab, icon, label }) => (
-            <button 
-              key={tab} 
-              className={`navbar-tab-btn ${activeTab === tab ? 'active' : ''}`} 
-              style={{ whiteSpace: 'nowrap', flexShrink: 0, fontSize: '12px', padding: '5px 9px', display: 'inline-flex', alignItems: 'center' }}
-              onClick={() => navigate(tab)}
-            >
-              <i className={`fa-solid ${icon} me-1`}></i> {label}
-            </button>
-          ))}
-        </div>
+        {/* ── SECTEUR NAVIGATION DESKTOP : Onglets de Navigation Principale ── */}
+        {/* CONDITION 6 : Liens de navigation (Visibles uniquement si utilisateur CONNECTÉ sur très grands écrans) */}
+        {isAuthenticated && (
+          <div className="navbar-links d-none d-xl-flex" style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'nowrap', overflowX: 'auto', whiteSpace: 'nowrap', maxWidth: '40vw', padding: '2px 0', flexShrink: 1 }}>
+            {navLinks.map(({ tab, icon, label }) => (
+              <button 
+                key={tab} 
+                className={`navbar-tab-btn ${activeTab === tab ? 'active' : ''}`} 
+                style={{ whiteSpace: 'nowrap', flexShrink: 0, fontSize: '12px', padding: '5px 9px', display: 'inline-flex', alignItems: 'center' }}
+                onClick={() => navigate(tab)}
+              >
+                <i className={`fa-solid ${icon} me-1`}></i> {label}
+              </button>
+            ))}
+          </div>
+        )}
 
+        {/* ── SECTEUR DROITE : Horloge, Raccourci Caisse, Cloche Notifications & Profil / Connexion ── */}
         <div className="navbar-right-controls" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
-          {/* HORLOGE EN DIRECT & DATE */}
-          <div className="navbar-clock-widget d-none d-lg-flex align-items-center me-1" style={{ fontSize: '12px', color: 'var(--text-muted, #6b7280)', gap: '5px', fontWeight: 600 }}>
-            <i className="fa-solid fa-clock text-primary"></i>
-            <span>{currentTime}</span>
-          </div>
-
-          {/* RACCOURCI POS CASSE RAPIDE */}
-          {user && !isSuperAdmin && (
-            <button 
-              className="btn btn-primary btn-sm d-none d-md-inline-flex align-items-center" 
-              onClick={() => navigate('pos')}
-              style={{ fontWeight: 700, padding: '5px 12px', fontSize: '12px', borderRadius: '8px', whiteSpace: 'nowrap' }}
-            >
-              <i className="fa-solid fa-cash-register me-1"></i> Caisse POS
-            </button>
-          )}
-
-          {/* BADGE / BOUTON PROFIL ET DÉCONNEXION */}
-          {user && (
-            <button 
-              className="navbar-user-profile-btn" 
-              onClick={() => navigate('auth')}
-              title={`Connecté en tant que ${user.name} (${user.email})`}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '7px',
-                padding: '4px 10px',
-                borderRadius: '20px',
-                border: '1px solid var(--border-color)',
-                background: 'var(--bg-input, rgba(255,255,255,0.08))',
-                color: 'var(--text-main)',
-                cursor: 'pointer',
-                fontSize: '12px'
-              }}
-            >
-              <div style={{
-                width: '24px',
-                height: '24px',
-                borderRadius: '50%',
-                background: 'var(--primary-color, #2563eb)',
-                color: '#fff',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 800,
-                fontSize: '11px'
-              }}>
-                {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+          {isAuthenticated ? (
+            /* CONTRÔLES POUR UTILISATEUR CONNECTÉ */
+            <>
+              {/* Horloge & Date en Direct */}
+              <div className="navbar-clock-widget d-none d-lg-flex align-items-center me-1" style={{ fontSize: '12px', color: 'var(--text-muted, #6b7280)', gap: '5px', fontWeight: 600 }}>
+                <i className="fa-solid fa-clock text-primary"></i>
+                <span>{currentTime}</span>
               </div>
-              <span className="d-none d-sm-inline" style={{ fontWeight: 600, maxWidth: '110px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {user.name}
-              </span>
+
+              {/* Raccourci Caisse POS (Masqué sur super-admin) */}
+              {!isSuperAdmin && (
+                <button 
+                  className="btn btn-primary btn-sm d-none d-md-inline-flex align-items-center" 
+                  onClick={() => navigate('pos')}
+                  style={{ fontWeight: 700, padding: '5px 12px', fontSize: '12px', borderRadius: '8px', whiteSpace: 'nowrap' }}
+                >
+                  <i className="fa-solid fa-cash-register me-1"></i> Caisse POS
+                </button>
+              )}
+
+              {/* Cloche de notifications système (Emplacement unifié unique) */}
+              <NotificationBell onNavigate={navigate} />
+
+              {/* Badge Profil Utilisateur & Accès Compte */}
+              <button 
+                className="navbar-user-profile-btn" 
+                onClick={() => navigate('auth')}
+                title={`Connecté en tant que ${user?.name} (${user?.email})`}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '7px',
+                  padding: '4px 10px',
+                  borderRadius: '20px',
+                  border: '1px solid var(--border-color)',
+                  background: 'var(--bg-input, rgba(255,255,255,0.08))',
+                  color: 'var(--text-main)',
+                  cursor: 'pointer',
+                  fontSize: '12px'
+                }}
+              >
+                <div style={{
+                  width: '24px',
+                  height: '24px',
+                  borderRadius: '50%',
+                  background: 'var(--primary-color, #2563eb)',
+                  color: '#fff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 800,
+                  fontSize: '11px'
+                }}>
+                  {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                </div>
+                <span className="d-none d-sm-inline" style={{ fontWeight: 600, maxWidth: '110px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {user?.name}
+                </span>
+              </button>
+            </>
+          ) : (
+            /* BOUTON SE CONNECTER (Visible uniquement si utilisateur DÉCONNECTÉ) */
+            <button 
+              className="btn btn-primary btn-sm align-items-center" 
+              onClick={() => navigate('auth')}
+              style={{ fontWeight: 700, padding: '6px 14px', fontSize: '12px', borderRadius: '8px', display: 'inline-flex', gap: '6px', whiteSpace: 'nowrap' }}
+            >
+              <i className="fa-solid fa-right-to-bracket"></i>
+              <span>Se connecter</span>
             </button>
           )}
-
-          <div className="d-lg-none">
-            <NotificationBell onNavigate={navigate} />
-          </div>
         </div>
       </header>
 
-      {/* ── OVERLAY ── */}
-      <div className={`drawer-overlay ${menuOpen ? 'open' : ''}`} onClick={() => setMenuOpen(false)} />
+      {/* ── OVERLAY DU MENU DRAWER (Uniquement si utilisateur CONNECTÉ) ── */}
+      {isAuthenticated && (
+        <div className={`drawer-overlay ${menuOpen ? 'open' : ''}`} onClick={() => setMenuOpen(false)} />
+      )}
 
-      {/* ── DRAWER GAUCHE ── */}
-      <nav ref={drawerRef} className={`side-drawer ${menuOpen ? 'open' : ''}`}>
-        <div className="drawer-header">
-          <div className="drawer-logo">
-            <img src={logo} alt="Logo" className="navbar-logo-img" />
-            <span><span className="logo-text-apex">Apex</span><span className="logo-text-pos">POS</span></span>
+      {/* ── MENU DRAWER LATÉRAL (Uniquement si utilisateur CONNECTÉ) ── */}
+      {isAuthenticated && (
+        <nav ref={drawerRef} className={`side-drawer ${menuOpen ? 'open' : ''}`}>
+          <div className="drawer-header">
+            <div className="drawer-logo">
+              <img src={logo} alt="Logo" className="navbar-logo-img" />
+              <span><span className="logo-text-apex">Apex</span><span className="logo-text-pos">POS</span></span>
+            </div>
+            <button className="drawer-close-btn" onClick={() => setMenuOpen(false)} aria-label="Fermer">
+              <i className="fa-solid fa-xmark"></i>
+            </button>
           </div>
-          <button className="drawer-close-btn" onClick={() => setMenuOpen(false)} aria-label="Fermer">
-            <i className="fa-solid fa-xmark"></i>
-          </button>
-        </div>
 
-        <div className="drawer-links">
-          {tabHistory.length > 0 && (
-            <button 
-              className="drawer-link-btn" 
-              onClick={goBack} 
-              style={{ 
-                borderBottom: '1px dashed var(--border-color)', 
-                marginBottom: '8px', 
-                color: 'var(--primary-color)', 
-                fontWeight: 700 
-              }}
-            >
-              <i className="fa-solid fa-arrow-left"></i>
-              <span>Retour (Page précédente)</span>
-            </button>
-          )}
-          {navLinks.map(({ tab, icon, label }) => (
-            <button key={tab} className={`drawer-link-btn ${activeTab === tab ? 'active' : ''}`} onClick={() => navigate(tab)}>
-              <i className={`fa-solid ${icon}`}></i>
-              <span>{label}</span>
-            </button>
-          ))}
-        </div>
+          <div className="drawer-links">
+            {tabHistory.length > 0 && (
+              <button 
+                className="drawer-link-btn" 
+                onClick={goBack} 
+                style={{ 
+                  borderBottom: '1px dashed var(--border-color)', 
+                  marginBottom: '8px', 
+                  color: 'var(--primary-color)', 
+                  fontWeight: 700 
+                }}
+              >
+                <i className="fa-solid fa-arrow-left"></i>
+                <span>Retour (Page précédente)</span>
+              </button>
+            )}
+            {navLinks.map(({ tab, icon, label }) => (
+              <button key={tab} className={`drawer-link-btn ${activeTab === tab ? 'active' : ''}`} onClick={() => navigate(tab)}>
+                <i className={`fa-solid ${icon}`}></i>
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>
 
-        {user && (
-          <div className="drawer-footer">
-            <div className="drawer-user-info">
-              <i className="fa-solid fa-circle-user" style={{ fontSize: '28px', color: 'var(--color-primary)' }}></i>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: '14px' }}>{user.name}</div>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{user.email}</div>
+          {user && (
+            <div className="drawer-footer">
+              <div className="drawer-user-info">
+                <i className="fa-solid fa-circle-user" style={{ fontSize: '28px', color: 'var(--color-primary)' }}></i>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '14px' }}>{user.name}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{user.email}</div>
+                </div>
               </div>
             </div>
-          </div>
-        )}
-      </nav>
+          )}
+        </nav>
+      )}
 
       {/* ── CONTENU PRINCIPAL SANS CHEVAUCHEMENT ── */}
       <main className="app-main-content" style={{ paddingTop: '84px', minHeight: 'calc(100vh - 84px)', width: '100%', boxSizing: 'border-box' }}>
