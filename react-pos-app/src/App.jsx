@@ -212,33 +212,40 @@ function MainContent() {
       <style>{`
         .app-main-navbar {
           position: fixed; top: 0; left: 0; right: 0;
-          min-height: 64px;
+          height: 64px; min-height: 64px; max-height: 64px;
           background: var(--bg-card);
           border-bottom: 1px solid var(--border-color);
-          box-shadow: var(--box-shadow);
-          backdrop-filter: var(--backdrop-blur);
-          z-index: 500;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+          backdrop-filter: blur(12px);
+          z-index: 1000;
           display: flex; align-items: center; justify-content: space-between;
-          padding: 10px 40px; gap: 16px;
+          padding: 0 24px; gap: 16px; flex-wrap: nowrap; overflow: hidden;
           transition: all var(--transition-normal);
+        }
+
+        .app-main-content {
+          padding-top: 74px;
+          min-height: calc(100vh - 74px);
+          width: 100%;
+          box-sizing: border-box;
         }
 
         /* BURGER */
         .burger-btn {
           display: none;
           flex-direction: column; justify-content: center; align-items: center; gap: 5px;
-          width: 40px; height: 40px;
+          width: 38px; height: 38px;
           background: var(--bg-input);
           border: 1px solid var(--border-color);
           border-radius: 10px;
-          cursor: pointer; padding: 8px;
+          cursor: pointer; padding: 6px;
           transition: all var(--transition-fast);
           flex-shrink: 0;
         }
         .burger-btn:hover { background: var(--color-primary); border-color: var(--color-primary); }
         .burger-btn:hover span { background: #fff; }
         .burger-btn span {
-          display: block; width: 20px; height: 2px;
+          display: block; width: 18px; height: 2px;
           background: var(--text-main); border-radius: 2px;
           transition: all var(--transition-fast);
         }
@@ -248,7 +255,7 @@ function MainContent() {
           position: fixed; inset: 0;
           background: rgba(0,0,0,0.55);
           backdrop-filter: blur(3px);
-          z-index: 900; opacity: 0; pointer-events: none;
+          z-index: 1050; opacity: 0; pointer-events: none;
           transition: opacity 0.3s ease;
         }
         .drawer-overlay.open { opacity: 1; pointer-events: all; }
@@ -260,7 +267,7 @@ function MainContent() {
           background: var(--bg-card);
           border-right: 1px solid var(--border-color);
           box-shadow: 6px 0 40px rgba(0,0,0,0.25);
-          z-index: 1000;
+          z-index: 1100;
           display: flex; flex-direction: column;
           transform: translateX(-100%);
           transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
@@ -322,13 +329,13 @@ function MainContent() {
 
         /* LOGO */
         .navbar-logo {
-          font-family: var(--font-title); font-weight: 800; font-size: 22px;
-          display: flex; align-items: center; gap: 12px;
+          font-family: var(--font-title); font-weight: 800; font-size: 20px;
+          display: flex; align-items: center; gap: 10px; flex-shrink: 0;
           user-select: none; transition: transform var(--transition-fast) ease;
         }
         .navbar-logo:hover { transform: scale(1.02); }
         .navbar-logo-img {
-          width: 38px; height: 38px; border-radius: 50%; object-fit: cover;
+          width: 36px; height: 36px; border-radius: 50%; object-fit: cover;
           border: 2px solid var(--color-primary);
           box-shadow: 0 0 10px rgba(59,130,246,0.2);
           transition: all var(--transition-normal);
@@ -339,33 +346,39 @@ function MainContent() {
           -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 900;
         }
         .logo-text-pos {
-          color: var(--text-main); font-weight: 600; font-size: 18px;
-          background: rgba(59,130,246,0.1); padding: 2px 8px; border-radius: 6px;
+          color: var(--text-main); font-weight: 600; font-size: 16px;
+          background: rgba(59,130,246,0.1); padding: 2px 6px; border-radius: 6px;
           margin-left: 2px; border: 1px solid rgba(59,130,246,0.2);
         }
 
-        /* DESKTOP NAV */
-        .navbar-links { display: flex; gap: 8px; flex-wrap: wrap; }
+        /* DESKTOP NAV - STRICTLY 1 ROW */
+        .navbar-links {
+          display: flex; align-items: center; gap: 4px;
+          flex-wrap: nowrap; overflow-x: auto; white-space: nowrap;
+          scrollbar-width: none; -ms-overflow-style: none;
+          max-width: 52vw; padding: 4px 0; flex-shrink: 1;
+        }
+        .navbar-links::-webkit-scrollbar { display: none; }
+
         .navbar-tab-btn {
           background: transparent; border: none; color: var(--text-muted);
-          font-family: var(--font-title); font-weight: 600; font-size: 13px;
-          padding: 6px 12px; cursor: pointer;
+          font-family: var(--font-title); font-weight: 600; font-size: 12px;
+          padding: 5px 10px; cursor: pointer; flex-shrink: 0; white-space: nowrap;
           border-radius: var(--border-radius-sm);
-          transition: all var(--transition-fast); white-space: nowrap;
+          transition: all var(--transition-fast); display: flex; align-items: center;
         }
         .navbar-tab-btn:hover { color: var(--text-main); background: var(--bg-input); }
         .navbar-tab-btn.active { color: #fff; background: var(--color-primary); }
 
         /* BRANCH SELECTOR PILL */
         .navbar-branch-pill-btn {
-          display: flex; align-items: center; gap: 8px;
+          display: flex; align-items: center; gap: 6px; flex-shrink: 0;
           background: rgba(59,130,246,0.08);
           border: 1px solid rgba(59,130,246,0.25);
           color: var(--text-main);
-          padding: 5px 12px; border-radius: 20px;
-          font-family: var(--font-title); font-weight: 600; font-size: 13px;
+          padding: 4px 10px; border-radius: 20px;
+          font-family: var(--font-title); font-weight: 600; font-size: 12px;
           cursor: pointer; transition: all var(--transition-fast);
-          margin-left: 10px;
         }
         .navbar-branch-pill-btn:hover {
           background: rgba(59,130,246,0.18);
@@ -373,27 +386,21 @@ function MainContent() {
           transform: translateY(-1px);
         }
         .branch-pill-name {
-          max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+          max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
 
         .navbar-branch-badge-readonly {
-          display: flex; align-items: center; gap: 6px;
+          display: flex; align-items: center; gap: 6px; flex-shrink: 0;
           background: rgba(16,185,129,0.08);
           border: 1px solid rgba(16,185,129,0.25);
           color: var(--text-main);
           padding: 4px 10px; border-radius: 20px;
           font-family: var(--font-title); font-weight: 600; font-size: 12px;
-          margin-left: 10px;
         }
 
-        /* MOBILE */
-        @media (max-width: 768px) {
-          .app-main-navbar { padding: 10px 16px; min-height: 58px; }
-          .burger-btn { display: flex; }
-          .navbar-links { display: none; }
-          .navbar-logo { font-size: 18px; }
-          .navbar-logo-img { width: 32px; height: 32px; }
-          .logo-text-pos { font-size: 15px; }
+        @media (max-width: 1100px) {
+          .burger-btn { display: flex !important; }
+          .navbar-links { display: none !important; }
         }
       `}</style>
     </>
