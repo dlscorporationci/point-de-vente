@@ -265,6 +265,25 @@ class SaleController extends Controller
 
             $sale->load('details.product', 'user', 'branch');
 
+            // Notification système en temps réel pour l'activité de vente
+            try {
+                \App\Services\NotificationService::send(
+                    $user->company_id ?: $session->company_id,
+                    $activeBranchId,
+                    null,
+                    'sale',
+                    "Nouvelle Vente #{$saleNumber}",
+                    "Vente #{$saleNumber} d'un montant de {$total} XOF validée par {$user->name}.",
+                    'info',
+                    null,
+                    'sales',
+                    ['sale_id' => $sale->id, 'total' => $total],
+                    $user->id
+                );
+            } catch (\Throwable $e) {
+                // Log silencieux pour ne jamais bloquer l'encaissement
+            }
+
             return response()->json([
                 'message' => 'Vente enregistrée avec succès.',
                 'sale'    => $sale,

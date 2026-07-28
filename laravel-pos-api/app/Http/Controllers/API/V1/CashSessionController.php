@@ -75,6 +75,22 @@ class CashSessionController extends Controller
             'opened_at' => now(),
         ]);
 
+        try {
+            \App\Services\NotificationService::send(
+                $companyId ?: $request->user()->company_id,
+                $branchId,
+                null,
+                'cash_session',
+                "Ouverture de Caisse #{$session->id}",
+                "Caisse #{$session->id} ouverte par {$request->user()->name} avec un fond de {$validated['opening_balance']} XOF.",
+                'info',
+                null,
+                'cash-sessions',
+                ['session_id' => $session->id],
+                $request->user()->id
+            );
+        } catch (\Throwable $e) {}
+
         return response()->json([
             'message' => 'Session de caisse ouverte avec succès.',
             'session' => $session->load('transactions')
@@ -147,6 +163,22 @@ class CashSessionController extends Controller
             'closed_at' => now(),
             'notes' => $validated['notes'] ?? $session->notes,
         ]);
+
+        try {
+            \App\Services\NotificationService::send(
+                $session->company_id,
+                $session->branch_id,
+                null,
+                'cash_session',
+                "Fermeture de Caisse #{$session->id}",
+                "Caisse #{$session->id} fermée par {$request->user()->name} (Solde compté : {$validated['closing_balance']} XOF).",
+                'info',
+                null,
+                'cash-sessions',
+                ['session_id' => $session->id],
+                $request->user()->id
+            );
+        } catch (\Throwable $e) {}
 
         return response()->json([
             'message' => 'Caisse fermée avec succès.',

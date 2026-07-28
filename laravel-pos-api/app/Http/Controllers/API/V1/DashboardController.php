@@ -23,8 +23,8 @@ class DashboardController extends Controller
         $tenantManager = app(TenantManager::class);
         $user = $request->user();
         $companyId = $user->company_id ?: $tenantManager->getCompanyId();
-        $branch = $tenantManager->getBranch();
-        $branchId = $branch ? $branch->id : null;
+        $branchId = $request->header('X-Branch-ID') ?: ($tenantManager->getBranchId() ?: $user->branch_id);
+        $branch = $branchId ? \App\Models\Branch::find($branchId) : null;
 
         $today = Carbon::today();
 
@@ -36,7 +36,7 @@ class DashboardController extends Controller
 
         $todaySales = (clone $salesQuery)
             ->whereDate('created_at', $today)
-            ->where('payment_status', 'completed');
+            ->whereIn('payment_status', ['paid', 'completed', 'partial']);
 
         $todayCa = (float) $todaySales->sum('total');
         $todaySalesCount = $todaySales->count();

@@ -36,8 +36,14 @@ export const NotificationBell = ({ onNavigate }) => {
     setLoading(true);
     try {
       const res = await axios.get('/v1/notifications?limit=6');
-      setNotifications(res.data.notifications || []);
-      setUnreadCount(res.data.unread_count || 0);
+      const list = res.data.data || res.data.notifications || (Array.isArray(res.data) ? res.data : []);
+      setNotifications(list);
+      const unread = list.filter(n => !n.read_at).length;
+      if (typeof res.data.unread_count !== 'undefined') {
+        setUnreadCount(res.data.unread_count);
+      } else {
+        setUnreadCount(unread);
+      }
     } catch {
       /* Silencieux */
     } finally {

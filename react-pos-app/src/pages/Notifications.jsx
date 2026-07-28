@@ -27,7 +27,8 @@ export const Notifications = ({ setActiveTab }) => {
       if (priorityFilter !== 'all') url += `&priority=${priorityFilter}`;
 
       const res = await axios.get(url);
-      setNotifications(res.data.notifications || []);
+      const list = res.data.data || res.data.notifications || (Array.isArray(res.data) ? res.data : []);
+      setNotifications(list);
     } catch (err) {
       setError("Impossible de charger l'historique des notifications.");
     } finally {

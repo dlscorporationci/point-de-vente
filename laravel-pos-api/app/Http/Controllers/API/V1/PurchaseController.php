@@ -161,6 +161,22 @@ class PurchaseController extends Controller
             return $purchase;
         });
 
+        try {
+            \App\Services\NotificationService::send(
+                $purchase->company_id,
+                $purchase->branch_id,
+                null,
+                'purchase',
+                "Nouvel Achat #{$purchase->reference_number}",
+                "Achat #{$purchase->reference_number} d'un montant de {$purchase->total_amount} XOF enregistré par {$request->user()->name}.",
+                'info',
+                null,
+                'purchases',
+                ['purchase_id' => $purchase->id, 'total' => $purchase->total_amount],
+                $request->user()->id
+            );
+        } catch (\Throwable $e) {}
+
         return response()->json([
             'message' => 'Approvisionnement enregistré avec succès.',
             'purchase' => $purchase->load(['branch', 'supplier', 'details.product'])

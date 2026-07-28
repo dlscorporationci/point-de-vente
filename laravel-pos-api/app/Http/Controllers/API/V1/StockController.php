@@ -113,6 +113,23 @@ class StockController extends Controller
             return $branchProduct->load(['product', 'branch']);
         });
 
+        try {
+            $pName = $result->product ? $result->product->name : "Produit #{$validated['product_id']}";
+            \App\Services\NotificationService::send(
+                $companyId ?: $request->user()->company_id,
+                $validated['branch_id'],
+                null,
+                'stock_adjustment',
+                "Ajustement de Stock : {$pName}",
+                "Ajustement de stock de ({$validated['quantity']}) sur {$pName} enregistré par {$request->user()->name}.",
+                'info',
+                null,
+                'stocks',
+                ['product_id' => $validated['product_id'], 'quantity' => $validated['quantity']],
+                $request->user()->id
+            );
+        } catch (\Throwable $e) {}
+
         return response()->json([
             'message' => 'Ajustement de stock enregistré avec succès.',
             'stock' => $result
