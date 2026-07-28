@@ -165,9 +165,8 @@ function MainContent() {
           ))}
         </div>
 
-        <div className="navbar-right-controls" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0, minWidth: '80px' }}>
+        <div className="navbar-right-controls" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0, minWidth: '50px' }}>
           <NotificationBell onNavigate={navigate} />
-          <ThemeSelector />
         </div>
       </header>
 
@@ -415,6 +414,7 @@ function MainContent() {
 function App() {
   return (
     <AppProvider>
+      <ThemeSelector />
       <MainContent />
     </AppProvider>
   )
