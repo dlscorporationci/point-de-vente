@@ -145,23 +145,38 @@ export const AppProvider = ({ children }) => {
   };
 
   const login = (userData, userToken) => {
-    setToken(userToken);
-    setUser(userData);
+    // 1. Configuration SYNCHRONE immédiate d'Axios pour éviter d'envoyer la première requête sans jeton
+    axios.defaults.headers.common['Authorization'] = `Bearer ${userToken}`;
+    localStorage.setItem('token', userToken);
+
     if (userData.company_id) {
+      axios.defaults.headers.common['X-Company-ID'] = userData.company_id.toString();
+      localStorage.setItem('company-id', userData.company_id.toString());
       setCompanyIdState(userData.company_id.toString());
     } else {
+      delete axios.defaults.headers.common['X-Company-ID'];
+      localStorage.removeItem('company-id');
       setCompanyIdState(null);
     }
+
     if (userData.active_branch) {
+      axios.defaults.headers.common['X-Branch-ID'] = userData.active_branch.id.toString();
+      localStorage.setItem('branch-id', userData.active_branch.id.toString());
+      localStorage.setItem('active-branch', JSON.stringify(userData.active_branch));
       setActiveBranchState(userData.active_branch);
       setBranchIdState(userData.active_branch.id.toString());
-      localStorage.setItem('active-branch', JSON.stringify(userData.active_branch));
     } else if (userData.branch?.id) {
       const b = { id: userData.branch.id, name: userData.branch.name };
+      axios.defaults.headers.common['X-Branch-ID'] = b.id.toString();
+      localStorage.setItem('branch-id', b.id.toString());
+      localStorage.setItem('active-branch', JSON.stringify(b));
       setActiveBranchState(b);
       setBranchIdState(b.id.toString());
-      localStorage.setItem('active-branch', JSON.stringify(b));
     }
+
+    setToken(userToken);
+    setUser(userData);
+
     if (userData.assigned_branches) {
       setAssignedBranches(userData.assigned_branches);
     }
@@ -176,20 +191,27 @@ export const AppProvider = ({ children }) => {
     setUnreadCount(0);
     setCompanyIdState(null);
     setBranchIdState(null);
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
     localStorage.removeItem('company-id');
     localStorage.removeItem('branch-id');
     localStorage.removeItem('active-branch');
+    delete axios.defaults.headers.common['Authorization'];
     delete axios.defaults.headers.common['X-Company-ID'];
     delete axios.defaults.headers.common['X-Branch-ID'];
   };
 
-  // Intercepteur Axios pour gérer les erreurs 401 (Déconnexion automatique si token invalide)
+  // Intercepteur Axios pour gérer les erreurs 401 (Déconnexion automatique uniquement si token invalide sur route privée)
   useEffect(() => {
     const interceptor = axios.interceptors.response.use(
       (response) => response,
       (error) => {
         if (error.response && error.response.status === 401) {
-          logout();
+          const url = error.config?.url || '';
+          // Ignorer les 401 provenant des requêtes de connexion pour ne pas déclencher une déconnexion en boucle
+          if (!url.includes('/auth/login') && !url.includes('/auth/login-pin')) {
+            logout();
+          }
         }
         return Promise.reject(error);
       }
