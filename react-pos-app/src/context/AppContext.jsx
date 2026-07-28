@@ -42,17 +42,26 @@ export const AppProvider = ({ children }) => {
   });
 
   // 3. Gestion de l'authentification
-  const [user, setUser] = useState(() => {
-    const savedUser = localStorage.getItem('user');
-    return savedUser ? JSON.parse(savedUser) : null;
-  });
-
   const [token, setToken] = useState(() => {
     const savedToken = localStorage.getItem('token');
-    if (savedToken) {
+    if (savedToken && savedToken !== 'null' && savedToken !== 'undefined' && savedToken.trim() !== '') {
       axios.defaults.headers.common['Authorization'] = `Bearer ${savedToken}`;
+      return savedToken;
     }
-    return savedToken || null;
+    return null;
+  });
+
+  const [user, setUser] = useState(() => {
+    const saved = localStorage.getItem('user');
+    if (saved && saved !== 'null' && saved !== 'undefined') {
+      try {
+        const parsed = JSON.parse(saved);
+        return (parsed && (parsed.id || parsed.email)) ? parsed : null;
+      } catch {
+        return null;
+      }
+    }
+    return null;
   });
 
   // Appliquer les attributs de thème sur document.documentElement

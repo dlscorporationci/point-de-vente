@@ -153,7 +153,7 @@ function MainContent() {
     return () => clearInterval(timer)
   }, [])
 
-  const isAuthenticated = !!(user && token);
+  const isAuthenticated = !!(user && (user.id || user.email) && token && token !== 'null' && token !== 'undefined');
 
   return (
     <>
