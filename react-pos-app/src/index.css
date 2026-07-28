@@ -722,24 +722,25 @@ p {
 
 @media (max-width: 992px) {
   .app-main-navbar {
-    padding: 0 16px;
-    flex-wrap: wrap;
-    height: auto;
-    min-height: 64px;
+    padding: 0 16px !important;
+    flex-wrap: nowrap !important;
+    height: 64px !important;
+    min-height: 64px !important;
+    max-height: 64px !important;
+    overflow: hidden !important;
   }
 
   .navbar-links {
-    width: 100%;
     overflow-x: auto;
-    padding: 8px 0;
-    gap: 8px;
+    padding: 4px 0;
+    gap: 6px;
     display: flex;
     white-space: nowrap;
   }
 
   .navbar-tab-btn {
-    padding: 6px 12px;
-    font-size: 13px;
+    padding: 5px 9px;
+    font-size: 12px;
   }
 }
 
@@ -757,7 +758,7 @@ p {
   .catalog-layout, .suppliers-layout, .customers-layout, .purchases-layout,
   .stocks-layout, .transfers-layout, .audit-layout, .reports-layout,
   .settings-layout, .guide-layout, .login-box, .register-box {
-    margin-top: 72px !important;
+    margin-top: 0 !important;
     padding: 16px !important;
     width: 100% !important;
     max-width: 100% !important;
@@ -1162,7 +1163,7 @@ p {
 
 /* Conteneur principal sous la navbar */
 .app-main-content {
-  padding-top: var(--navbar-height, 64px);
+  padding-top: 84px !important;
   min-height: 100vh;
   width: 100%;
   box-sizing: border-box;
