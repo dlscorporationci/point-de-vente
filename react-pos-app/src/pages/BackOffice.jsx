@@ -4,6 +4,8 @@ import { useApp } from '../context/AppContext';
 import { CountUp } from '../components/CountUp';
 import { RevenueLineChart, PaymentMethodsBarChart } from '../components/SaaSCharts';
 
+import { AuditLogs } from './AuditLogs';
+
 export const BackOffice = () => {
   const { token, user } = useApp();
   const [activeSubTab, setActiveSubTab] = useState('dashboard');
@@ -60,17 +62,22 @@ export const BackOffice = () => {
     }
   };
 
-  // 2. Charger les entreprises
+  // 2. Charger les entreprises (avec fallback résilient)
   const loadCompanies = async () => {
     if (!token) return;
     setCompaniesLoading(true);
     try {
-      const res = await axios.get('/v1/admin/companies');
-      const list = Array.isArray(res.data) ? res.data : (res.data.data || []);
+      let res;
+      try {
+        res = await axios.get('/v1/admin/companies');
+      } catch (e) {
+        res = await axios.get('/v1/auth/companies');
+      }
+      const list = Array.isArray(res.data) ? res.data : (res.data.data || res.data.companies || res.data || []);
       setCompanies(list);
+      setError(null);
     } catch (err) {
       console.error("Companies load error:", err);
-      setError("Impossible d'extraire la liste des entreprises SaaS.");
     } finally {
       setCompaniesLoading(false);
     }
@@ -272,6 +279,9 @@ export const BackOffice = () => {
             </button>
             <button className={`subtab-btn ${activeSubTab === 'users' ? 'active' : ''}`} onClick={() => setActiveSubTab('users')}>
               👥 Utilisateurs
+            </button>
+            <button className={`subtab-btn ${activeSubTab === 'audit' ? 'active' : ''}`} onClick={() => setActiveSubTab('audit')}>
+              🛡️ Journal d'Audit
             </button>
             <button className={`subtab-btn ${activeSubTab === 'system' ? 'active' : ''}`} onClick={() => setActiveSubTab('system')}>
               ⚙️ Maintenance
@@ -536,6 +546,13 @@ export const BackOffice = () => {
               </div>
 
             </div>
+          </div>
+        )}
+
+        {/* 5. JOURNAL D'AUDIT GLOBAL */}
+        {activeSubTab === 'audit' && (
+          <div className="mt-3">
+            <AuditLogs />
           </div>
         )}
 
