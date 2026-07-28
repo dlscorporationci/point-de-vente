@@ -70,15 +70,16 @@ function MainContent() {
       }
     }
 
-    // Si l'utilisateur est connecté mais doit choisir sa boutique
+    // Si l'utilisateur est connecté mais doit choisir sa boutique (uniquement pour les utilisateurs non Super-Admin)
     if (!activeBranch && activeTab !== 'select-branch' && !isSuperAdmin && (assignedBranches?.length > 1 || isAdmin || role === 'gerant')) {
       return <BranchSelectionPage onSelectBranch={() => navigate('dashboard')} />
     }
 
-    // Utilisateur connecté : Rendu des pages autorisées
+    // Utilisateur connecté : Rendu des pages selon le profil
     switch (activeTab) {
       case 'home':          return <Home setActiveTab={setActiveTab} />
-      case 'dashboard':     return <Dashboard setActiveTab={setActiveTab} />
+      case 'backoffice':    return <BackOffice />
+      case 'dashboard':     return isSuperAdmin ? <BackOffice /> : <Dashboard setActiveTab={setActiveTab} />
       case 'register':      return <Register setActiveTab={setActiveTab} />
       case 'auth':          return <Login setActiveTab={setActiveTab} />
       case 'select-branch': return <BranchSelectionPage onSelectBranch={() => navigate('dashboard')} />
@@ -93,37 +94,37 @@ function MainContent() {
       case 'pos':           return <PointDeVente />
       case 'audit':         return <AuditLogs />
       case 'reports':       return <Reports />
-      case 'backoffice':    return <BackOffice />
       case 'settings':      return <Settings />
       case 'branches':      return <Branches />
       case 'users-mgmt':    return <UsersManagement />
       case 'userguide':     return <UserGuide />
       case 'notifications': return <Notifications setActiveTab={setActiveTab} />
-      default:              return <Dashboard setActiveTab={setActiveTab} />
+      default:              return isSuperAdmin ? <BackOffice /> : <Dashboard setActiveTab={setActiveTab} />
     }
   }
 
+  // Structure des menus avec séparation étanche entre Super-Admin SaaS et Utilisateurs de Boutiques
   const navLinks = [
     { tab: 'home',          icon: 'fa-house',           label: 'Accueil',       show: true },
-    { tab: 'dashboard',     icon: 'fa-gauge-high',      label: 'Dashboard',     show: !!user },
-    { tab: 'pos',           icon: 'fa-cash-register',   label: 'POS',           show: !!user },
+    { tab: 'backoffice',    icon: 'fa-gears',           label: 'Console SaaS',  show: !!(user && isSuperAdmin) },
+    { tab: 'dashboard',     icon: 'fa-gauge-high',      label: 'Dashboard',     show: !!(user && !isSuperAdmin) },
+    { tab: 'pos',           icon: 'fa-cash-register',   label: 'POS (Caisse)',  show: !!(user && !isSuperAdmin) },
     { tab: 'auth',          icon: user ? 'fa-user' : 'fa-key', label: user ? 'Mon Profil' : 'Connexion', show: true },
     { tab: 'register',      icon: 'fa-pen-to-square',   label: "S'inscrire",    show: !user },
-    { tab: 'catalog',       icon: 'fa-box',             label: 'Catalogue',     show: !!user },
-    { tab: 'suppliers',     icon: 'fa-handshake',       label: 'Fournisseurs',  show: !!user },
-    { tab: 'customers',     icon: 'fa-users',           label: 'Clients',       show: !!user },
-    { tab: 'purchases',     icon: 'fa-truck-ramp-box',  label: 'Achats',        show: !!user },
-    { tab: 'stocks',        icon: 'fa-layer-group',     label: 'Stocks',        show: !!user },
-    { tab: 'transfers',     icon: 'fa-right-left',      label: 'Transferts',    show: !!user },
-    { tab: 'cash-sessions', icon: 'fa-money-bill-wave', label: 'Caisses',       show: !!user },
-    { tab: 'sales',         icon: 'fa-receipt',         label: 'Ventes',        show: !!user },
-    { tab: 'branches',      icon: 'fa-store',           label: 'Boutiques',     show: !!(user && (isAdmin || role === 'gerant')) },
-    { tab: 'users-mgmt',    icon: 'fa-users-gear',      label: 'Personnel',     show: !!(user && (isAdmin || role === 'gerant')) },
-    { tab: 'audit',         icon: 'fa-shield-halved',   label: 'Audit',         show: !!(user && (isSuperAdmin || isAdminOrGerant)) },
-    { tab: 'reports',       icon: 'fa-chart-line',      label: 'Rapports',      show: !!(user && isAdminOrGerant) },
+    { tab: 'catalog',       icon: 'fa-box',             label: 'Catalogue',     show: !!(user && !isSuperAdmin) },
+    { tab: 'suppliers',     icon: 'fa-handshake',       label: 'Fournisseurs',  show: !!(user && !isSuperAdmin) },
+    { tab: 'customers',     icon: 'fa-users',           label: 'Clients',       show: !!(user && !isSuperAdmin) },
+    { tab: 'purchases',     icon: 'fa-truck-ramp-box',  label: 'Achats',        show: !!(user && !isSuperAdmin) },
+    { tab: 'stocks',        icon: 'fa-layer-group',     label: 'Stocks',        show: !!(user && !isSuperAdmin) },
+    { tab: 'transfers',     icon: 'fa-right-left',      label: 'Transferts',    show: !!(user && !isSuperAdmin) },
+    { tab: 'cash-sessions', icon: 'fa-money-bill-wave', label: 'Caisses',       show: !!(user && !isSuperAdmin) },
+    { tab: 'sales',         icon: 'fa-receipt',         label: 'Ventes',        show: !!(user && !isSuperAdmin) },
+    { tab: 'branches',      icon: 'fa-store',           label: 'Boutiques',     show: !!(user && !isSuperAdmin && (role === 'admin' || role === 'gerant')) },
+    { tab: 'users-mgmt',    icon: 'fa-users-gear',      label: 'Personnel',     show: !!(user && !isSuperAdmin && (role === 'admin' || role === 'gerant')) },
+    { tab: 'audit',         icon: 'fa-shield-halved',   label: 'Audit',         show: !!user },
+    { tab: 'reports',       icon: 'fa-chart-line',      label: 'Rapports',      show: !!(user && !isSuperAdmin && isAdminOrGerant) },
     { tab: 'notifications', icon: 'fa-bell',            label: 'Notifications', show: !!user },
-    { tab: 'backoffice',    icon: 'fa-gears',           label: 'Back-office',   show: !!(user && isSuperAdmin) },
-    { tab: 'settings',      icon: 'fa-sliders',         label: 'Paramètres',    show: !!(user && isAdminOrGerant) },
+    { tab: 'settings',      icon: 'fa-sliders',         label: 'Paramètres',    show: !!(user && !isSuperAdmin && isAdminOrGerant) },
     { tab: 'userguide',     icon: 'fa-book-open',       label: 'Aide & Guide',  show: !!user },
   ].filter(l => l.show)
 

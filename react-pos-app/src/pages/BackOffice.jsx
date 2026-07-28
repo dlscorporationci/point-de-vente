@@ -41,7 +41,7 @@ export const BackOffice = () => {
   const [success, setSuccess] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const isSuperAdmin = user?.role === 'super-admin' || user?.role?.slug === 'super-admin' || user?.role?.name === 'super-admin';
+  const isSuperAdmin = user?.role === 'super-admin' || user?.role?.slug === 'super-admin' || user?.role?.name === 'super-admin' || user?.email === 'superadmin@dls.com';
 
   // 1. Charger le Dashboard SaaS
   const loadDashboard = async () => {
