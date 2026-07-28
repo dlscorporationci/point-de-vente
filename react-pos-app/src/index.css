@@ -1656,9 +1656,14 @@ p {
 }
 
 /* RESPONSIVE DESIGN (MOBILITY & TABLETS) */
-@media (max-width: 1024px) {
+@media (max-width: 1400px) {
   .app-main-navbar {
     padding: 0 16px !important;
+    flex-wrap: nowrap !important;
+    height: 64px !important;
+    min-height: 64px !important;
+    max-height: 64px !important;
+    overflow: hidden !important;
   }
 
   .burger-btn {

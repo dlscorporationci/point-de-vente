@@ -403,7 +403,7 @@ function MainContent() {
           font-family: var(--font-title); font-weight: 600; font-size: 12px;
         }
 
-        @media (max-width: 1100px) {
+        @media (max-width: 1400px) {
           .burger-btn { display: flex !important; }
           .navbar-links { display: none !important; }
         }
