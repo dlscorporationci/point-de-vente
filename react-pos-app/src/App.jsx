@@ -154,11 +154,12 @@ function MainContent() {
   }, [])
 
   const isAuthenticated = !!(user && (user.id || user.email) && token && token !== 'null' && token !== 'undefined');
+  const isAppHeaderVisible = isAuthenticated && activeTab !== 'home' && activeTab !== 'auth' && activeTab !== 'register';
 
   return (
     <>
-      {/* ── NAVBAR (EN-TÊTE PRINCIPAL) - Masqué si non connecté ── */}
-      {isAuthenticated && (
+      {/* ── NAVBAR (EN-TÊTE PRINCIPAL) - Masqué sur la page d'accueil / connexion ou si non connecté ── */}
+      {isAppHeaderVisible && (
         <header className="app-main-navbar" style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '64px', minHeight: '64px', maxHeight: '64px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', flexWrap: 'nowrap', overflow: 'visible', zIndex: 1000 }}>
           
           {/* ── SECTEUR GAUCHE : Menu Burger, Bouton Retour, Logo/Titre, Sélecteur de Boutique ── */}
@@ -300,13 +301,13 @@ function MainContent() {
         </header>
       )}
 
-      {/* ── OVERLAY DU MENU DRAWER (Uniquement si utilisateur CONNECTÉ) ── */}
-      {isAuthenticated && (
+      {/* ── OVERLAY DU MENU DRAWER (Uniquement si le header est affiché) ── */}
+      {isAppHeaderVisible && (
         <div className={`drawer-overlay ${menuOpen ? 'open' : ''}`} onClick={() => setMenuOpen(false)} />
       )}
 
-      {/* ── MENU DRAWER LATÉRAL (Uniquement si utilisateur CONNECTÉ) ── */}
-      {isAuthenticated && (
+      {/* ── MENU DRAWER LATÉRAL (Uniquement si le header est affiché) ── */}
+      {isAppHeaderVisible && (
         <nav ref={drawerRef} className={`side-drawer ${menuOpen ? 'open' : ''}`}>
           <div className="drawer-header">
             <div className="drawer-logo">
@@ -356,8 +357,8 @@ function MainContent() {
         </nav>
       )}
 
-      {/* ── CONTENU PRINCIPAL (Pulsation pleine page si non connecté) ── */}
-      <main className="app-main-content" style={{ paddingTop: isAuthenticated ? '74px' : '0px', minHeight: isAuthenticated ? 'calc(100vh - 74px)' : '100vh', width: '100%', boxSizing: 'border-box' }}>
+      {/* ── CONTENU PRINCIPAL (Pulsation pleine page sans header sur home/auth) ── */}
+      <main className="app-main-content" style={{ paddingTop: isAppHeaderVisible ? '74px' : '0px', minHeight: isAppHeaderVisible ? 'calc(100vh - 74px)' : '100vh', width: '100%', boxSizing: 'border-box' }}>
         {renderContent()}
       </main>
       <AnimatedBubbles />
