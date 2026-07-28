@@ -213,38 +213,44 @@ function MainContent() {
             )
           )}
 
-          {/* ── TRACK CENTRAL COMPLET (RECHERCHE + PANIER GLISSANT 100% LARGEUR + BADGES) ── */}
-          <div className="navbar-cart-track d-none d-lg-flex" title="Barre d'action globale & Caisse Tactile ApexPOS">
-            {/* Recherche Rapide à gauche du track */}
-            <div className="d-flex align-items-center gap-2" style={{ zIndex: 2 }}>
-              <i className="fa-solid fa-magnifying-glass text-primary" style={{ fontSize: '13px' }}></i>
+          {/* ── ZONE CENTRALE ENRICHIE ET ESPACÉE (SANS AUCUN CHEVAUCHEMENT) ── */}
+          <div className="navbar-center-area d-none d-lg-flex" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', margin: '0 15px' }}>
+            {/* 1. Recherche Rapide */}
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', background: 'var(--bg-input, rgba(255,255,255,0.08))', border: '1px solid var(--border-color)', borderRadius: '20px', padding: '4px 12px', minWidth: '180px', flexShrink: 1 }}>
+              <i className="fa-solid fa-magnifying-glass text-primary me-2" style={{ fontSize: '12px' }}></i>
               <input 
                 type="text" 
-                placeholder="Rechercher produit, vente, client..." 
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  outline: 'none',
-                  fontSize: '12px',
-                  color: 'var(--text-main)',
-                  width: '190px',
-                  fontWeight: 500
-                }}
+                placeholder="Rechercher produit, client..." 
+                style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: '12px', color: 'var(--text-main)', width: '100%' }}
                 onFocus={() => navigate('catalog')}
               />
             </div>
 
-            {/* Le Panier animé qui va et vient sur toute la largeur intermédiaire */}
-            <div className="navbar-cart-animated" onClick={() => navigate('pos')} style={{ cursor: 'pointer' }}>
-              <i className="fa-solid fa-cart-shopping navbar-cart-icon"></i>
-              <span className="navbar-cart-text">ApexPOS en Direct 🛒</span>
+            {/* 2. Badge Panier Animé Propre (Sans chevauchement !) */}
+            <div 
+              onClick={() => navigate('pos')} 
+              style={{ 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                gap: '8px', 
+                padding: '5px 14px', 
+                background: 'linear-gradient(135deg, rgba(37,99,235,0.12), rgba(16,185,129,0.12))', 
+                border: '1px solid var(--border-color)', 
+                borderRadius: '20px', 
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                flexShrink: 0
+              }} 
+              title="Ouvrir la Caisse Tactile POS"
+            >
+              <i className="fa-solid fa-cart-shopping text-primary" style={{ animation: 'cartBounce 1.8s ease-in-out infinite', fontSize: '13px' }}></i>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-main)' }}>ApexPOS en Direct 🛒</span>
             </div>
 
-            {/* Badges de statut à droite du track */}
-            <div className="d-none d-xl-flex align-items-center gap-2 ms-auto" style={{ zIndex: 2 }}>
-              <span className="badge bg-success-subtle text-success" style={{ fontSize: '10px', fontWeight: 700, padding: '4px 8px', borderRadius: '12px' }}>
-                <i className="fa-solid fa-signal me-1"></i> Système Synchro
-              </span>
+            {/* 3. Badge Système Synchro */}
+            <div className="d-none d-xl-inline-flex" style={{ alignItems: 'center', gap: '5px', padding: '4px 10px', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '15px', color: '#10b981', fontSize: '11px', fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>
+              <i className="fa-solid fa-signal"></i>
+              <span>Système Synchro</span>
             </div>
           </div>
         </div>
