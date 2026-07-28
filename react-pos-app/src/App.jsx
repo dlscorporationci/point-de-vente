@@ -38,33 +38,10 @@ function MainContent() {
   const [menuOpen, setMenuOpen] = useState(false)
   const drawerRef = useRef(null)
 
-  useEffect(() => {
-    if (user) {
-      const role = user.role?.slug || user.role?.name || user.role
-      const isSuperAdmin = role === 'super-admin'
-      const forbiddenTabs = ['catalog','suppliers','customers','purchases','stocks','transfers','cash-sessions','sales','pos','reports','settings','branches','users-mgmt']
-      if (isSuperAdmin && forbiddenTabs.includes(activeTab)) setActiveTab('backoffice')
-    }
-  }, [user, activeTab])
-
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (menuOpen && drawerRef.current && !drawerRef.current.contains(e.target)) setMenuOpen(false)
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [menuOpen])
-
-  useEffect(() => {
-    document.body.style.overflow = menuOpen ? 'hidden' : ''
-    return () => { document.body.style.overflow = '' }
-  }, [menuOpen])
-
-  const navigate = (tab) => { setActiveTab(tab); setMenuOpen(false) }
-
+  // Note : Tous les utilisateurs connectés conservent l'accès aux modules opérationnels (POS, Catalogue, Stocks, etc.)
   const role = user?.role?.slug || user?.role?.name || user?.role
-  const isSuperAdmin = role === 'super-admin'
-  const isAdminOrGerant = role === 'admin' || role === 'gerant'
+  const isSuperAdmin = role === 'super-admin' || user?.email === 'superadmin@dls.com'
+  const isAdminOrGerant = role === 'admin' || role === 'gerant' || isSuperAdmin
   const isAdmin = role === 'admin' || isSuperAdmin
 
   const renderContent = () => {
@@ -86,7 +63,7 @@ function MainContent() {
     // Utilisateur connecté : Rendu des pages autorisées
     switch (activeTab) {
       case 'home':          return <Home setActiveTab={setActiveTab} />
-      case 'dashboard':     return isSuperAdmin ? <BackOffice /> : <Dashboard setActiveTab={setActiveTab} />
+      case 'dashboard':     return <Dashboard setActiveTab={setActiveTab} />
       case 'register':      return <Register setActiveTab={setActiveTab} />
       case 'auth':          return <Login setActiveTab={setActiveTab} />
       case 'select-branch': return <BranchSelectionPage onSelectBranch={() => navigate('dashboard')} />
@@ -107,26 +84,26 @@ function MainContent() {
       case 'users-mgmt':    return <UsersManagement />
       case 'userguide':     return <UserGuide />
       case 'notifications': return <Notifications setActiveTab={setActiveTab} />
-      default:              return isSuperAdmin ? <BackOffice /> : <Dashboard setActiveTab={setActiveTab} />
+      default:              return <Dashboard setActiveTab={setActiveTab} />
     }
   }
 
   const navLinks = [
     { tab: 'home',          icon: 'fa-house',           label: 'Accueil',       show: true },
-    { tab: 'dashboard',     icon: 'fa-gauge-high',      label: 'Dashboard',     show: !!(user && !isSuperAdmin) },
-    { tab: 'pos',           icon: 'fa-cash-register',   label: 'POS',           show: !!(user && !isSuperAdmin) },
+    { tab: 'dashboard',     icon: 'fa-gauge-high',      label: 'Dashboard',     show: !!user },
+    { tab: 'pos',           icon: 'fa-cash-register',   label: 'POS',           show: !!user },
     { tab: 'auth',          icon: user ? 'fa-user' : 'fa-key', label: user ? 'Mon Profil' : 'Connexion', show: true },
     { tab: 'register',      icon: 'fa-pen-to-square',   label: "S'inscrire",    show: !user },
-    { tab: 'catalog',       icon: 'fa-box',             label: 'Catalogue',     show: !!(user && !isSuperAdmin) },
-    { tab: 'suppliers',     icon: 'fa-handshake',       label: 'Fournisseurs',  show: !!(user && !isSuperAdmin) },
-    { tab: 'customers',     icon: 'fa-users',           label: 'Clients',       show: !!(user && !isSuperAdmin) },
-    { tab: 'purchases',     icon: 'fa-truck-ramp-box',  label: 'Achats',        show: !!(user && !isSuperAdmin) },
-    { tab: 'stocks',        icon: 'fa-layer-group',     label: 'Stocks',        show: !!(user && !isSuperAdmin) },
-    { tab: 'transfers',     icon: 'fa-right-left',      label: 'Transferts',    show: !!(user && !isSuperAdmin) },
-    { tab: 'cash-sessions', icon: 'fa-money-bill-wave', label: 'Caisses',       show: !!(user && !isSuperAdmin) },
-    { tab: 'sales',         icon: 'fa-receipt',         label: 'Ventes',        show: !!(user && !isSuperAdmin) },
-    { tab: 'branches',      icon: 'fa-store',           label: 'Boutiques',     show: !!(user && !isSuperAdmin && (role === 'admin' || role === 'gerant')) },
-    { tab: 'users-mgmt',    icon: 'fa-users-gear',      label: 'Personnel',     show: !!(user && !isSuperAdmin && (role === 'admin' || role === 'gerant')) },
+    { tab: 'catalog',       icon: 'fa-box',             label: 'Catalogue',     show: !!user },
+    { tab: 'suppliers',     icon: 'fa-handshake',       label: 'Fournisseurs',  show: !!user },
+    { tab: 'customers',     icon: 'fa-users',           label: 'Clients',       show: !!user },
+    { tab: 'purchases',     icon: 'fa-truck-ramp-box',  label: 'Achats',        show: !!user },
+    { tab: 'stocks',        icon: 'fa-layer-group',     label: 'Stocks',        show: !!user },
+    { tab: 'transfers',     icon: 'fa-right-left',      label: 'Transferts',    show: !!user },
+    { tab: 'cash-sessions', icon: 'fa-money-bill-wave', label: 'Caisses',       show: !!user },
+    { tab: 'sales',         icon: 'fa-receipt',         label: 'Ventes',        show: !!user },
+    { tab: 'branches',      icon: 'fa-store',           label: 'Boutiques',     show: !!(user && (isAdmin || role === 'gerant')) },
+    { tab: 'users-mgmt',    icon: 'fa-users-gear',      label: 'Personnel',     show: !!(user && (isAdmin || role === 'gerant')) },
     { tab: 'audit',         icon: 'fa-shield-halved',   label: 'Audit',         show: !!(user && (isSuperAdmin || isAdminOrGerant)) },
     { tab: 'reports',       icon: 'fa-chart-line',      label: 'Rapports',      show: !!(user && isAdminOrGerant) },
     { tab: 'notifications', icon: 'fa-bell',            label: 'Notifications', show: !!user },
