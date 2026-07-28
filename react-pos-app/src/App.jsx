@@ -225,44 +225,6 @@ function MainContent() {
           )}
         </div>
 
-        {/* ── SECTEUR CENTRE : Barre de Recherche & Badge Panier Animé "ApexPOS en Direct" ── */}
-        {/* CONDITION 5 : Zone centrale (Visible uniquement si utilisateur CONNECTÉ sur écrans de taille moyenne/large lg+) */}
-        {isAuthenticated && (
-          <div className="navbar-center-area d-none d-lg-flex" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', margin: '0 15px' }}>
-            {/* Barre de Recherche Rapide Produit/Client */}
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', background: 'var(--bg-input, rgba(255,255,255,0.08))', border: '1px solid var(--border-color)', borderRadius: '20px', padding: '4px 12px', minWidth: '180px', flexShrink: 1 }}>
-              <i className="fa-solid fa-magnifying-glass text-primary me-2" style={{ fontSize: '12px' }}></i>
-              <input 
-                type="text" 
-                placeholder="Rechercher produit, client..." 
-                style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: '12px', color: 'var(--text-main)', width: '100%' }}
-                onFocus={() => navigate('catalog')}
-              />
-            </div>
-
-            {/* Badge Panier Animé "ApexPOS en Direct 🛒" */}
-            <div 
-              onClick={() => navigate('pos')} 
-              style={{ 
-                display: 'inline-flex', 
-                alignItems: 'center', 
-                gap: '8px', 
-                padding: '5px 14px', 
-                background: 'linear-gradient(135deg, rgba(37,99,235,0.12), rgba(16,185,129,0.12))', 
-                border: '1px solid var(--border-color)', 
-                borderRadius: '20px', 
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                flexShrink: 0
-              }} 
-              title="Ouvrir la Caisse Tactile POS"
-            >
-              <i className="fa-solid fa-cart-shopping text-primary" style={{ animation: 'cartBounce 1.8s ease-in-out infinite', fontSize: '13px' }}></i>
-              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-main)' }}>ApexPOS en Direct 🛒</span>
-            </div>
-          </div>
-        )}
-
         {/* ── SECTEUR NAVIGATION DESKTOP : Onglets de Navigation Principale ── */}
         {/* CONDITION 6 : Liens de navigation (Visibles uniquement si utilisateur CONNECTÉ sur très grands écrans) */}
         {isAuthenticated && (
