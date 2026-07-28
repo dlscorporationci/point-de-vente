@@ -118,7 +118,7 @@ function MainContent() {
   return (
     <>
       {/* ── NAVBAR ── */}
-      <header className="app-main-navbar" style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '64px', minHeight: '64px', maxHeight: '64px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', flexWrap: 'nowrap', overflow: 'hidden', zIndex: 1000 }}>
+      <header className="app-main-navbar" style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '64px', minHeight: '64px', maxHeight: '64px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', flexWrap: 'nowrap', overflow: 'visible', zIndex: 1000 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
           <button className="burger-btn" onClick={() => setMenuOpen(true)} aria-label="Ouvrir le menu">
             <span></span><span></span><span></span>

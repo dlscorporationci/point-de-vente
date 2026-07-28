@@ -1234,6 +1234,7 @@ p {
   padding: 0 24px !important;
   gap: 16px !important;
   box-sizing: border-box !important;
+  overflow: visible !important;
 }
 
 .navbar-links {
@@ -1663,7 +1664,7 @@ p {
     height: 64px !important;
     min-height: 64px !important;
     max-height: 64px !important;
-    overflow: hidden !important;
+    overflow: visible !important;
   }
 
   .burger-btn {
