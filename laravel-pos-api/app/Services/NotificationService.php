@@ -86,8 +86,9 @@ class NotificationService
             ->where('status', 'active')
             ->whereHas('role', fn ($q) => $q->whereIn('slug', $targetRoles))
             ->where(function ($q) use ($branchId) {
-                // Utilisateur principal de la boutique OU assigné via user_branches
+                // Utilisateur principal de la boutique OU accès global entreprise (branch_id null) OU assigné via user_branches
                 $q->where('branch_id', $branchId)
+                  ->orWhereNull('branch_id')
                   ->orWhereHas('branches', fn ($b) => $b->where('branches.id', $branchId));
             })
             ->get();

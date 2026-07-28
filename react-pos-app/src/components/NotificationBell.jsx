@@ -53,8 +53,13 @@ export const NotificationBell = ({ onNavigate }) => {
 
   useEffect(() => {
     fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 25000); // Polling 25s
-    return () => clearInterval(interval);
+    const interval = setInterval(fetchUnreadCount, 5000); // Polling réactif 5s
+    const handleRefresh = () => fetchUnreadCount();
+    window.addEventListener('notification-refresh', handleRefresh);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('notification-refresh', handleRefresh);
+    };
   }, [fetchUnreadCount]);
 
   useEffect(() => {
