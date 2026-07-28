@@ -118,8 +118,8 @@ function MainContent() {
   return (
     <>
       {/* ── NAVBAR ── */}
-      <header className="app-main-navbar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+      <header className="app-main-navbar" style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '64px', minHeight: '64px', maxHeight: '64px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', flexWrap: 'nowrap', overflow: 'hidden', zIndex: 1000 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
           <button className="burger-btn" onClick={() => setMenuOpen(true)} aria-label="Ouvrir le menu">
             <span></span><span></span><span></span>
           </button>
@@ -152,15 +152,20 @@ function MainContent() {
           )}
         </div>
 
-        <div className="navbar-links">
+        <div className="navbar-links" style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'nowrap', overflowX: 'auto', whiteSpace: 'nowrap', maxWidth: '52vw', padding: '2px 0', flexShrink: 1 }}>
           {navLinks.map(({ tab, icon, label }) => (
-            <button key={tab} className={`navbar-tab-btn ${activeTab === tab ? 'active' : ''}`} onClick={() => navigate(tab)}>
+            <button 
+              key={tab} 
+              className={`navbar-tab-btn ${activeTab === tab ? 'active' : ''}`} 
+              style={{ whiteSpace: 'nowrap', flexShrink: 0, fontSize: '12px', padding: '5px 9px', display: 'inline-flex', alignItems: 'center' }}
+              onClick={() => navigate(tab)}
+            >
               <i className={`fa-solid ${icon} me-1`}></i> {label}
             </button>
           ))}
         </div>
 
-        <div className="navbar-right-controls" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div className="navbar-right-controls" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
           <NotificationBell onNavigate={navigate} />
           <ThemeSelector />
         </div>
@@ -204,7 +209,7 @@ function MainContent() {
       </nav>
 
       {/* ── CONTENU PRINCIPAL SANS CHEVAUCHEMENT ── */}
-      <main className="app-main-content">
+      <main className="app-main-content" style={{ paddingTop: '84px', minHeight: 'calc(100vh - 84px)', width: '100%', boxSizing: 'border-box' }}>
         {renderContent()}
       </main>
       <AnimatedBubbles />
