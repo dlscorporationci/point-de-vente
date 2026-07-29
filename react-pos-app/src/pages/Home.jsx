@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import logo from '../assets/logo.jpg';
 import { useApp } from '../context/AppContext';
+import { Navbar } from '../components/Navbar';
+import { SocialProofBar } from '../components/SocialProofBar';
 
 /* ── Compteur animé ── */
 const CountUp = ({ target, suffix = '', duration = 2000 }) => {
@@ -89,6 +91,9 @@ export const Home = ({ setActiveTab }) => {
   return (
     <div className="home-v2">
 
+      {/* ══════════ NAVBAR FIXE ══════════ */}
+      <Navbar onNavigate={setActiveTab} />
+
       {/* ══════════ HERO ══════════ */}
       <section className="hero-section">
         <div className="hero-bg-grid" />
@@ -141,6 +146,9 @@ export const Home = ({ setActiveTab }) => {
               </>
             )}
           </div>
+
+          {/* ══════════ SOCIAL PROOF BAR ══════════ */}
+          {!user && <SocialProofBar />}
 
           <div className="hero-trust">
             <div className="trust-item">
@@ -356,7 +364,7 @@ export const Home = ({ setActiveTab }) => {
           align-items: center;
           justify-content: center;
           gap: 60px;
-          padding: 40px 40px 80px;
+          padding: 108px 40px 80px;
           overflow: hidden;
           flex-wrap: wrap;
         }
