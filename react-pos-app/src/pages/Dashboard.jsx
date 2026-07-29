@@ -12,10 +12,37 @@ export const Dashboard = ({ setActiveTab }) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await axios.get('/v1/dashboard/stats');
-      setData(res.data);
+      if (navigator.onLine) {
+        const res = await axios.get('/v1/dashboard/stats');
+        setData(res.data);
+        localStorage.setItem('apexpos_cached_dashboard_stats', JSON.stringify(res.data));
+      } else {
+        const cached = localStorage.getItem('apexpos_cached_dashboard_stats');
+        if (cached) {
+          setData(JSON.parse(cached));
+        } else {
+          setData({
+            today_ca: 0,
+            today_transactions: 0,
+            cash_session: { status: 'open' },
+            stock_alerts: 0,
+            incoming_transfers: 0
+          });
+        }
+      }
     } catch (err) {
-      setError(err.response?.data?.error || 'Impossible de charger les données du tableau de bord.');
+      const cached = localStorage.getItem('apexpos_cached_dashboard_stats');
+      if (cached) {
+        setData(JSON.parse(cached));
+      } else {
+        setData({
+          today_ca: 0,
+          today_transactions: 0,
+          cash_session: { status: 'open' },
+          stock_alerts: 0,
+          incoming_transfers: 0
+        });
+      }
     } finally {
       setLoading(false);
     }
