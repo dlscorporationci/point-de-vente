@@ -22,6 +22,7 @@ import { UsersManagement } from './pages/UsersManagement'
 import { UserGuide } from './pages/UserGuide'
 import { Notifications } from './pages/Notifications'
 import { NotificationBell } from './components/NotificationBell'
+import { NetworkStatusBadge } from './components/NetworkStatusBadge'
 import { AnimatedBubbles } from './components/AnimatedBubbles'
 import logo from './assets/logo.jpg'
 import { BranchSelectionPage } from './pages/BranchSelectionPage'
@@ -290,6 +291,9 @@ function MainContent() {
                 <i className="fa-solid fa-cash-register me-1"></i> Caisse POS
               </button>
             )}
+
+            {/* Badge de statut réseau et synchronisation hors-ligne */}
+            <NetworkStatusBadge />
 
             {/* Cloche de notifications système */}
             <NotificationBell onNavigate={navigate} />

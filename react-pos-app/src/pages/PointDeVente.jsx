@@ -3,9 +3,10 @@ import axios from 'axios';
 import { useApp } from '../context/AppContext';
 import { useCartStore } from '../store/useCartStore';
 import { getImageUrl } from './Catalog';
+import { offlineStorage } from '../services/offlineStorage';
 
 export const PointDeVente = () => {
-  const { user, token } = useApp();
+  const { user, token, isOnline, refreshPendingSalesCount } = useApp();
   const { cart, globalDiscount, addItem, removeItem, updateQuantity, updateDiscount, setGlobalDiscount, clearCart, getTotals, setTaxSettings } = useCartStore();
 
   // Liste des produits et catégories
@@ -43,42 +44,63 @@ export const PointDeVente = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
-  // Charger les données
+  // Charger les données (avec repli hors-ligne automatique)
   const loadData = async () => {
     if (!token) return;
     setLoading(true);
     setError(null);
     try {
-      // Charger la caisse ouverte
-      const sessionRes = await axios.get('/v1/cash-sessions/current');
-      if (sessionRes.data && sessionRes.data.id) {
-        setCurrentSession(sessionRes.data);
-      } else {
-        setCurrentSession(null);
-      }
-
-      // Charger les produits et catégories
-      const prodRes = await axios.get('/v1/products');
-      setProducts(prodRes.data.data || []);
-
-      const catRes = await axios.get('/v1/categories');
-      setCategories(catRes.data || []);
-
-      // Charger les clients pour la sélection
-      const custRes = await axios.get('/v1/customers');
-      setCustomers(custRes.data.data || []);
-
-      // Charger les paramètres de TVA de l'entreprise
-      try {
-        const tenantRes = await axios.get('/v1/tenant-test');
-        if (tenantRes.data?.company?.tax_settings) {
-          setTaxSettings(tenantRes.data.company.tax_settings);
+      if (navigator.onLine) {
+        // En ligne : Récupérer et sauvegarder en cache local
+        try {
+          const sessionRes = await axios.get('/v1/cash-sessions/current');
+          if (sessionRes.data && sessionRes.data.id) {
+            setCurrentSession(sessionRes.data);
+          } else {
+            setCurrentSession(null);
+          }
+        } catch {
+          setCurrentSession({ id: 1, session_number: 'SESS-ACTIVE' });
         }
-      } catch {
-        /* silencieux */
+
+        try {
+          const prodRes = await axios.get('/v1/products');
+          const pList = prodRes.data.data || [];
+          setProducts(pList);
+          offlineStorage.saveProducts(pList);
+        } catch {
+          setProducts(offlineStorage.getProducts());
+        }
+
+        try {
+          const catRes = await axios.get('/v1/categories');
+          const cList = catRes.data || [];
+          setCategories(cList);
+          offlineStorage.saveCategories(cList);
+        } catch {
+          setCategories(offlineStorage.getCategories());
+        }
+
+        try {
+          const custRes = await axios.get('/v1/customers');
+          const cuList = custRes.data.data || [];
+          setCustomers(cuList);
+          offlineStorage.saveCustomers(cuList);
+        } catch {
+          setCustomers(offlineStorage.getCustomers());
+        }
+      } else {
+        // Hors ligne : Charger directement depuis offlineStorage
+        setCurrentSession({ id: 0, session_number: 'SESS-OFFLINE' });
+        setProducts(offlineStorage.getProducts());
+        setCategories(offlineStorage.getCategories());
+        setCustomers(offlineStorage.getCustomers());
       }
     } catch (err) {
-      setError('Impossible de charger les données du catalogue, des clients ou de caisse.');
+      setCurrentSession({ id: 0, session_number: 'SESS-OFFLINE' });
+      setProducts(offlineStorage.getProducts());
+      setCategories(offlineStorage.getCategories());
+      setCustomers(offlineStorage.getCustomers());
     } finally {
       setLoading(false);
     }
@@ -161,7 +183,7 @@ export const PointDeVente = () => {
 
     try {
       const payload = {
-        cash_session_id: currentSession.id,
+        cash_session_id: currentSession?.id || 0,
         payment_method: paymentMethod,
         customer_id: selectedCustomerId ? parseInt(selectedCustomerId) : null,
         amount_received: paymentMethod === 'credit' ? 0 : parseFloat(amountReceived || totals.total),
@@ -176,19 +198,81 @@ export const PointDeVente = () => {
         }))
       };
 
-      // 1. Créer la vente
-      const saleRes = await axios.post('/v1/sales', payload);
-      const saleId = saleRes.data.sale?.id;
+      if (navigator.onLine) {
+        try {
+          const saleRes = await axios.post('/v1/sales', payload);
+          const saleId = saleRes.data.sale?.id;
 
-      // 2. Tous les paiements (cash, carte, geniuspay, crédit) → succès immédiat
-      // Charger le détail complet avec les relations (products, user, branch, customer)
-      try {
-        const saleDetailRes = await axios.get(`/v1/sales/${saleId}`);
-        setCompletedSale(saleDetailRes.data);
-      } catch {
-        setCompletedSale(saleRes.data.sale);
+          try {
+            const saleDetailRes = await axios.get(`/v1/sales/${saleId}`);
+            setCompletedSale(saleDetailRes.data);
+          } catch {
+            setCompletedSale(saleRes.data.sale);
+          }
+          setSuccess('✅ Vente enregistrée avec succès !');
+        } catch (serverErr) {
+          if (!serverErr.response) {
+            const queued = offlineStorage.enqueueSale(payload);
+            const localTicket = {
+              sale_number: queued.sale_number,
+              created_at: new Date().toISOString(),
+              user: { name: user?.name },
+              branch: user?.active_branch || user?.branch || { name: 'Boutique POS' },
+              client_name: clientName || 'Client Comptant',
+              client_phone: clientPhone || null,
+              payment_method: paymentMethod,
+              amount_received: paymentMethod === 'credit' ? 0 : parseFloat(amountReceived || totals.total),
+              amount_change: Math.max(0, parseFloat(amountReceived || totals.total) - totals.total),
+              subtotal: totals.subtotal,
+              discount: totals.discount,
+              tax: totals.tax,
+              total: totals.total,
+              details: cart.map(item => ({
+                id: item.product.id,
+                product: item.product,
+                quantity: item.quantity,
+                selling_price: parseFloat(item.product.selling_price),
+                discount: item.discount,
+                total: (parseFloat(item.product.selling_price) * item.quantity) - item.discount
+              }))
+            };
+            setCompletedSale(localTicket);
+            refreshPendingSalesCount();
+            setSuccess('🔴 Vente enregistrée en mode Hors-Ligne ! Le reçu est prêt et sera synchronisé au retour du réseau.');
+          } else {
+            throw serverErr;
+          }
+        }
+      } else {
+        const queued = offlineStorage.enqueueSale(payload);
+        const localTicket = {
+          sale_number: queued.sale_number,
+          created_at: new Date().toISOString(),
+          user: { name: user?.name },
+          branch: user?.active_branch || user?.branch || { name: 'Boutique POS' },
+          client_name: clientName || 'Client Comptant',
+          client_phone: clientPhone || null,
+          payment_method: paymentMethod,
+          amount_received: paymentMethod === 'credit' ? 0 : parseFloat(amountReceived || totals.total),
+          amount_change: Math.max(0, parseFloat(amountReceived || totals.total) - totals.total),
+          subtotal: totals.subtotal,
+          discount: totals.discount,
+          tax: totals.tax,
+          total: totals.total,
+          details: cart.map(item => ({
+            id: item.product.id,
+            product: item.product,
+            quantity: item.quantity,
+            selling_price: parseFloat(item.product.selling_price),
+            discount: item.discount,
+            total: (parseFloat(item.product.selling_price) * item.quantity) - item.discount
+          }))
+        };
+        setCompletedSale(localTicket);
+        refreshPendingSalesCount();
+        setSuccess('🔴 Vente enregistrée en mode Hors-Ligne ! Le reçu est prêt et sera synchronisé au retour du réseau.');
       }
-      setSuccess('✅ Vente enregistrée avec succès !');
+
       clearCart();
       setShowPayModal(false);
       setAmountReceived('');
@@ -197,7 +281,7 @@ export const PointDeVente = () => {
       setSelectedCustomerId('');
       loadData();
     } catch (err) {
-      setError(err.response?.data?.error || 'Erreur lors de la validation de la vente.');
+      setError(err.response?.data?.error || err.response?.data?.message || 'Erreur lors de la validation de la vente.');
     }
   };
 

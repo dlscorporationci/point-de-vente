@@ -1,5 +1,6 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import axios from 'axios';
+import { offlineStorage } from '../services/offlineStorage';
 
 const AppContext = createContext(null);
 
@@ -63,6 +64,74 @@ export const AppProvider = ({ children }) => {
     }
     return null;
   });
+
+  // 4. Gestion du statut Réseau & Moteur de Synchronisation Automatique
+  const [isOnline, setIsOnline] = useState(() => typeof navigator !== 'undefined' ? navigator.onLine : true);
+  const [pendingSalesCount, setPendingSalesCount] = useState(() => offlineStorage.getPendingSales().length);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const refreshPendingSalesCount = useCallback(() => {
+    setPendingSalesCount(offlineStorage.getPendingSales().length);
+  }, []);
+
+  const syncOfflineSales = useCallback(async () => {
+    if (!navigator.onLine || !localStorage.getItem('token')) return;
+    const pending = offlineStorage.getPendingSales();
+    if (pending.length === 0) {
+      setPendingSalesCount(0);
+      return;
+    }
+
+    setIsSyncing(true);
+    for (const sale of pending) {
+      try {
+        const payload = {
+          branch_id: sale.branch_id,
+          cash_session_id: sale.cash_session_id,
+          payment_method: sale.payment_method,
+          amount_received: sale.amount_received,
+          client_name: sale.client_name,
+          client_phone: sale.client_phone,
+          customer_id: sale.customer_id,
+          discount: sale.discount,
+          tax: sale.tax,
+          items: sale.items
+        };
+
+        await axios.post('/v1/sales', payload);
+        offlineStorage.removePendingSale(sale._local_id);
+      } catch (err) {
+        console.warn('Échec de synchronisation vente déconnectée:', sale, err);
+        if (err.response && err.response.status >= 400 && err.response.status < 500) {
+          offlineStorage.removePendingSale(sale._local_id);
+        }
+      }
+    }
+    refreshPendingSalesCount();
+    setIsSyncing(false);
+  }, [refreshPendingSalesCount]);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      syncOfflineSales();
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    if (navigator.onLine) {
+      syncOfflineSales();
+    }
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [syncOfflineSales]);
 
   // Appliquer les attributs de thème sur document.documentElement
   useEffect(() => {
@@ -295,7 +364,12 @@ export const AppProvider = ({ children }) => {
       user,
       token,
       login,
-      logout
+      logout,
+      isOnline,
+      pendingSalesCount,
+      isSyncing,
+      syncOfflineSales,
+      refreshPendingSalesCount
     }}>
       {children}
     </AppContext.Provider>
