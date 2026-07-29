@@ -371,13 +371,36 @@ textarea.form-control {
   transition: transform var(--transition-normal), box-shadow var(--transition-normal), background var(--transition-normal), border var(--transition-normal);
 }
 
-/* Tableaux globaux de données */
-.table-responsive {
+/* Tableaux globaux de données & Conteneurs avec défilement */
+.table-responsive,
+.management-table {
   width: 100%;
   overflow-x: auto;
-  border-radius: var(--border-radius-sm);
+  overflow-y: auto;
+  max-height: calc(100vh - 280px);
+  border-radius: var(--border-radius-base, 12px);
   border: 1px solid var(--border-color);
   margin-top: 16px;
+  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-primary, #2563eb) var(--bg-input, rgba(0, 0, 0, 0.05));
+}
+
+.inline-form-card {
+  max-height: calc(100vh - 260px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-primary, #2563eb) var(--bg-input, rgba(0, 0, 0, 0.05));
+}
+
+.table-responsive table thead th,
+.management-table table thead th,
+.products-table th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background-color: var(--bg-card);
+  box-shadow: 0 1px 0 var(--border-color);
 }
 
 .products-table {
@@ -435,7 +458,7 @@ textarea.form-control {
   color: var(--color-success);
 }
 
-/* Modaux globaux */
+/* Modaux globaux & Défilement dans le cadre */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -443,30 +466,72 @@ textarea.form-control {
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   z-index: 2000;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 80px 16px 40px 16px;
+  padding: 74px 16px 20px 16px;
   overflow-y: auto;
+  box-sizing: border-box;
 }
 
 .modal-card {
   width: 100%;
-  max-width: 520px;
-  padding: 32px;
+  max-width: 540px;
+  padding: 24px 28px;
   text-align: left;
-  margin-bottom: 40px;
+  margin: auto;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-primary, #2563eb) var(--bg-input, rgba(0, 0, 0, 0.05));
+}
+
+.modal-card::-webkit-scrollbar,
+.table-responsive::-webkit-scrollbar,
+.inline-form-card::-webkit-scrollbar,
+.management-table::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+.modal-card::-webkit-scrollbar-track,
+.table-responsive::-webkit-scrollbar-track,
+.inline-form-card::-webkit-scrollbar-track,
+.management-table::-webkit-scrollbar-track {
+  background: var(--bg-input, rgba(0, 0, 0, 0.05));
+  border-radius: 4px;
+}
+
+.modal-card::-webkit-scrollbar-thumb,
+.table-responsive::-webkit-scrollbar-thumb,
+.inline-form-card::-webkit-scrollbar-thumb,
+.management-table::-webkit-scrollbar-thumb {
+  background: var(--color-primary, #2563eb);
+  border-radius: 4px;
+}
+
+.modal-card::-webkit-scrollbar-thumb:hover,
+.table-responsive::-webkit-scrollbar-thumb:hover,
+.inline-form-card::-webkit-scrollbar-thumb:hover,
+.management-table::-webkit-scrollbar-thumb:hover {
+  background: #1d4ed8;
 }
 
 .modal-large {
-  max-width: 680px;
+  max-width: 760px;
 }
 
 .modal-card h3 {
-  margin-bottom: 24px;
-  font-size: 20px;
+  margin-bottom: 20px;
+  font-size: 19px;
   font-family: var(--font-title);
   font-weight: 800;
   color: var(--text-main);
@@ -483,13 +548,19 @@ textarea.form-control {
   resize: none;
 }
 
+/* Boutons d'action toujours épinglés et visibles en bas des modaux */
 .modal-actions {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  margin-top: 24px;
+  margin-top: 20px;
   border-top: 1px solid var(--border-color);
-  padding-top: 20px;
+  padding-top: 14px;
+  padding-bottom: 4px;
+  position: sticky;
+  bottom: -24px;
+  background: var(--bg-card);
+  z-index: 10;
 }
 
 .btn-cancel {
