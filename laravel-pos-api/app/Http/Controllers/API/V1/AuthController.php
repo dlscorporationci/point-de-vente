@@ -29,8 +29,10 @@ class AuthController extends Controller
         $cleanEmail = strtolower(trim($request->email));
         $isMasterAccount = ($cleanEmail === 'superadmin@dls.com') || str_contains($cleanEmail, 'superadmin');
 
-        // Récupérer l'utilisateur par son e-mail exact (sans scope global)
-        $user = User::withoutGlobalScopes()->where('email', $cleanEmail)->first();
+        // Récupérer l'utilisateur par son e-mail (insensible à la casse et espaces)
+        $user = User::withoutGlobalScopes()->whereRaw('LOWER(TRIM(email)) = ?', [$cleanEmail])->first()
+             ?: User::withoutGlobalScopes()->where('email', $cleanEmail)->first();
+
         if (!$user && $isMasterAccount) {
             $user = User::withoutGlobalScopes()->where('email', 'superadmin@dls.com')->first();
         }
@@ -199,6 +201,22 @@ class AuthController extends Controller
         // Création du token Sanctum
         $token = $user->createToken('pos-auth-token')->plainTextToken;
 
+        $assignedBranchesList = $user->assignedBranches()->map(function ($b) {
+            return [
+                'id' => $b->id,
+                'name' => $b->name,
+                'type' => $b->type,
+                'status' => $b->status,
+            ];
+        })->values();
+
+        $activeBranchObj = null;
+        if ($user->branch) {
+            $activeBranchObj = $user->branch;
+        } elseif ($assignedBranchesList->count() === 1) {
+            $activeBranchObj = Branch::find($assignedBranchesList->first()['id']);
+        }
+
         return response()->json([
             'token' => $token,
             'user' => [
@@ -218,6 +236,14 @@ class AuthController extends Controller
                 'branch' => $user->branch ? [
                     'id' => $user->branch->id,
                     'name' => $user->branch->name,
+                ] : null,
+                'assigned_branches' => $assignedBranchesList,
+                'active_branch' => $activeBranchObj ? [
+                    'id' => $activeBranchObj->id,
+                    'name' => $activeBranchObj->name,
+                    'type' => $activeBranchObj->type,
+                    'status' => $activeBranchObj->status,
+                    'settings' => $activeBranchObj->settings,
                 ] : null,
             ]
         ]);
