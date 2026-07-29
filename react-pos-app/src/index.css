@@ -233,7 +233,6 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--color-primary);
   top: -100px;
   right: -50px;
-  animation: floatUpAndDown 14s ease-in-out infinite;
 }
 
 .sphere-2 {
@@ -242,7 +241,6 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--color-success);
   bottom: -150px;
   left: -100px;
-  animation: floatDownAndUp 18s ease-in-out infinite;
 }
 
 @keyframes floatUpAndDown {
