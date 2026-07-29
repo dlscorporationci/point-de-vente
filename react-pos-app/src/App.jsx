@@ -225,18 +225,51 @@ function MainContent() {
             )}
           </div>
 
-          {/* ── SECTEUR NAVIGATION DESKTOP : Onglets de Navigation ── */}
-          <div className="navbar-links d-none d-xl-flex" style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'nowrap', overflowX: 'auto', whiteSpace: 'nowrap', maxWidth: '40vw', padding: '2px 0', flexShrink: 1 }}>
-            {navLinks.map(({ tab, icon, label }) => (
-              <button 
-                key={tab} 
-                className={`navbar-tab-btn ${activeTab === tab ? 'active' : ''}`} 
-                style={{ whiteSpace: 'nowrap', flexShrink: 0, fontSize: '12px', padding: '5px 9px', display: 'inline-flex', alignItems: 'center' }}
-                onClick={() => navigate(tab)}
-              >
-                <i className={`fa-solid ${icon} me-1`}></i> {label}
-              </button>
-            ))}
+          {/* ── SECTEUR CENTRE : Breadcrumb Page Active ── */}
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+            {/* Nom de la page active — visible dès md */}
+            <div className="d-none d-md-flex" style={{ alignItems: 'center', gap: '8px', maxWidth: '100%', overflow: 'hidden' }}>
+              {/* Icône + label de la page active */}
+              {(() => {
+                const currentLink = navLinks.find(l => l.tab === activeTab);
+                const today = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+                return currentLink ? (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '5px 14px',
+                    borderRadius: '20px',
+                    background: 'var(--bg-input)',
+                    border: '1px solid var(--border-color)',
+                    maxWidth: '100%',
+                    overflow: 'hidden',
+                  }}>
+                    <i className={`fa-solid ${currentLink.icon} text-primary`} style={{ fontSize: '12px', flexShrink: 0 }} />
+                    <span style={{
+                      fontSize: '13px',
+                      fontWeight: 700,
+                      color: 'var(--text-main)',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}>
+                      {currentLink.label}
+                    </span>
+                    <span style={{ width: '1px', height: '12px', background: 'var(--border-color)', flexShrink: 0 }} />
+                    <span className="d-none d-lg-inline" style={{
+                      fontSize: '11px',
+                      color: 'var(--text-muted)',
+                      fontWeight: 500,
+                      whiteSpace: 'nowrap',
+                      textTransform: 'capitalize',
+                    }}>
+                      {today}
+                    </span>
+                  </div>
+                ) : null;
+              })()}
+            </div>
           </div>
 
           {/* ── SECTEUR DROITE : Horloge, Raccourci Caisse, Cloche Notifications & Profil ── */}
