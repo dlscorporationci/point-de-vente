@@ -375,9 +375,9 @@ export const BackOffice = () => {
         {/* 2. GESTION DES ENTREPRISES */}
         {activeSubTab === 'companies' && (
           <div>
-            <div className="d-flex justify-content-between align-items-center mb-3">
-              <div className="filters-bar" style={{ flexGrow: 1, marginRight: '20px' }}>
-                <div className="filter-group">
+            <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap" style={{ gap: '16px' }}>
+              <div className="filters-bar" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', flex: 1, alignItems: 'center' }}>
+                <div className="filter-group" style={{ minWidth: '220px', flex: '1 1 220px' }}>
                   <input
                     type="text"
                     className="form-control"
@@ -386,14 +386,14 @@ export const BackOffice = () => {
                     onChange={(e) => setSearchCompany(e.target.value)}
                   />
                 </div>
-                <div className="filter-group">
+                <div className="filter-group" style={{ minWidth: '160px' }}>
                   <select className="form-control" value={filterCompanyStatus} onChange={(e) => setFilterCompanyStatus(e.target.value)}>
                     <option value="">Tous les statuts</option>
                     <option value="active">Actives</option>
                     <option value="inactive">Suspendues</option>
                   </select>
                 </div>
-                <div className="filter-group">
+                <div className="filter-group" style={{ minWidth: '180px' }}>
                   <select className="form-control" value={filterCompanyPlan} onChange={(e) => setFilterCompanyPlan(e.target.value)}>
                     <option value="">Toutes les formules</option>
                     <option value="starter">📦 Formule Starter</option>
@@ -402,7 +402,7 @@ export const BackOffice = () => {
                   </select>
                 </div>
               </div>
-              <button onClick={() => { resetCompanyForm(); setShowCreateCompanyModal(true); }} className="btn btn-primary" style={{ height: '42px' }}>
+              <button onClick={() => { resetCompanyForm(); setShowCreateCompanyModal(true); }} className="btn btn-primary" style={{ height: '42px', whiteSpace: 'nowrap' }}>
                 <i className="fa-solid fa-plus me-1"></i> Créer Entreprise
               </button>
             </div>
@@ -414,8 +414,8 @@ export const BackOffice = () => {
                 <h4>Aucune entreprise trouvée</h4>
               </div>
             ) : (
-              <div className="table-responsive">
-                <table className="app-table">
+              <div className="table-responsive" style={{ paddingBottom: '10px' }}>
+                <table className="saas-table">
                   <thead>
                     <tr>
                       <th>Entreprise</th>
@@ -430,34 +430,34 @@ export const BackOffice = () => {
                     {filteredCompanies.map(c => (
                       <tr key={c.id} className="hover-row">
                         <td>
-                          <strong>{c.name}</strong>
-                          <div className="small text-muted" style={{ fontSize: '11px' }}>Code: {c.code}</div>
+                          <strong style={{ fontSize: '15px' }}>{c.name}</strong>
+                          <div className="text-muted" style={{ fontSize: '11px', marginTop: '2px' }}>Code: {c.code}</div>
                         </td>
                         <td>
                           {(!c.subscription_plan || c.subscription_plan === 'starter' || c.subscription_plan === 'basic') && (
-                            <span className="badge bg-secondary" style={{ fontSize: '12px', padding: '5px 10px' }}>📦 Formule Starter</span>
+                            <span className="badge bg-secondary" style={{ fontSize: '12px', padding: '6px 12px', borderRadius: '6px' }}>📦 Formule Starter</span>
                           )}
                           {(c.subscription_plan === 'pro' || c.subscription_plan === 'premium') && (
-                            <span className="badge bg-primary" style={{ fontSize: '12px', padding: '5px 10px' }}>⭐ Formule Pro</span>
+                            <span className="badge bg-primary" style={{ fontSize: '12px', padding: '6px 12px', borderRadius: '6px' }}>⭐ Formule Pro</span>
                           )}
                           {c.subscription_plan === 'enterprise' && (
-                            <span className="badge" style={{ background: '#8b5cf6', color: '#fff', fontWeight: 700, fontSize: '12px', padding: '5px 10px' }}>👑 Formule Entreprise</span>
+                            <span className="badge" style={{ background: '#8b5cf6', color: '#fff', fontWeight: 700, fontSize: '12px', padding: '6px 12px', borderRadius: '6px' }}>👑 Formule Entreprise</span>
                           )}
                         </td>
-                        <td>{c.branches_count} boutiques</td>
-                        <td>{c.users_count} comptes</td>
+                        <td style={{ fontWeight: 600 }}>{c.branches_count} boutiques</td>
+                        <td style={{ fontWeight: 600 }}>{c.users_count} comptes</td>
                         <td>
                           {c.status === 'active' ? (
-                            <span className="badge badge-success">Actif</span>
+                            <span className="badge badge-success" style={{ padding: '6px 12px' }}>Actif</span>
                           ) : (
-                            <span className="badge badge-error">Suspendu</span>
+                            <span className="badge badge-error" style={{ padding: '6px 12px' }}>Suspendu</span>
                           )}
                         </td>
                         <td style={{ textAlign: 'right' }}>
-                          <button onClick={() => openEditModal(c)} className="btn btn-secondary me-2 btn-sm">
-                            <i className="fa-solid fa-pen"></i> Gérer
+                          <button onClick={() => openEditModal(c)} className="btn btn-secondary me-2 btn-sm" style={{ padding: '8px 14px' }}>
+                            <i className="fa-solid fa-pen me-1"></i> Gérer
                           </button>
-                          <button onClick={() => toggleCompanyStatus(c)} className={`btn btn-sm ${c.status === 'active' ? 'btn-danger' : 'btn-success'}`}>
+                          <button onClick={() => toggleCompanyStatus(c)} className={`btn btn-sm ${c.status === 'active' ? 'btn-danger' : 'btn-success'}`} style={{ padding: '8px 14px' }}>
                             {c.status === 'active' ? 'Suspendre' : 'Activer'}
                           </button>
                         </td>
@@ -478,8 +478,8 @@ export const BackOffice = () => {
             {usersLoading ? (
               <div className="loading-spinner">Chargement des utilisateurs de la plateforme...</div>
             ) : (
-              <div className="table-responsive">
-                <table className="app-table">
+              <div className="table-responsive" style={{ paddingBottom: '10px' }}>
+                <table className="saas-table">
                   <thead>
                     <tr>
                       <th>Opérateur</th>
@@ -917,6 +917,61 @@ export const BackOffice = () => {
 
         .server-health-stats strong {
           color: var(--text-main);
+        }
+
+        .filters-bar {
+          display: flex !important;
+          flex-direction: row !important;
+          flex-wrap: wrap !important;
+          gap: 14px !important;
+          align-items: center !important;
+        }
+
+        .saas-table {
+          width: 100%;
+          border-collapse: separate !important;
+          border-spacing: 0 12px !important;
+          margin-top: 12px;
+        }
+
+        .saas-table th {
+          padding: 16px 20px !important;
+          font-family: var(--font-title);
+          font-size: 12px !important;
+          font-weight: 800 !important;
+          color: var(--text-muted);
+          text-transform: uppercase;
+          letter-spacing: 0.8px;
+          border-bottom: 2px solid var(--border-color);
+          white-space: nowrap !important;
+          text-align: left;
+        }
+
+        .saas-table td {
+          padding: 18px 20px !important;
+          background: var(--bg-card);
+          border-top: 1px solid var(--border-color);
+          border-bottom: 1px solid var(--border-color);
+          font-size: 14px;
+          color: var(--text-main);
+          vertical-align: middle;
+          white-space: nowrap !important;
+        }
+
+        .saas-table tr td:first-child {
+          border-left: 1px solid var(--border-color);
+          border-top-left-radius: 12px;
+          border-bottom-left-radius: 12px;
+        }
+
+        .saas-table tr td:last-child {
+          border-right: 1px solid var(--border-color);
+          border-top-right-radius: 12px;
+          border-bottom-right-radius: 12px;
+        }
+
+        .saas-table tr:hover td {
+          background: var(--bg-input);
         }
       `}</style>
     </div>
