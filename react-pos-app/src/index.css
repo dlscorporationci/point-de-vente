@@ -1082,53 +1082,21 @@ p {
   }
 
   /* 2. ISOLATION ABSOLUE DES TICKETS THERMIQUES DE CAISSE (POS & VENTES) */
-  body:has(#thermal-receipt, #printable-receipt, .receipt-print-zone, .thermal-receipt-container) .page-container,
-  body:has(#thermal-receipt, #printable-receipt, .receipt-print-zone, .thermal-receipt-container) .reports-container,
-  body:has(#thermal-receipt, #printable-receipt, .receipt-print-zone, .thermal-receipt-container) .sales-container,
-  body:has(#thermal-receipt, #printable-receipt, .receipt-print-zone, .thermal-receipt-container) .catalog-container,
-  body:has(#thermal-receipt, #printable-receipt, .receipt-print-zone, .thermal-receipt-container) .kpi-grid,
-  body:has(#thermal-receipt, #printable-receipt, .receipt-print-zone, .thermal-receipt-container) .table-responsive,
-  body:has(#thermal-receipt, #printable-receipt, .receipt-print-zone, .thermal-receipt-container) .app-main-content > *:not(.modal-overlay),
-  body.printing-receipt .page-container,
-  body.printing-receipt .sales-container,
-  body.printing-receipt .reports-container,
-  body.printing-receipt .catalog-container,
-  body.printing-receipt .kpi-grid,
-  body.printing-receipt .table-responsive,
-  body.printing-receipt .app-main-content > *:not(.modal-overlay) {
-    display: none !important;
+  body * {
+    visibility: hidden;
   }
 
-  /* Neutralisation du fond sombre de la modale lors de l'impression du ticket */
-  .modal-overlay,
-  body.printing-receipt .modal-overlay {
-    position: static !important;
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    display: block !important;
-  }
-
-  .modal-card,
-  body.printing-receipt .modal-card {
-    position: static !important;
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    width: 100% !important;
-    max-width: 100% !important;
-  }
-
-  .modal-card > h3,
-  .modal-card > p,
-  .modal-card > .no-print {
-    display: none !important;
+  /* Force la visibilité absolue et l'affichage du ticket thermique */
+  #thermal-receipt,
+  #thermal-receipt *,
+  #printable-receipt,
+  #printable-receipt *,
+  .receipt-print-zone,
+  .receipt-print-zone *,
+  .thermal-receipt-container,
+  .thermal-receipt-container * {
+    visibility: visible !important;
+    color: #000000 !important;
   }
 
   /* Rendu physique du Ticket Thermique (Epson/Xprinter 80mm/58mm) */
@@ -1137,17 +1105,14 @@ p {
   .receipt-print-zone,
   .thermal-receipt-container {
     display: block !important;
-    visibility: visible !important;
     position: absolute !important;
-    left: 50% !important;
+    left: 0 !important;
     top: 0 !important;
-    transform: translateX(-50%) !important;
     width: 78mm !important;
     max-width: 78mm !important;
     margin: 0 auto !important;
     padding: 2mm 3mm !important;
     background: #ffffff !important;
-    color: #000000 !important;
     font-family: 'Courier New', Courier, monospace !important;
     font-size: 11px !important;
     line-height: 1.25 !important;
@@ -1157,15 +1122,6 @@ p {
     page-break-after: avoid !important;
     page-break-inside: avoid !important;
     overflow: visible !important;
-  }
-
-  /* Force le texte noir sur fond blanc pour tous les éléments du reçu */
-  #thermal-receipt *,
-  #printable-receipt *,
-  .receipt-print-zone *,
-  .thermal-receipt-container * {
-    color: #000000 !important;
-    background: transparent !important;
   }
 
   /* 3. STYLE D'IMPRESSION RAPPORTS A4 & LOGS D'AUDIT */

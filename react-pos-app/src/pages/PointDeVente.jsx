@@ -680,10 +680,10 @@ export const PointDeVente = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {completedSale.details?.map(item => (
-                    <tr key={item.id}>
+                  {completedSale.details?.map((item, idx) => (
+                    <tr key={item.id || idx}>
                       <td>
-                        {item.product?.name}
+                        {item.product?.name || item.product_name || item.name || 'Article'}
                         <br />
                         <span className="item-unit-price">
                           {item.quantity} x {new Intl.NumberFormat('fr-FR').format(item.selling_price)}
