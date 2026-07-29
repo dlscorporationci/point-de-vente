@@ -273,6 +273,8 @@ class AuthController extends Controller
                 'id' => $company->id,
                 'name' => $company->name,
                 'tax_settings' => $company->tax_settings ?? ['tax_rate' => 18, 'enable_tax' => true],
+                'subscription_plan' => $company->subscription_plan ?: 'pro',
+                'subscription_expires_at' => $company->subscription_expires_at,
             ] : null,
             'branch' => $user->branch ? [
                 'id' => $user->branch->id,
@@ -654,6 +656,20 @@ class AuthController extends Controller
             'branch_ids.*' => 'integer|exists:branches,id',
             'status'     => 'nullable|in:active,inactive',
         ]);
+
+        // Vérification automatique des quotas d'utilisateurs selon le plan
+        $company = $tenantManager->getCompany();
+        if ($company) {
+            $currentUsers = User::withoutGlobalScopes()->where('company_id', $companyId)->count();
+            $plan = strtolower($company->subscription_plan ?: 'starter');
+            $maxUsers = ($plan === 'starter' || $plan === 'basic') ? 2 : (($plan === 'pro' || $plan === 'premium') ? 5 : 999);
+
+            if ($currentUsers >= $maxUsers) {
+                return response()->json([
+                    'message' => "Quota d'utilisateurs atteint : Votre formule d'abonnement (" . strtoupper($plan) . ") est limitée à {$maxUsers} compte(s) utilisateur(s). Veuillez faire évoluer votre offre vers une formule supérieure."
+                ], 403);
+            }
+        }
 
         $primaryBranchId = $request->branch_id;
         if (!$primaryBranchId && !empty($request->branch_ids)) {

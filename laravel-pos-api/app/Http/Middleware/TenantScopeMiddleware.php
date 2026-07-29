@@ -81,8 +81,15 @@ class TenantScopeMiddleware
         // 3. Vérification du statut de l'entreprise
         if ($company->status !== 'active') {
             return response()->json([
-                'error' => 'This account has been suspended or archived. Please contact support.'
+                'error' => 'Votre compte entreprise a été suspendu ou archivé. Veuillez contacter le support ApexPOS.'
             ], 403);
+        }
+
+        // 3b. Vérification automatique de la date d'expiration de l'abonnement
+        if ($company->subscription_expires_at && \Carbon\Carbon::now()->greaterThan($company->subscription_expires_at)) {
+            return response()->json([
+                'error' => 'Votre abonnement ApexPOS (' . strtoupper($company->subscription_plan ?: 'PRO') . ') a expiré le ' . $company->subscription_expires_at->format('d/m/Y') . '. Veuillez contacter le support pour procéder au renouvellement.'
+            ], 402);
         }
 
         // 4. Enregistrement dans le TenantManager

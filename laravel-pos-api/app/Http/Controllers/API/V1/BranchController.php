@@ -31,6 +31,20 @@ class BranchController extends Controller
             'phone'   => 'nullable|string|max:30',
         ]);
 
+        // Vérification automatique des quotas selon la formule souscrite
+        $company = app(\App\Services\TenantManager::class)->getCompany();
+        if ($company) {
+            $currentBranches = Branch::count();
+            $plan = strtolower($company->subscription_plan ?: 'starter');
+            $maxBranches = ($plan === 'starter' || $plan === 'basic') ? 1 : (($plan === 'pro' || $plan === 'premium') ? 3 : 999);
+
+            if ($currentBranches >= $maxBranches) {
+                return response()->json([
+                    'message' => "Quota de boutiques atteint : Votre formule d'abonnement (" . strtoupper($plan) . ") est limitée à {$maxBranches} boutique(s). Veuillez faire évoluer votre offre vers une formule supérieure."
+                ], 403);
+            }
+        }
+
         // Le BelongsToTenant injecte automatiquement le company_id
         $branch = Branch::create([
             'name'    => $request->name,
