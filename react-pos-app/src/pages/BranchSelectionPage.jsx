@@ -115,21 +115,29 @@ export const BranchSelectionPage = ({ onSelectBranch }) => {
 
       <style>{`
         .branch-selection-container {
-          min-height: 85vh;
+          height: calc(100vh - 74px);
+          min-height: calc(100vh - 74px);
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 40px 20px;
+          padding: 16px;
+          box-sizing: border-box;
+          overflow: hidden;
         }
 
         .branch-selection-card {
           width: 100%;
           max-width: 900px;
+          max-height: calc(100vh - 90px);
           background: var(--bg-card);
           border: 1px solid var(--border-color);
           border-radius: var(--border-radius-lg);
-          padding: 40px;
+          padding: 32px;
           box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+          overflow-y: auto;
+          box-sizing: border-box;
+          scrollbar-width: thin;
+          scrollbar-color: var(--color-primary, #2563eb) var(--bg-input, rgba(0, 0, 0, 0.05));
         }
 
         .branch-header-badge {
