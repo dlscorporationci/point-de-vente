@@ -459,7 +459,7 @@ textarea.form-control {
 /* Modaux globaux & Défilement dans le cadre */
 .modal-overlay {
   position: fixed;
-  top: 0;
+  top: 64px; /* Démarre sous la navbar fixe de 64px */
   left: 0;
   right: 0;
   bottom: 0;
@@ -468,9 +468,9 @@ textarea.form-control {
   -webkit-backdrop-filter: blur(6px);
   z-index: 2000;
   display: flex;
-  align-items: center; /* Centré au milieu de l'écran */
+  align-items: center; /* Centré au milieu de l'espace disponible sous le header */
   justify-content: center;
-  padding: 16px;
+  padding: 20px 16px;
   box-sizing: border-box;
   overflow: hidden; /* Empêche le conteneur extérieur de bouger */
 }
@@ -478,7 +478,7 @@ textarea.form-control {
 .modal-card {
   width: 100%;
   max-width: 540px;
-  max-height: calc(100vh - 60px);
+  max-height: calc(100vh - 110px);
   padding: 24px 28px;
   text-align: left;
   margin: 0;
@@ -532,9 +532,9 @@ textarea.form-control {
   top: -24px;
   background: var(--bg-card);
   z-index: 15;
-  padding-top: 4px;
+  padding-top: 14px;
   padding-bottom: 12px;
-  margin-top: -4px;
+  margin-top: -8px;
   margin-bottom: 16px;
   border-bottom: 1px solid var(--border-color);
   font-size: 19px;
