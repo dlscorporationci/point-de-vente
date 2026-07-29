@@ -24,7 +24,10 @@ export const BackOffice = () => {
   const [selectedCompany, setSelectedCompany] = useState(null);
   
   const [companyName, setCompanyName] = useState('');
+  const [companyPlan, setCompanyPlan] = useState('pro');
+  const [companyExpiresAt, setCompanyExpiresAt] = useState('');
   const [companyStatus, setCompanyStatus] = useState('active');
+  const [filterCompanyPlan, setFilterCompanyPlan] = useState('');
 
   // Utilisateurs
   const [users, setUsers] = useState([]);
@@ -129,9 +132,11 @@ export const BackOffice = () => {
     try {
       await axios.post('/v1/admin/companies', {
         name: companyName,
-        status: companyStatus
+        status: companyStatus,
+        subscription_plan: companyPlan,
+        subscription_expires_at: companyExpiresAt || null
       });
-      setSuccess(`L'entreprise "${companyName}" a été enregistrée avec succès.`);
+      setSuccess(`L'entreprise "${companyName}" a été enregistrée avec succès sous la formule ${companyPlan.toUpperCase()}.`);
       setShowCreateCompanyModal(false);
       resetCompanyForm();
       loadCompanies();
@@ -149,7 +154,9 @@ export const BackOffice = () => {
     try {
       await axios.post(`/v1/admin/companies/${selectedCompany.id}`, {
         name: companyName,
-        status: companyStatus
+        status: companyStatus,
+        subscription_plan: companyPlan,
+        subscription_expires_at: companyExpiresAt || null
       });
       setSuccess(`L'entreprise "${companyName}" a été mise à jour.`);
       setShowEditCompanyModal(false);
@@ -164,6 +171,8 @@ export const BackOffice = () => {
     setSelectedCompany(company);
     setCompanyName(company.name);
     setCompanyStatus(company.status || 'active');
+    setCompanyPlan(company.subscription_plan || 'pro');
+    setCompanyExpiresAt(company.subscription_expires_at ? company.subscription_expires_at.split('T')[0] : '');
     setShowEditCompanyModal(true);
   };
 
@@ -182,7 +191,7 @@ export const BackOffice = () => {
 
   const resetCompanyForm = () => {
     setCompanyName('');
-    setCompanyPlan('basic');
+    setCompanyPlan('pro');
     setCompanyExpiresAt('');
     setCompanyStatus('active');
     setSelectedCompany(null);
@@ -245,7 +254,9 @@ export const BackOffice = () => {
   const filteredCompanies = companies.filter(c => {
     const matchesSearch = c.name.toLowerCase().includes(searchCompany.toLowerCase());
     const matchesStatus = filterCompanyStatus === '' || c.status === filterCompanyStatus;
-    return matchesSearch && matchesStatus;
+    const plan = c.subscription_plan || 'starter';
+    const matchesPlan = filterCompanyPlan === '' || plan === filterCompanyPlan || (filterCompanyPlan === 'pro' && plan === 'premium') || (filterCompanyPlan === 'starter' && plan === 'basic');
+    return matchesSearch && matchesStatus && matchesPlan;
   });
 
   if (!token || !isSuperAdmin) {
@@ -382,6 +393,14 @@ export const BackOffice = () => {
                     <option value="inactive">Suspendues</option>
                   </select>
                 </div>
+                <div className="filter-group">
+                  <select className="form-control" value={filterCompanyPlan} onChange={(e) => setFilterCompanyPlan(e.target.value)}>
+                    <option value="">Toutes les formules</option>
+                    <option value="starter">📦 Formule Starter</option>
+                    <option value="pro">⭐ Formule Pro</option>
+                    <option value="enterprise">👑 Formule Entreprise</option>
+                  </select>
+                </div>
               </div>
               <button onClick={() => { resetCompanyForm(); setShowCreateCompanyModal(true); }} className="btn btn-primary" style={{ height: '42px' }}>
                 <i className="fa-solid fa-plus me-1"></i> Créer Entreprise
@@ -400,6 +419,7 @@ export const BackOffice = () => {
                   <thead>
                     <tr>
                       <th>Entreprise</th>
+                      <th>Formule Abonnement</th>
                       <th>Points de Vente</th>
                       <th>Utilisateurs</th>
                       <th>Statut</th>
@@ -409,7 +429,21 @@ export const BackOffice = () => {
                   <tbody>
                     {filteredCompanies.map(c => (
                       <tr key={c.id} className="hover-row">
-                        <td><strong>{c.name}</strong></td>
+                        <td>
+                          <strong>{c.name}</strong>
+                          <div className="small text-muted" style={{ fontSize: '11px' }}>Code: {c.code}</div>
+                        </td>
+                        <td>
+                          {(!c.subscription_plan || c.subscription_plan === 'starter' || c.subscription_plan === 'basic') && (
+                            <span className="badge bg-secondary" style={{ fontSize: '12px', padding: '5px 10px' }}>📦 Formule Starter</span>
+                          )}
+                          {(c.subscription_plan === 'pro' || c.subscription_plan === 'premium') && (
+                            <span className="badge bg-primary" style={{ fontSize: '12px', padding: '5px 10px' }}>⭐ Formule Pro</span>
+                          )}
+                          {c.subscription_plan === 'enterprise' && (
+                            <span className="badge" style={{ background: '#8b5cf6', color: '#fff', fontWeight: 700, fontSize: '12px', padding: '5px 10px' }}>👑 Formule Entreprise</span>
+                          )}
+                        </td>
                         <td>{c.branches_count} boutiques</td>
                         <td>{c.users_count} comptes</td>
                         <td>
@@ -549,7 +583,7 @@ export const BackOffice = () => {
           </div>
         )}
 
-        {/* 5. JOURNAL D'AUDIT GLOBAL */}
+        {/* 6. LOGS D'AUDIT GLOBAL */}
         {activeSubTab === 'audit' && (
           <div className="mt-3">
             <AuditLogs />
@@ -561,11 +595,11 @@ export const BackOffice = () => {
       {/* MODALE : CREATION D'UNE ENTREPRISE */}
       {showCreateCompanyModal && (
         <div className="modal-overlay" onClick={() => setShowCreateCompanyModal(false)}>
-          <div className="modal-card card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px', textAlign: 'left' }}>
+          <div className="modal-card card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px', textAlign: 'left' }}>
             <h3>Créer une entreprise sur la plateforme</h3>
             <form onSubmit={handleCreateCompany} style={{ marginTop: '15px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <div className="form-group">
-                <label className="form-label">Nom de l'entreprise</label>
+                <label className="form-label">Nom de l'entreprise *</label>
                 <input
                   type="text"
                   className="form-control"
@@ -576,13 +610,30 @@ export const BackOffice = () => {
                 />
               </div>
               
+              <div className="form-group">
+                <label className="form-label">Formule d'Abonnement (Plan) *</label>
+                <select className="form-control" value={companyPlan} onChange={(e) => setCompanyPlan(e.target.value)}>
+                  <option value="starter">📦 Formule Starter (15 000 XOF/mois - 1 boutique, 2 comptes)</option>
+                  <option value="pro">⭐ Formule Pro (35 000 XOF/mois - 3 boutiques, 5 comptes)</option>
+                  <option value="enterprise">👑 Formule Entreprise (75 000 XOF/mois - Illimité)</option>
+                </select>
+              </div>
 
+              <div className="form-group">
+                <label className="form-label">Date d'expiration de l'abonnement (optionnel)</label>
+                <input
+                  type="date"
+                  className="form-control"
+                  value={companyExpiresAt}
+                  onChange={(e) => setCompanyExpiresAt(e.target.value)}
+                />
+              </div>
 
               <div className="form-group">
                 <label className="form-label">Statut Initial</label>
                 <select className="form-control" value={companyStatus} onChange={(e) => setCompanyStatus(e.target.value)}>
-                  <option value="active">Actif</option>
-                  <option value="inactive">Suspendu</option>
+                  <option value="active">Actif (Accès autorisé)</option>
+                  <option value="inactive">Suspendu (Accès bloqué)</option>
                 </select>
               </div>
 
@@ -598,7 +649,7 @@ export const BackOffice = () => {
       {/* MODALE : MODIFICATION D'UNE ENTREPRISE */}
       {showEditCompanyModal && (
         <div className="modal-overlay" onClick={() => setShowEditCompanyModal(false)}>
-          <div className="modal-card card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px', textAlign: 'left' }}>
+          <div className="modal-card card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px', textAlign: 'left' }}>
             <h3>Gérer l'entreprise : {selectedCompany?.name}</h3>
             <form onSubmit={handleEditCompany} style={{ marginTop: '15px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <div className="form-group">
@@ -612,7 +663,24 @@ export const BackOffice = () => {
                 />
               </div>
               
+              <div className="form-group">
+                <label className="form-label">Formule d'Abonnement (Plan)</label>
+                <select className="form-control" value={companyPlan} onChange={(e) => setCompanyPlan(e.target.value)}>
+                  <option value="starter">📦 Formule Starter (15 000 XOF/mois - 1 boutique, 2 comptes)</option>
+                  <option value="pro">⭐ Formule Pro (35 000 XOF/mois - 3 boutiques, 5 comptes)</option>
+                  <option value="enterprise">👑 Formule Entreprise (75 000 XOF/mois - Illimité)</option>
+                </select>
+              </div>
 
+              <div className="form-group">
+                <label className="form-label">Date d'expiration de l'abonnement</label>
+                <input
+                  type="date"
+                  className="form-control"
+                  value={companyExpiresAt}
+                  onChange={(e) => setCompanyExpiresAt(e.target.value)}
+                />
+              </div>
 
               <div className="form-group">
                 <label className="form-label">Statut</label>

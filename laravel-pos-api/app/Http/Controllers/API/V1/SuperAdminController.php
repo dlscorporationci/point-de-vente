@@ -53,11 +53,18 @@ class SuperAdminController extends Controller
             ->limit(10)
             ->get();
 
+        $starterCount = Company::where('subscription_plan', 'starter')->orWhereNull('subscription_plan')->orWhere('subscription_plan', 'basic')->count();
+        $proCount = Company::whereIn('subscription_plan', ['pro', 'premium'])->count();
+        $enterpriseCount = Company::where('subscription_plan', 'enterprise')->count();
+
         return response()->json([
             'metrics' => [
                 'companies_count' => $companiesCount,
                 'companies_active' => $companiesActive,
                 'companies_suspended' => $companiesSuspended,
+                'starter_count' => $starterCount,
+                'pro_count' => $proCount,
+                'enterprise_count' => $enterpriseCount,
                 'users_count' => $usersCount,
                 'admins_count' => $adminsCount,
                 'employees_count' => $employeesCount,
@@ -98,11 +105,15 @@ class SuperAdminController extends Controller
         $request->validate([
             'name' => 'required|string|max:100|unique:companies,name',
             'status' => 'required|in:active,inactive',
+            'subscription_plan' => 'nullable|string|in:starter,pro,enterprise,basic,premium',
+            'subscription_expires_at' => 'nullable|date',
         ]);
 
         $company = Company::create([
             'name' => $request->name,
             'status' => $request->status,
+            'subscription_plan' => $request->subscription_plan ?: 'pro',
+            'subscription_expires_at' => $request->subscription_expires_at,
             'timezone' => 'Africa/Dakar',
             'currency' => 'XOF',
         ]);
@@ -151,6 +162,8 @@ class SuperAdminController extends Controller
         $request->validate([
             'name'   => 'sometimes|nullable|string|max:100',
             'status' => 'sometimes|nullable|in:active,inactive',
+            'subscription_plan' => 'sometimes|nullable|string|in:starter,pro,enterprise,basic,premium',
+            'subscription_expires_at' => 'sometimes|nullable|date',
             'logo'   => 'sometimes|nullable|image|max:5120',
         ]);
 
@@ -160,6 +173,14 @@ class SuperAdminController extends Controller
 
         if ($request->filled('status')) {
             $company->status = $request->status;
+        }
+
+        if ($request->filled('subscription_plan')) {
+            $company->subscription_plan = $request->subscription_plan;
+        }
+
+        if ($request->has('subscription_expires_at')) {
+            $company->subscription_expires_at = $request->subscription_expires_at;
         }
 
         if ($request->filled('code')) {

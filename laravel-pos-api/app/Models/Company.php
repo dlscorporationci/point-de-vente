@@ -16,11 +16,14 @@ class Company extends Model
         'currency',
         'tax_settings',
         'status',
+        'subscription_plan',
+        'subscription_expires_at',
         'logo_path',
     ];
 
     protected $casts = [
         'tax_settings' => 'array',
+        'subscription_expires_at' => 'datetime',
     ];
 
     protected static function boot()
