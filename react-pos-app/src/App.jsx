@@ -21,6 +21,7 @@ import { Branches } from './pages/Branches'
 import { UsersManagement } from './pages/UsersManagement'
 import { UserGuide } from './pages/UserGuide'
 import { Notifications } from './pages/Notifications'
+import { SyncCenter } from './pages/SyncCenter'
 import { NotificationBell } from './components/NotificationBell'
 import { NetworkStatusBadge } from './components/NetworkStatusBadge'
 import { AnimatedBubbles } from './components/AnimatedBubbles'
@@ -115,6 +116,7 @@ function MainContent() {
       case 'branches':      return <Branches />
       case 'users-mgmt':    return <UsersManagement />
       case 'userguide':     return <UserGuide />
+      case 'sync-center':   return <SyncCenter />
       case 'notifications': return <Notifications setActiveTab={setActiveTab} />
       default:              return isSuperAdmin ? <BackOffice /> : <Dashboard setActiveTab={setActiveTab} />
     }
@@ -126,6 +128,7 @@ function MainContent() {
     { tab: 'backoffice',    icon: 'fa-gears',           label: 'Console SaaS',  show: !!(user && isSuperAdmin) },
     { tab: 'dashboard',     icon: 'fa-gauge-high',      label: 'Dashboard',     show: !!(user && !isSuperAdmin) },
     { tab: 'pos',           icon: 'fa-cash-register',   label: 'POS (Caisse)',  show: !!(user && !isSuperAdmin) },
+    { tab: 'sync-center',   icon: 'fa-arrows-rotate',   label: 'Centre Sync',   show: !!user },
     { tab: 'auth',          icon: user ? 'fa-user' : 'fa-key', label: user ? 'Mon Profil' : 'Connexion', show: true },
     { tab: 'register',      icon: 'fa-pen-to-square',   label: "S'inscrire",    show: !user },
     { tab: 'catalog',       icon: 'fa-box',             label: 'Catalogue',     show: !!(user && !isSuperAdmin) },

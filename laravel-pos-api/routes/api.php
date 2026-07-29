@@ -39,6 +39,13 @@ Route::prefix('v1')->middleware('tenant')->group(function () {
         Route::get('/dashboard/stats', [\App\Http\Controllers\API\V1\DashboardController::class, 'stats']);
 
         // -----------------------------------------------------------------------
+        // Moteur de Synchronisation Offline-First (PUSH / PULL / Health)
+        // -----------------------------------------------------------------------
+        Route::get('/sync/health', [\App\Http\Controllers\API\V1\SyncController::class, 'health']);
+        Route::post('/sync/push',  [\App\Http\Controllers\API\V1\SyncController::class, 'push']);
+        Route::get('/sync/pull',   [\App\Http\Controllers\API\V1\SyncController::class, 'pull']);
+
+        // -----------------------------------------------------------------------
         // Notifications Système
         // -----------------------------------------------------------------------
         Route::get('/notifications',              [\App\Http\Controllers\API\V1\NotificationController::class, 'index']);

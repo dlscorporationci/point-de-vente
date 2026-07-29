@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext';
 import { useCartStore } from '../store/useCartStore';
 import { getImageUrl } from './Catalog';
 import { offlineStorage } from '../services/offlineStorage';
+import { saleService } from '../services/SaleService';
 
 export const PointDeVente = () => {
   const { user, token, isOnline, refreshPendingSalesCount } = useApp();
@@ -196,6 +197,7 @@ export const PointDeVente = () => {
         total: totals.total,
         items: cart.map(item => ({
           product_id: item.product.id,
+          product_name: item.product.name,
           quantity: item.quantity,
           selling_price: parseFloat(item.product.selling_price),
           discount: item.discount
@@ -216,30 +218,7 @@ export const PointDeVente = () => {
           setSuccess('✅ Vente enregistrée avec succès !');
         } catch (serverErr) {
           if (!serverErr.response) {
-            const queued = offlineStorage.enqueueSale(payload);
-            const localTicket = {
-              sale_number: queued.sale_number,
-              created_at: new Date().toISOString(),
-              user: { name: user?.name },
-              branch: user?.active_branch || user?.branch || { name: 'Boutique POS' },
-              client_name: clientName || 'Client Comptant',
-              client_phone: clientPhone || null,
-              payment_method: paymentMethod,
-              amount_received: paymentMethod === 'credit' ? 0 : parseFloat(amountReceived || totals.total),
-              amount_change: Math.max(0, parseFloat(amountReceived || totals.total) - totals.total),
-              subtotal: totals.subtotal,
-              discount: totals.discount,
-              tax: totals.tax,
-              total: totals.total,
-              details: cart.map(item => ({
-                id: item.product.id,
-                product: item.product,
-                quantity: item.quantity,
-                selling_price: parseFloat(item.product.selling_price),
-                discount: item.discount,
-                total: (parseFloat(item.product.selling_price) * item.quantity) - item.discount
-              }))
-            };
+            const localTicket = await saleService.createSale(payload, { user });
             setCompletedSale(localTicket);
             refreshPendingSalesCount();
             setSuccess('🔴 Vente enregistrée en mode Hors-Ligne ! Le reçu est prêt et sera synchronisé au retour du réseau.');
@@ -248,30 +227,7 @@ export const PointDeVente = () => {
           }
         }
       } else {
-        const queued = offlineStorage.enqueueSale(payload);
-        const localTicket = {
-          sale_number: queued.sale_number,
-          created_at: new Date().toISOString(),
-          user: { name: user?.name },
-          branch: user?.active_branch || user?.branch || { name: 'Boutique POS' },
-          client_name: clientName || 'Client Comptant',
-          client_phone: clientPhone || null,
-          payment_method: paymentMethod,
-          amount_received: paymentMethod === 'credit' ? 0 : parseFloat(amountReceived || totals.total),
-          amount_change: Math.max(0, parseFloat(amountReceived || totals.total) - totals.total),
-          subtotal: totals.subtotal,
-          discount: totals.discount,
-          tax: totals.tax,
-          total: totals.total,
-          details: cart.map(item => ({
-            id: item.product.id,
-            product: item.product,
-            quantity: item.quantity,
-            selling_price: parseFloat(item.product.selling_price),
-            discount: item.discount,
-            total: (parseFloat(item.product.selling_price) * item.quantity) - item.discount
-          }))
-        };
+        const localTicket = await saleService.createSale(payload, { user });
         setCompletedSale(localTicket);
         refreshPendingSalesCount();
         setSuccess('🔴 Vente enregistrée en mode Hors-Ligne ! Le reçu est prêt et sera synchronisé au retour du réseau.');
