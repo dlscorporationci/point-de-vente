@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import logo from '../assets/logo.jpg';
+import { useApp } from '../context/AppContext';
 
 export const Navbar = ({ onNavigate }) => {
+  const { theme } = useApp();
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const isDark = theme && theme.includes('dark');
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 10);
@@ -43,16 +46,14 @@ export const Navbar = ({ onNavigate }) => {
           top: 0, left: 0, right: 0,
           zIndex: 2000,
           background: scrolled
-            ? 'rgba(255,255,255,0.92)'
-            : 'rgba(255,255,255,0.75)',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
+            ? 'var(--bg-card)'
+            : isDark ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.75)',
+          backdropFilter: 'blur(18px)',
+          WebkitBackdropFilter: 'blur(18px)',
           borderBottom: scrolled
-            ? '1px solid rgba(37,99,235,0.10)'
+            ? '1px solid var(--border-color)'
             : '1px solid transparent',
-          boxShadow: scrolled
-            ? '0 2px 24px rgba(37,99,235,0.08)'
-            : 'none',
+          boxShadow: scrolled ? 'var(--box-shadow)' : 'none',
           transition: 'all 0.3s ease',
         }}
       >
@@ -72,7 +73,16 @@ export const Navbar = ({ onNavigate }) => {
             onClick={() => onNavigate ? onNavigate('home') : scrollTo('#hero')}
             style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', flexShrink: 0 }}
           >
-            <img src={logo} alt="ApexPOS" style={{ width: '36px', height: '36px', borderRadius: '10px', objectFit: 'cover', boxShadow: '0 2px 8px rgba(37,99,235,0.18)' }} />
+            <img
+              src={logo}
+              alt="ApexPOS"
+              style={{
+                width: '36px', height: '36px',
+                borderRadius: '10px',
+                objectFit: 'cover',
+                boxShadow: '0 2px 8px rgba(37,99,235,0.18)',
+              }}
+            />
             <span style={{
               fontSize: '22px',
               fontWeight: 800,
@@ -98,25 +108,18 @@ export const Navbar = ({ onNavigate }) => {
               <button
                 key={href}
                 onClick={() => scrollTo(href)}
+                className="landing-nav-link-btn"
                 style={{
                   background: 'none',
                   border: 'none',
                   cursor: 'pointer',
                   fontSize: '14px',
                   fontWeight: 500,
-                  color: '#374151',
+                  color: 'var(--text-main)',
                   padding: '8px 14px',
                   borderRadius: '8px',
                   transition: 'color 0.2s, background 0.2s',
                   whiteSpace: 'nowrap',
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.color = '#2563eb';
-                  e.currentTarget.style.background = 'rgba(37,99,235,0.07)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.color = '#374151';
-                  e.currentTarget.style.background = 'none';
                 }}
               >
                 {label}
@@ -128,10 +131,11 @@ export const Navbar = ({ onNavigate }) => {
           <div className="landing-nav-ctas" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
             <button
               onClick={() => onNavigate ? onNavigate('auth') : scrollTo('#auth')}
+              className="landing-nav-outline-btn"
               style={{
                 background: 'none',
-                border: '1.5px solid #2563eb',
-                color: '#2563eb',
+                border: '1.5px solid var(--color-primary)',
+                color: 'var(--color-primary)',
                 fontWeight: 600,
                 fontSize: '13px',
                 padding: '8px 18px',
@@ -139,12 +143,6 @@ export const Navbar = ({ onNavigate }) => {
                 cursor: 'pointer',
                 transition: 'all 0.2s',
                 whiteSpace: 'nowrap',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.background = 'rgba(37,99,235,0.07)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.background = 'none';
               }}
             >
               Se connecter
@@ -165,9 +163,9 @@ export const Navbar = ({ onNavigate }) => {
                 whiteSpace: 'nowrap',
               }}
               onMouseEnter={e => {
-                e.currentTarget.style.opacity = '0.9';
+                e.currentTarget.style.opacity = '0.88';
                 e.currentTarget.style.transform = 'translateY(-1px)';
-                e.currentTarget.style.boxShadow = '0 6px 20px rgba(37,99,235,0.35)';
+                e.currentTarget.style.boxShadow = '0 6px 20px rgba(37,99,235,0.38)';
               }}
               onMouseLeave={e => {
                 e.currentTarget.style.opacity = '1';
@@ -192,29 +190,46 @@ export const Navbar = ({ onNavigate }) => {
               gap: '5px',
               width: '40px',
               height: '40px',
-              background: 'rgba(37,99,235,0.07)',
-              border: '1.5px solid rgba(37,99,235,0.15)',
+              background: 'var(--bg-input)',
+              border: '1.5px solid var(--border-color)',
               borderRadius: '10px',
               cursor: 'pointer',
               padding: '8px',
               flexShrink: 0,
             }}
           >
-            <span style={{ display: 'block', width: '18px', height: '2px', background: menuOpen ? '#2563eb' : '#374151', borderRadius: '2px', transition: 'all 0.3s', transform: menuOpen ? 'rotate(45deg) translate(5px, 5px)' : 'none' }} />
-            <span style={{ display: 'block', width: '18px', height: '2px', background: menuOpen ? '#2563eb' : '#374151', borderRadius: '2px', transition: 'all 0.3s', opacity: menuOpen ? 0 : 1 }} />
-            <span style={{ display: 'block', width: '18px', height: '2px', background: menuOpen ? '#2563eb' : '#374151', borderRadius: '2px', transition: 'all 0.3s', transform: menuOpen ? 'rotate(-45deg) translate(5px, -5px)' : 'none' }} />
+            <span style={{
+              display: 'block', width: '18px', height: '2px',
+              background: 'var(--text-main)',
+              borderRadius: '2px',
+              transition: 'all 0.3s',
+              transform: menuOpen ? 'rotate(45deg) translate(5px, 5px)' : 'none',
+            }} />
+            <span style={{
+              display: 'block', width: '18px', height: '2px',
+              background: 'var(--text-main)',
+              borderRadius: '2px',
+              transition: 'all 0.3s',
+              opacity: menuOpen ? 0 : 1,
+            }} />
+            <span style={{
+              display: 'block', width: '18px', height: '2px',
+              background: 'var(--text-main)',
+              borderRadius: '2px',
+              transition: 'all 0.3s',
+              transform: menuOpen ? 'rotate(-45deg) translate(5px, -5px)' : 'none',
+            }} />
           </button>
         </div>
 
         {/* ── MENU MOBILE DROPDOWN ── */}
         <div
-          className="landing-mobile-menu"
           style={{
             maxHeight: menuOpen ? '420px' : '0',
             overflow: 'hidden',
             transition: 'max-height 0.35s ease',
-            background: 'rgba(255,255,255,0.97)',
-            borderTop: menuOpen ? '1px solid rgba(37,99,235,0.10)' : '1px solid transparent',
+            background: 'var(--bg-card)',
+            borderTop: menuOpen ? '1px solid var(--border-color)' : '1px solid transparent',
           }}
         >
           <div style={{ padding: '16px 24px 20px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -222,43 +237,44 @@ export const Navbar = ({ onNavigate }) => {
               <button
                 key={href}
                 onClick={() => scrollTo(href)}
+                className="landing-nav-link-btn"
                 style={{
                   background: 'none',
                   border: 'none',
                   cursor: 'pointer',
                   fontSize: '15px',
                   fontWeight: 500,
-                  color: '#374151',
+                  color: 'var(--text-main)',
                   padding: '12px 16px',
                   borderRadius: '10px',
                   textAlign: 'left',
                   transition: 'all 0.2s',
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.background = 'rgba(37,99,235,0.07)';
-                  e.currentTarget.style.color = '#2563eb';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.background = 'none';
-                  e.currentTarget.style.color = '#374151';
                 }}
               >
                 {label}
               </button>
             ))}
 
-            <div style={{ borderTop: '1px solid rgba(37,99,235,0.10)', marginTop: '8px', paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{
+              borderTop: '1px solid var(--border-color)',
+              marginTop: '8px',
+              paddingTop: '16px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px',
+            }}>
               <button
                 onClick={() => { setMenuOpen(false); onNavigate && onNavigate('auth'); }}
                 style={{
                   background: 'none',
-                  border: '1.5px solid #2563eb',
-                  color: '#2563eb',
+                  border: '1.5px solid var(--color-primary)',
+                  color: 'var(--color-primary)',
                   fontWeight: 600,
                   fontSize: '14px',
                   padding: '12px 18px',
                   borderRadius: '10px',
                   cursor: 'pointer',
+                  transition: 'all 0.2s',
                 }}
               >
                 Se connecter
@@ -284,12 +300,24 @@ export const Navbar = ({ onNavigate }) => {
         </div>
       </nav>
 
-      {/* ── STYLES RESPONSIVE ── */}
+      {/* ── STYLES RESPONSIVE + HOVER ── */}
       <style>{`
+        /* Responsive : affichage mobile/desktop */
         @media (max-width: 768px) {
           .landing-nav-links,
           .landing-nav-ctas { display: none !important; }
           .landing-burger { display: flex !important; }
+        }
+
+        /* Hover des liens de navigation */
+        .landing-nav-link-btn:hover {
+          color: var(--color-primary) !important;
+          background: var(--bg-input) !important;
+        }
+
+        /* Hover bouton outline */
+        .landing-nav-outline-btn:hover {
+          background: var(--bg-input) !important;
         }
       `}</style>
     </>

@@ -4,7 +4,7 @@ const stats = [
   {
     icon: (
       <svg width="20" height="20" fill="none" viewBox="0 0 24 24">
-        <circle cx="12" cy="12" r="10" fill="rgba(37,99,235,0.12)" />
+        <circle cx="12" cy="12" r="10" fill="rgba(37,99,235,0.15)" />
         <path d="M8 12l3 3 5-5" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
@@ -57,27 +57,18 @@ export const SocialProofBar = () => {
         <React.Fragment key={i}>
           {/* Stat item */}
           <div
+            className="social-proof-item"
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
-              background: 'rgba(255,255,255,0.72)',
-              backdropFilter: 'blur(10px)',
-              WebkitBackdropFilter: 'blur(10px)',
-              border: '1px solid rgba(37,99,235,0.10)',
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border-color)',
               borderRadius: '12px',
               padding: '8px 14px',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.04)',
+              boxShadow: 'var(--box-shadow)',
               cursor: 'default',
               transition: 'transform 0.2s, box-shadow 0.2s',
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 6px 20px rgba(37,99,235,0.10)';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 2px 10px rgba(0,0,0,0.04)';
             }}
           >
             <span style={{ flexShrink: 0, lineHeight: 1 }}>{stat.icon}</span>
@@ -91,7 +82,7 @@ export const SocialProofBar = () => {
               </span>
               <span style={{
                 fontSize: '11px',
-                color: '#6b7280',
+                color: 'var(--text-muted)',
                 fontWeight: 500,
                 whiteSpace: 'nowrap',
               }}>
@@ -100,14 +91,14 @@ export const SocialProofBar = () => {
             </div>
           </div>
 
-          {/* Séparateur entre les items (sauf après le dernier) */}
+          {/* Séparateur entre les items */}
           {i < stats.length - 1 && (
             <div
               className="social-proof-divider"
               style={{
                 width: '1px',
                 height: '24px',
-                background: 'rgba(37,99,235,0.15)',
+                background: 'var(--border-color)',
                 borderRadius: '1px',
                 flexShrink: 0,
               }}
@@ -116,8 +107,11 @@ export const SocialProofBar = () => {
         </React.Fragment>
       ))}
 
-      {/* Responsive */}
       <style>{`
+        .social-proof-item:hover {
+          transform: translateY(-2px);
+          box-shadow: var(--box-shadow-hover) !important;
+        }
         @media (max-width: 640px) {
           .social-proof-divider { display: none; }
         }
