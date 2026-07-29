@@ -546,20 +546,25 @@ export const Login = ({ setActiveTab }) => {
       <style>{`
         .login-page-container {
           position: relative;
-          min-height: 100vh;
+          min-height: calc(100vh - 80px);
           display: flex;
-          align-items: center;
+          align-items: flex-start;
           justify-content: center;
-          padding: 24px;
+          padding: 20px 16px 40px 16px;
           z-index: 1;
+          box-sizing: border-box;
         }
 
         .login-box {
           width: 100%;
           max-width: 440px;
-          padding: 36px 32px;
-          margin-top: 40px;
+          padding: 32px 28px;
+          margin: 10px auto 20px auto;
           box-shadow: var(--shadow-lg);
+          max-height: calc(100vh - 110px);
+          overflow-y: auto;
+          scrollbar-width: thin;
+          scrollbar-color: var(--color-primary, #2563eb) var(--bg-input, rgba(0, 0, 0, 0.05));
         }
 
         .login-logo-img {
