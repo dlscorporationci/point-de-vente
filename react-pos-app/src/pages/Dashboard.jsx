@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
+import { offlineStorage } from '../services/offlineStorage';
 
 export const Dashboard = ({ setActiveTab }) => {
   const { user, activeBranch, assignedBranches } = useApp();
@@ -14,35 +15,60 @@ export const Dashboard = ({ setActiveTab }) => {
     try {
       if (navigator.onLine) {
         const res = await axios.get('/v1/dashboard/stats');
-        setData(res.data);
-        localStorage.setItem('apexpos_cached_dashboard_stats', JSON.stringify(res.data));
+        const pendingSales = offlineStorage.getPendingSales();
+        const pendingTotal = pendingSales.reduce((sum, s) => sum + (parseFloat(s.total) || 0), 0);
+        const pendingCount = pendingSales.length;
+
+        const serverData = res.data || {};
+        const combinedData = {
+          ...serverData,
+          today_ca: (parseFloat(serverData.today_ca) || 0) + pendingTotal,
+          today_transactions: (parseInt(serverData.today_transactions) || 0) + pendingCount
+        };
+
+        setData(combinedData);
+        localStorage.setItem('apexpos_cached_dashboard_stats', JSON.stringify(serverData));
       } else {
         const cached = localStorage.getItem('apexpos_cached_dashboard_stats');
-        if (cached) {
-          setData(JSON.parse(cached));
-        } else {
-          setData({
-            today_ca: 0,
-            today_transactions: 0,
-            cash_session: { status: 'open' },
-            stock_alerts: 0,
-            incoming_transfers: 0
-          });
-        }
-      }
-    } catch (err) {
-      const cached = localStorage.getItem('apexpos_cached_dashboard_stats');
-      if (cached) {
-        setData(JSON.parse(cached));
-      } else {
-        setData({
+        const baseStats = cached ? JSON.parse(cached) : {
           today_ca: 0,
           today_transactions: 0,
           cash_session: { status: 'open' },
           stock_alerts: 0,
           incoming_transfers: 0
+        };
+
+        const pendingSales = offlineStorage.getPendingSales();
+        const pendingTotal = pendingSales.reduce((sum, s) => sum + (parseFloat(s.total) || 0), 0);
+        const pendingCount = pendingSales.length;
+
+        setData({
+          ...baseStats,
+          today_ca: (parseFloat(baseStats.today_ca) || 0) + pendingTotal,
+          today_transactions: (parseInt(baseStats.today_transactions) || 0) + pendingCount,
+          cash_session: baseStats.cash_session || { status: 'open' }
         });
       }
+    } catch (err) {
+      const cached = localStorage.getItem('apexpos_cached_dashboard_stats');
+      const baseStats = cached ? JSON.parse(cached) : {
+        today_ca: 0,
+        today_transactions: 0,
+        cash_session: { status: 'open' },
+        stock_alerts: 0,
+        incoming_transfers: 0
+      };
+
+      const pendingSales = offlineStorage.getPendingSales();
+      const pendingTotal = pendingSales.reduce((sum, s) => sum + (parseFloat(s.total) || 0), 0);
+      const pendingCount = pendingSales.length;
+
+      setData({
+        ...baseStats,
+        today_ca: (parseFloat(baseStats.today_ca) || 0) + pendingTotal,
+        today_transactions: (parseInt(baseStats.today_transactions) || 0) + pendingCount,
+        cash_session: baseStats.cash_session || { status: 'open' }
+      });
     } finally {
       setLoading(false);
     }
