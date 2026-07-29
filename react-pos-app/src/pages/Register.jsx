@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
+import { PasswordInput } from '../components/PasswordInput';
 import logo from '../assets/logo.jpg';
 
 export const Register = ({ setActiveTab }) => {
@@ -106,22 +107,17 @@ export const Register = ({ setActiveTab }) => {
 
           <div className="form-group">
             <label className="form-label">Mot de passe *</label>
-            <input 
-              type="password" 
-              className="form-control" 
+            <PasswordInput 
               placeholder="Minimum 6 caractères" 
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              minLength={6}
             />
           </div>
 
           <div className="form-group">
             <label className="form-label">Confirmer le mot de passe *</label>
-            <input 
-              type="password" 
-              className="form-control" 
+            <PasswordInput 
               placeholder="Ressaisir le mot de passe" 
               value={passwordConfirmation}
               onChange={(e) => setPasswordConfirmation(e.target.value)}

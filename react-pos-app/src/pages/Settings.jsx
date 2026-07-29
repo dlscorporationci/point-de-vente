@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
+import { PasswordInput } from '../components/PasswordInput';
 
 export const Settings = () => {
   const { token, user, companyId } = useApp();
@@ -645,7 +646,7 @@ export const Settings = () => {
                       <div className="row">
                         <div className="col-md-4 form-group">
                           <label className="form-label">Mot de passe {editingUser ? '(vide = inchangé)' : '*'}</label>
-                          <input type="password" className="form-control" required={!editingUser}
+                          <PasswordInput required={!editingUser}
                             value={userForm.password} onChange={e => setUserForm({...userForm, password: e.target.value})} />
                         </div>
                         <div className="col-md-4 form-group">
@@ -812,16 +813,16 @@ export const Settings = () => {
                 <h3>🔑 Modifier mon mot de passe (sécurisé)</h3>
                 <div className="form-group mt-3">
                   <label className="form-label">Mot de passe actuel</label>
-                  <input type="password" className="form-control" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="Indispensable pour changer de mot de passe" />
+                  <PasswordInput value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="Indispensable pour changer de mot de passe" />
                 </div>
                 <div className="row">
                   <div className="col-md-6 form-group">
                     <label className="form-label">Nouveau mot de passe</label>
-                    <input type="password" className="form-control" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Min. 8 caractères" />
+                    <PasswordInput value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Min. 8 caractères" />
                   </div>
                   <div className="col-md-6 form-group">
                     <label className="form-label">Confirmer le mot de passe</label>
-                    <input type="password" className="form-control" value={newPasswordConfirm} onChange={(e) => setNewPasswordConfirm(e.target.value)} placeholder="Confirmer" />
+                    <PasswordInput value={newPasswordConfirm} onChange={(e) => setNewPasswordConfirm(e.target.value)} placeholder="Confirmer" />
                   </div>
                 </div>
                 <div className="mt-4 text-end">

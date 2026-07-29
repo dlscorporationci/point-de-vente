@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
+import { PasswordInput } from '../components/PasswordInput';
 
 export const UsersManagement = () => {
   const { token, user } = useApp();
@@ -190,7 +191,7 @@ export const UsersManagement = () => {
               <div className="row">
                 <div className="col-md-4 form-group">
                   <label className="form-label">Mot de passe {editingUser ? '(vide = inchangé)' : '*'}</label>
-                  <input type="password" className="form-control" required={!editingUser}
+                  <PasswordInput required={!editingUser}
                     placeholder="Min. 8 caractères"
                     value={userForm.password}
                     onChange={e => setUserForm({ ...userForm, password: e.target.value })} />

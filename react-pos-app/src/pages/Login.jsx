@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
+import { PasswordInput } from '../components/PasswordInput';
 import logo from '../assets/logo.jpg';
 
 export const Login = ({ setActiveTab }) => {
@@ -323,9 +324,7 @@ export const Login = ({ setActiveTab }) => {
                 </div>
                 <div className="form-group mb-3">
                   <label className="form-label" style={{ fontWeight: 700 }}>Mot de passe *</label>
-                  <input 
-                    type="password" 
-                    className="form-control"
+                  <PasswordInput 
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
@@ -394,14 +393,13 @@ export const Login = ({ setActiveTab }) => {
                     ))}
                   </div>
 
-                  <input 
-                    type="password" 
-                    className="form-control text-center"
-                    placeholder="Entrez votre code PIN secret"
+                  <PasswordInput 
                     value={pinCode}
                     onChange={(e) => setPinCode(e.target.value.replace(/\D/g, ''))}
+                    placeholder="Entrez votre code PIN secret"
                     maxLength="8"
                     required
+                    className="form-control text-center"
                     style={{ fontSize: '18px', letterSpacing: '4px' }}
                   />
                 </div>
@@ -486,21 +484,19 @@ export const Login = ({ setActiveTab }) => {
                 </div>
                 <div className="form-group mb-2">
                   <label className="form-label">Nouveau mot de passe</label>
-                  <input 
-                    type="password" 
-                    className="form-control"
+                  <PasswordInput 
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Min. 8 caractères"
                     required
                   />
                 </div>
                 <div className="form-group mb-3">
                   <label className="form-label">Confirmer le mot de passe</label>
-                  <input 
-                    type="password" 
-                    className="form-control"
+                  <PasswordInput 
                     value={newPasswordConfirm}
                     onChange={(e) => setNewPasswordConfirm(e.target.value)}
+                    placeholder="Confirmer"
                     required
                   />
                 </div>

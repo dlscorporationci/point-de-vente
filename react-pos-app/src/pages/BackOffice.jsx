@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
+import { PasswordInput } from '../components/PasswordInput';
 import { CountUp } from '../components/CountUp';
 import { RevenueLineChart, PaymentMethodsBarChart } from '../components/SaaSCharts';
 
@@ -708,9 +709,7 @@ export const BackOffice = () => {
             <form onSubmit={handleResetPassword} style={{ marginTop: '15px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <div className="form-group">
                 <label className="form-label">Nouveau mot de passe</label>
-                <input
-                  type="password"
-                  className="form-control"
+                <PasswordInput
                   required
                   placeholder="Min. 8 caractères"
                   value={newPassword}
@@ -719,9 +718,7 @@ export const BackOffice = () => {
               </div>
               <div className="form-group">
                 <label className="form-label">Confirmer le mot de passe</label>
-                <input
-                  type="password"
-                  className="form-control"
+                <PasswordInput
                   required
                   placeholder="Confirmer"
                   value={newPasswordConfirm}
