@@ -71,6 +71,38 @@ class SaleController extends Controller
      */
     public function store(Request $request)
     {
+        $user = $request->user();
+
+        // Récupérer la session de caisse ou trouver la session ouverte de l'utilisateur
+        $sessionId = $request->cash_session_id;
+        $session = null;
+
+        if ($sessionId && $sessionId > 0) {
+            $session = CashSession::where('id', $sessionId)->where('status', 'open')->first();
+        }
+
+        if (!$session) {
+            $session = CashSession::where('user_id', $user->id)
+                ->where('status', 'open')
+                ->latest()
+                ->first();
+        }
+
+        if (!$session) {
+            // Créer une session de caisse automatique pour autoriser l'encaissement
+            $branchId = app(\App\Services\TenantManager::class)->getBranchId() ?? $user->branch_id ?? 1;
+            $session = CashSession::create([
+                'company_id' => $user->company_id,
+                'branch_id' => $branchId,
+                'user_id' => $user->id,
+                'opening_amount' => 0,
+                'opened_at' => now(),
+                'status' => 'open'
+            ]);
+        }
+
+        $request->merge(['cash_session_id' => $session->id]);
+
         $request->validate([
             'cash_session_id' => 'required|exists:cash_sessions,id',
             'payment_method'  => 'required|in:cash,card,credit',
@@ -85,17 +117,6 @@ class SaleController extends Controller
             'client_name'           => 'nullable|string|max:255',
             'client_phone'          => 'nullable|string|max:50',
         ]);
-
-        $user = $request->user();
-
-        // Vérifier que la session de caisse est bien ouverte
-        $session = CashSession::where('id', $request->cash_session_id)
-            ->where('status', 'open')
-            ->first();
-
-        if (!$session) {
-            return response()->json(['error' => 'La session de caisse n\'est pas ouverte.'], 422);
-        }
 
         $customer = null;
         if ($request->customer_id) {

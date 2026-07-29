@@ -190,6 +190,10 @@ export const PointDeVente = () => {
         client_name: clientName || 'Client Comptant',
         client_phone: clientPhone || null,
         global_discount: globalDiscount,
+        subtotal: totals.subtotal,
+        discount: totals.discount,
+        tax: totals.tax,
+        total: totals.total,
         items: cart.map(item => ({
           product_id: item.product.id,
           quantity: item.quantity,
