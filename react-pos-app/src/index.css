@@ -470,11 +470,24 @@ textarea.form-control {
   -webkit-backdrop-filter: blur(6px);
   z-index: 2000;
   display: flex;
-  align-items: flex-start; /* Aligne en haut pour éviter tout chevauchement sous la navbar */
+  align-items: flex-start; /* Aligne en haut à 84px sous la navbar fixe pour éviter tout chevauchement */
   justify-content: center;
-  padding: 80px 16px 30px 16px;
+  padding: 84px 16px 40px 16px;
   overflow-y: auto;
   box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-primary, #2563eb) rgba(0, 0, 0, 0.2);
+}
+
+.modal-overlay::-webkit-scrollbar {
+  width: 8px;
+}
+.modal-overlay::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+.modal-overlay::-webkit-scrollbar-thumb {
+  background: var(--color-primary, #2563eb);
+  border-radius: 4px;
 }
 
 .modal-card {
@@ -482,8 +495,8 @@ textarea.form-control {
   max-width: 540px;
   padding: 24px 28px;
   text-align: left;
-  margin: 0 auto 30px auto;
-  max-height: calc(100vh - 115px);
+  margin: 0 auto;
+  max-height: calc(100vh - 120px);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
