@@ -62,7 +62,11 @@ export const Sales = () => {
   };
 
   const printReceipt = () => {
+    document.body.classList.add('printing-receipt');
     window.print();
+    setTimeout(() => {
+      document.body.classList.remove('printing-receipt');
+    }, 1000);
   };
 
   const payMethodLabel = (m) => {

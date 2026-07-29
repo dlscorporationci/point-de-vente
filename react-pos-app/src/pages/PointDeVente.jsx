@@ -658,7 +658,11 @@ export const PointDeVente = () => {
               <button 
                 type="button" 
                 onClick={() => {
+                  document.body.classList.add('printing-receipt');
                   window.print();
+                  setTimeout(() => {
+                    document.body.classList.remove('printing-receipt');
+                  }, 1000);
                 }} 
                 className="btn btn-primary"
               >
