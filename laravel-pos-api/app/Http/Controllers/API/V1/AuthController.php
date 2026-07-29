@@ -162,16 +162,17 @@ class AuthController extends Controller
         // 2. Recherche du PIN personnel au sein de CETTE entreprise uniquement
         // Exclure formellement les comptes super-admin
         $users = User::withoutGlobalScopes()
+            ->with(['role' => function ($q) {
+                $q->withoutGlobalScopes();
+            }])
             ->where('company_id', $company->id)
             ->where('status', 'active')
-            ->whereHas('role', function ($r) {
-                $r->where('slug', '!=', 'super-admin');
-            })
             ->get();
 
         $matchedUser = null;
         foreach ($users as $u) {
             if (!$u->pin_code) continue;
+            if ($u->role && $u->role->slug === 'super-admin') continue;
 
             $isMatch = Hash::check($request->pin_code, $u->pin_code) || ($u->pin_code === $request->pin_code);
             if ($isMatch) {
@@ -707,7 +708,7 @@ class AuthController extends Controller
             'branch_id'  => $primaryBranchId,
             'role_id'    => $request->role_id,
             'name'       => $request->name,
-            'email'      => $request->email,
+            'email'      => strtolower(trim($request->email)),
             'password'   => Hash::make($request->password),
             'pin_code'   => $request->pin_code,
             'status'     => $request->status ?? 'active',
