@@ -146,20 +146,31 @@ export const Register = ({ setActiveTab }) => {
         .register-container {
           position: relative;
           width: 100%;
-          min-height: 100vh;
-          padding: 24px;
+          min-height: calc(100vh - 80px);
+          padding: 30px 16px 50px 16px;
           display: flex;
-          align-items: center;
+          align-items: flex-start;
           justify-content: center;
           z-index: 1;
-          margin-top: 60px;
+          margin-top: 0;
+          box-sizing: border-box;
         }
 
         .register-card {
           width: 100%;
           max-width: 460px;
-          padding: 32px;
+          padding: 32px 28px;
           text-align: center;
+          margin: 0 auto 30px auto;
+          background: var(--bg-card);
+          border-radius: 16px;
+          border: 1px solid var(--border-color);
+          box-shadow: var(--shadow-lg);
+          max-height: calc(100vh - 100px);
+          overflow-y: auto;
+          box-sizing: border-box;
+          scrollbar-width: thin;
+          scrollbar-color: var(--color-primary, #2563eb) var(--bg-input, rgba(0, 0, 0, 0.05));
         }
 
         .register-logo {
