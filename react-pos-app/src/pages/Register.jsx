@@ -135,10 +135,21 @@ export const Register = ({ setActiveTab }) => {
         </form>
 
         <div className="register-footer">
-          Déjà un compte ?{' '}
-          <button onClick={() => setActiveTab('auth')} className="btn-link">
-            Se connecter
-          </button>
+          <div>
+            Déjà un compte ?{' '}
+            <button onClick={() => setActiveTab('auth')} className="btn-link">
+              Se connecter
+            </button>
+          </div>
+          <div style={{ marginTop: '14px' }}>
+            <button
+              onClick={() => setActiveTab('home')}
+              className="btn-link"
+              style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 600 }}
+            >
+              <i className="fa-solid fa-arrow-left me-1"></i> Retour à l'accueil
+            </button>
+          </div>
         </div>
       </div>
 
