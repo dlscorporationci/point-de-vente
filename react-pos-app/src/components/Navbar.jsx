@@ -45,16 +45,26 @@ export const Navbar = ({ onNavigate }) => {
           position: 'fixed',
           top: 0, left: 0, right: 0,
           zIndex: 2000,
+          /* — Fond adapté au thème et à l'état de scroll ——————————————————————
+             • Clair non-scrollé : blanc semi-transparent à 85% + légère teinte froide
+               pour se distinguer du hero blanc sans être trop chargé
+             • Clair scrollé    : --bg-card plein (blanc pur) + ombre + bordure
+             • Sombre non-scrollé : noir semi-transparent 60%
+             • Sombre scrollé   : --bg-card plein + ombre + bordure             */
           background: scrolled
             ? 'var(--bg-card)'
-            : isDark ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.75)',
-          backdropFilter: 'blur(18px)',
-          WebkitBackdropFilter: 'blur(18px)',
-          borderBottom: scrolled
-            ? '1px solid var(--border-color)'
-            : '1px solid transparent',
-          boxShadow: scrolled ? 'var(--box-shadow)' : 'none',
-          transition: 'all 0.3s ease',
+            : isDark
+              ? 'rgba(15, 23, 42, 0.60)'
+              : 'rgba(248, 250, 252, 0.85)',   /* blanc légèrement bleuté, distinct du hero */
+          backdropFilter: 'blur(20px) saturate(160%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(160%)',
+          borderBottom: isDark
+            ? `1px solid ${scrolled ? 'var(--border-color)' : 'rgba(255,255,255,0.07)'}`
+            : `1px solid ${scrolled ? 'var(--border-color)' : 'rgba(15,74,134,0.10)'}`,
+          boxShadow: scrolled
+            ? '0 2px 20px rgba(0,0,0,0.08)'
+            : isDark ? 'none' : '0 1px 0 rgba(15,74,134,0.06)',
+          transition: 'all 0.35s ease',
         }}
       >
         <div style={{
