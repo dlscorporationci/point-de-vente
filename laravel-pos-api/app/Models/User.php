@@ -41,17 +41,18 @@ class User extends Authenticatable
 
     public function role()
     {
-        return $this->belongsTo(Role::class);
+        return $this->belongsTo(Role::class)->withoutGlobalScopes();
     }
 
     public function branch()
     {
-        return $this->belongsTo(Branch::class);
+        return $this->belongsTo(Branch::class)->withoutGlobalScopes();
     }
 
     public function branches()
     {
         return $this->belongsToMany(Branch::class, 'user_branches')
+                    ->withoutGlobalScopes()
                     ->withPivot('permissions')
                     ->withTimestamps();
     }

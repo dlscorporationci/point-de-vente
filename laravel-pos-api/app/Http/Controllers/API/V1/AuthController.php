@@ -78,9 +78,18 @@ class AuthController extends Controller
 
         $this->logAuthEvent($user, 'login_success', $request);
 
+        $company = Company::withoutGlobalScopes()->find($user->company_id);
+        if ($company) {
+            app(\App\Services\TenantManager::class)->setCompany($company);
+            if ($company->status !== 'active') {
+                return response()->json([
+                    'error' => 'Votre compte entreprise a été suspendu ou archivé. Veuillez contacter le support.'
+                ], 403);
+            }
+        }
+
         // Chargement des relations nécessaires
         $user->load(['role.permissions', 'branch']);
-        $company = Company::find($user->company_id);
 
         // Création du token Sanctum
         $token = $user->createToken('pos-auth-token')->plainTextToken;
@@ -194,6 +203,7 @@ class AuthController extends Controller
         }
 
         $user = $matchedUser;
+        app(\App\Services\TenantManager::class)->setCompany($company);
         $this->logAuthEvent($user, 'login_pin_success', $request);
 
         // Chargement des relations nécessaires
