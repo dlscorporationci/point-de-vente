@@ -16,7 +16,6 @@ export const Login = ({ setActiveTab }) => {
   // Connexion Standard
   const [email, setEmail]               = useState('');
   const [password, setPassword]         = useState('');
-  const [emailCompanyCode, setEmailCompanyCode] = useState('');  // Code entreprise optionnel pour le login email
 
   // États pour mot de passe oublié
   const [forgotEmail, setForgotEmail]           = useState('');
@@ -90,14 +89,10 @@ export const Login = ({ setActiveTab }) => {
     localStorage.removeItem('branch-id');
 
     try {
-      // Si un code entreprise est fourni, l'inclure dans la requête
-      // afin que le backend puisse identifier le tenant de l'utilisateur
-      const payload = { email: email.trim(), password };
-      if (emailCompanyCode.trim()) {
-        payload.company_code = emailCompanyCode.trim().toUpperCase();
-      }
-
-      const response = await axios.post('/v1/auth/login', payload);
+      const response = await axios.post('/v1/auth/login', {
+        email: email.trim(),
+        password
+      });
       const userObj = response.data.user;
       login(userObj, response.data.token);
       setSuccessMsg('Connexion réussie !');
@@ -315,25 +310,6 @@ export const Login = ({ setActiveTab }) => {
             {/* A. Mode Standard (Email + Mot de Passe) - Mode par défaut pour tous */}
             {loginMode === 'standard' && (
               <form onSubmit={handleStandardSubmit} className="standard-form text-left">
-
-                {/* Champ Code Entreprise — optionnel pour les entreprises multi-admin */}
-                <div className="form-group mb-3">
-                  <label className="form-label" style={{ fontWeight: 700 }}>
-                    <i className="fa-solid fa-building me-1 text-primary"></i>
-                    Code Entreprise
-                    <span style={{ fontWeight: 400, fontSize: '11px', color: 'var(--text-muted)', marginLeft: '6px' }}>(optionnel — requis si plusieurs entreprises)</span>
-                  </label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={emailCompanyCode}
-                    onChange={(e) => setEmailCompanyCode(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ''))}
-                    placeholder="Ex: X8M4-K92P"
-                    maxLength="12"
-                    style={{ textTransform: 'uppercase', letterSpacing: '2px', fontWeight: 700 }}
-                  />
-                </div>
-
                 <div className="form-group mb-3">
                   <label className="form-label" style={{ fontWeight: 700 }}>Adresse E-mail *</label>
                   <input 
