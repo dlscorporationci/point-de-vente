@@ -35,6 +35,16 @@ const CountUp = ({ target, suffix = '', duration = 2000 }) => {
 export const Home = ({ setActiveTab }) => {
   const { user } = useApp();
   const [activeFeature, setActiveFeature] = useState(0);
+  const [billingCycle, setBillingCycle] = useState('monthly');
+  const [contactState, setContactState] = useState({ name: '', email: '', phone: '', message: '', loading: false, success: false });
+
+  const handleContactSubmit = (e) => {
+    e.preventDefault();
+    setContactState(prev => ({ ...prev, loading: true }));
+    setTimeout(() => {
+      setContactState({ name: '', email: '', phone: '', message: '', loading: false, success: true });
+    }, 800);
+  };
 
   const features = [
     {
@@ -88,6 +98,33 @@ export const Home = ({ setActiveTab }) => {
     { num: '04', icon: 'fa-chart-pie', title: 'Analysez vos résultats', desc: 'Consultez vos rapports en temps réel et prenez des décisions éclairées basées sur vos données.' },
   ];
 
+  const testimonials = [
+    {
+      name: 'Amadou Fall',
+      role: 'Gérant principal',
+      company: 'Quincaillerie Moderne (Abidjan)',
+      avatar: '👨‍💼',
+      stars: 5,
+      comment: 'Grâce à ApexPOS, nous avons réduit le temps d\'attente en caisse de 60%. Le calcul automatique du PAMP et la gestion multi-boutiques ont sécurisé l\'ensemble de nos marges.'
+    },
+    {
+      name: 'Fatou Ndiaye',
+      role: 'Directrice des Ventes',
+      company: 'Supérette du Plateau (Yamoussoukro)',
+      avatar: '👩‍💼',
+      stars: 5,
+      comment: 'La gestion des transferts de stock entre nos 3 points de vente se fait désormais en un clic. Plus aucun écart d\'inventaire et une traçabilité irréprochable.'
+    },
+    {
+      name: 'Jean-Marc Koffi',
+      role: 'Fondateur',
+      company: 'Espace HighTech (Bouaké)',
+      avatar: '👨‍💻',
+      stars: 5,
+      comment: 'L\'interface tactile est d\'une simplicité déconcertante. Mes caissiers l\'ont prise en main en 10 minutes chrono, et les rapports PDF sont parfaits pour la comptabilité.'
+    }
+  ];
+
   return (
     <div className="home-v2">
 
@@ -95,7 +132,7 @@ export const Home = ({ setActiveTab }) => {
       <Navbar onNavigate={setActiveTab} />
 
       {/* ══════════ HERO ══════════ */}
-      <section className="hero-section">
+      <section id="hero" className="hero-section">
         <div className="hero-bg-grid" />
         <div className="hero-orb hero-orb-1" />
         <div className="hero-orb hero-orb-2" />
@@ -251,7 +288,7 @@ export const Home = ({ setActiveTab }) => {
       </section>
 
       {/* ══════════ FONCTIONNALITÉS ══════════ */}
-      <section className="features-section">
+      <section id="features" className="features-section">
         <div className="section-header">
           <div className="section-badge">
             <i className="fa-solid fa-cube me-2"></i>Fonctionnalités
@@ -328,6 +365,245 @@ export const Home = ({ setActiveTab }) => {
               {i < steps.length - 1 && <div className="step-arrow"><i className="fa-solid fa-arrow-right"></i></div>}
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* ══════════ TARIFS ══════════ */}
+      <section id="pricing" className="pricing-section">
+        <div className="section-header">
+          <div className="section-badge">
+            <i className="fa-solid fa-tag me-2"></i>Tarification Simple &amp; Transparente
+          </div>
+          <h2 className="section-title">Des offres adaptées à votre croissance</h2>
+          <p className="section-subtitle">Sans engagement. Annulez ou changez de formule à tout moment.</p>
+
+          {/* Toggle Mensuel / Annuel */}
+          <div className="pricing-toggle-wrap">
+            <button
+              className={`toggle-btn ${billingCycle === 'monthly' ? 'active' : ''}`}
+              onClick={() => setBillingCycle('monthly')}
+            >
+              Paiement Mensuel
+            </button>
+            <button
+              className={`toggle-btn ${billingCycle === 'annual' ? 'active' : ''}`}
+              onClick={() => setBillingCycle('annual')}
+            >
+              Paiement Annuel <span className="discount-badge">-20% (2 mois offerts)</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="pricing-grid">
+          {/* Card 1: Starter */}
+          <div className="pricing-card">
+            <div className="pricing-card-header">
+              <h3 className="plan-name">Formule Starter</h3>
+              <p className="plan-desc">Idéal pour démarrer une première boutique</p>
+              <div className="plan-price">
+                <span className="price-num">{billingCycle === 'annual' ? '12 000' : '15 000'}</span>
+                <span className="price-currency">XOF</span>
+                <span className="price-period">/ mois</span>
+              </div>
+            </div>
+            <ul className="plan-features">
+              <li><i className="fa-solid fa-check text-success me-2"></i> <strong>1 Boutique</strong> &amp; 1 Point de vente</li>
+              <li><i className="fa-solid fa-check text-success me-2"></i> 1 Caisse tactile ultra-rapide</li>
+              <li><i className="fa-solid fa-check text-success me-2"></i> 2 Comptes utilisateurs (Admin + Caissier)</li>
+              <li><i className="fa-solid fa-check text-success me-2"></i> Gestion des stocks &amp; Code-barres</li>
+              <li><i className="fa-solid fa-check text-success me-2"></i> Support par email &amp; Documentation</li>
+            </ul>
+            <button onClick={() => setActiveTab('register')} className="btn-pricing-outline">
+              Démarrer gratuitement
+            </button>
+          </div>
+
+          {/* Card 2: Pro (Populaire) */}
+          <div className="pricing-card popular">
+            <div className="popular-ribbon">⭐ Plus populaire</div>
+            <div className="pricing-card-header">
+              <h3 className="plan-name">Formule Pro</h3>
+              <p className="plan-desc">Pour les commerces en pleine expansion</p>
+              <div className="plan-price">
+                <span className="price-num">{billingCycle === 'annual' ? '28 000' : '35 000'}</span>
+                <span className="price-currency">XOF</span>
+                <span className="price-period">/ mois</span>
+              </div>
+            </div>
+            <ul className="plan-features">
+              <li><i className="fa-solid fa-check text-success me-2"></i> <strong>Jusqu'à 3 Boutiques</strong> rattachées</li>
+              <li><i className="fa-solid fa-check text-success me-2"></i> Caisses tactiles illimitées</li>
+              <li><i className="fa-solid fa-check text-success me-2"></i> 5 Comptes utilisateurs granulaires</li>
+              <li><i className="fa-solid fa-check text-success me-2"></i> Stocks temps réel &amp; Recalcul PAMP</li>
+              <li><i className="fa-solid fa-check text-success me-2"></i> Transferts de stock inter-boutiques</li>
+              <li><i className="fa-solid fa-check text-success me-2"></i> Rapports avancés (PDF &amp; Excel)</li>
+              <li><i className="fa-solid fa-check text-success me-2"></i> Support prioritaire WhatsApp 7j/7</li>
+            </ul>
+            <button onClick={() => setActiveTab('register')} className="btn-pricing-primary">
+              Essayer la formule Pro
+            </button>
+          </div>
+
+          {/* Card 3: Enterprise */}
+          <div className="pricing-card">
+            <div className="pricing-card-header">
+              <h3 className="plan-name">Formule Entreprise</h3>
+              <p className="plan-desc">Pour les réseaux et grandes enseignes</p>
+              <div className="plan-price">
+                <span className="price-num">{billingCycle === 'annual' ? '60 000' : '75 000'}</span>
+                <span className="price-currency">XOF</span>
+                <span className="price-period">/ mois</span>
+              </div>
+            </div>
+            <ul className="plan-features">
+              <li><i className="fa-solid fa-check text-success me-2"></i> <strong>Boutiques &amp; Caisses illimitées</strong></li>
+              <li><i className="fa-solid fa-check text-success me-2"></i> Utilisateurs &amp; Rôles sur mesure</li>
+              <li><i className="fa-solid fa-check text-success me-2"></i> Sauvegarde automatique quotidienne</li>
+              <li><i className="fa-solid fa-check text-success me-2"></i> Intégration sur-mesure &amp; API</li>
+              <li><i className="fa-solid fa-check text-success me-2"></i> Account Manager dédié + Formation</li>
+              <li><i className="fa-solid fa-check text-success me-2"></i> Support VIP 24h/24 7j/7</li>
+            </ul>
+            <button onClick={() => {
+              const el = document.getElementById('contact');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }} className="btn-pricing-outline">
+              Contacter notre équipe
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════ TÉMOIGNAGES ══════════ */}
+      <section id="testimonials" className="testimonials-section">
+        <div className="section-header">
+          <div className="section-badge">
+            <i className="fa-solid fa-comment-dots me-2"></i>Avis Clients
+          </div>
+          <h2 className="section-title">Approuvé par des centaines de commerçants</h2>
+          <p className="section-subtitle">Découvrez ce que disent nos utilisateurs au quotidien</p>
+        </div>
+
+        <div className="testimonials-grid">
+          {testimonials.map((t, i) => (
+            <div key={i} className="testimonial-card">
+              <div className="t-stars">
+                {Array.from({ length: t.stars }).map((_, s) => (
+                  <i key={s} className="fa-solid fa-star text-warning"></i>
+                ))}
+              </div>
+              <p className="t-comment">"{t.comment}"</p>
+              <div className="t-author">
+                <div className="t-avatar">{t.avatar}</div>
+                <div>
+                  <div className="t-name">{t.name}</div>
+                  <div className="t-role">{t.role} — <span className="text-primary">{t.company}</span></div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ══════════ CONTACT ══════════ */}
+      <section id="contact" className="contact-section">
+        <div className="section-header">
+          <div className="section-badge">
+            <i className="fa-solid fa-envelope me-2"></i>Contact &amp; Assistance
+          </div>
+          <h2 className="section-title">Une question ? Parlons de votre projet</h2>
+          <p className="section-subtitle">Notre équipe locale est à votre disposition 6 jours sur 7</p>
+        </div>
+
+        <div className="contact-container">
+          <div className="contact-info-panel">
+            <h3>Coordonnées &amp; Support</h3>
+            <p>Formulez vos demandes d'information ou sollicitez une démonstration guidée de notre solution POS.</p>
+
+            <div className="contact-info-list">
+              <div className="info-item">
+                <div className="info-icon"><i className="fa-solid fa-phone"></i></div>
+                <div>
+                  <strong>Téléphone &amp; WhatsApp</strong>
+                  <p>+225 07 00 00 00 00 / +225 05 00 00 00 00</p>
+                </div>
+              </div>
+              <div className="info-item">
+                <div className="info-icon"><i className="fa-solid fa-envelope"></i></div>
+                <div>
+                  <strong>Adresse E-mail</strong>
+                  <p>contact@apexpos.ci — support@dls.ci</p>
+                </div>
+              </div>
+              <div className="info-item">
+                <div className="info-icon"><i className="fa-solid fa-location-dot"></i></div>
+                <div>
+                  <strong>Siège social</strong>
+                  <p>Plateau, Avenue Chardy, Abidjan, Côte d'Ivoire</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="contact-form-panel">
+            {contactState.success ? (
+              <div className="alert alert-success text-center p-4">
+                <i className="fa-solid fa-circle-check fa-3x mb-3 text-success"></i>
+                <h4>Message envoyé avec succès !</h4>
+                <p className="mb-0">Merci de nous avoir contactés. Un conseiller ApexPOS vous recontactera très rapidement.</p>
+              </div>
+            ) : (
+              <form onSubmit={handleContactSubmit}>
+                <div className="form-group mb-3">
+                  <label className="form-label">Nom complet *</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Votre nom et prénom"
+                    value={contactState.name}
+                    onChange={e => setContactState({ ...contactState, name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="form-row-grid mb-3">
+                  <div className="form-group">
+                    <label className="form-label">Adresse e-mail *</label>
+                    <input
+                      type="email"
+                      className="form-control"
+                      placeholder="nom@entreprise.com"
+                      value={contactState.email}
+                      onChange={e => setContactState({ ...contactState, email: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Numéro de téléphone</label>
+                    <input
+                      type="tel"
+                      className="form-control"
+                      placeholder="+225 07..."
+                      value={contactState.phone}
+                      onChange={e => setContactState({ ...contactState, phone: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="form-group mb-3">
+                  <label className="form-label">Votre message *</label>
+                  <textarea
+                    className="form-control textarea-input"
+                    rows="4"
+                    placeholder="Expliquez-nous vos besoins ou posez vos questions..."
+                    value={contactState.message}
+                    onChange={e => setContactState({ ...contactState, message: e.target.value })}
+                    required
+                  ></textarea>
+                </div>
+                <button type="submit" className="btn btn-primary btn-block btn-lg" disabled={contactState.loading}>
+                  {contactState.loading ? 'Envoi en cours...' : 'Envoyer le message'}
+                </button>
+              </form>
+            )}
+          </div>
         </div>
       </section>
 
@@ -700,6 +976,282 @@ export const Home = ({ setActiveTab }) => {
           font-size: 14px; box-shadow: 0 4px 12px rgba(59,130,246,0.4);
         }
         @media (max-width: 768px) { .step-arrow { display: none; } }
+
+        /* ── PRICING ── */
+        .pricing-section {
+          padding: 80px 40px;
+          max-width: 1200px;
+          margin: 0 auto;
+        }
+        .pricing-toggle-wrap {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: var(--bg-input);
+          border: 1px solid var(--border-color);
+          padding: 4px;
+          border-radius: 50px;
+          margin-top: 24px;
+        }
+        .toggle-btn {
+          padding: 8px 20px;
+          border-radius: 50px;
+          border: none;
+          background: transparent;
+          color: var(--text-muted);
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .toggle-btn.active {
+          background: var(--bg-card);
+          color: var(--color-primary);
+          box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .discount-badge {
+          background: rgba(16,185,129,0.15);
+          color: #10b981;
+          padding: 2px 8px;
+          border-radius: 12px;
+          font-size: 11px;
+          margin-left: 4px;
+        }
+        .pricing-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+          gap: 28px;
+          margin-top: 48px;
+          align-items: stretch;
+        }
+        .pricing-card {
+          background: var(--bg-card);
+          border: 1px solid var(--border-color);
+          border-radius: 20px;
+          padding: 36px 28px;
+          display: flex;
+          flex-direction: column;
+          position: relative;
+          transition: transform 0.25s, box-shadow 0.25s;
+        }
+        .pricing-card:hover {
+          transform: translateY(-6px);
+          box-shadow: 0 12px 32px rgba(0,0,0,0.08);
+        }
+        .pricing-card.popular {
+          border: 2px solid var(--color-primary);
+          box-shadow: 0 8px 30px rgba(59,130,246,0.18);
+        }
+        .popular-ribbon {
+          position: absolute;
+          top: -14px;
+          left: 50%;
+          transform: translateX(-50%);
+          background: linear-gradient(135deg, var(--color-primary), #10b981);
+          color: #fff;
+          font-size: 11px;
+          font-weight: 800;
+          text-transform: uppercase;
+          padding: 4px 14px;
+          border-radius: 50px;
+          box-shadow: 0 4px 12px rgba(59,130,246,0.3);
+        }
+        .pricing-card-header {
+          margin-bottom: 24px;
+        }
+        .plan-name {
+          font-family: var(--font-title);
+          font-size: 20px;
+          font-weight: 800;
+          color: var(--text-main);
+          margin: 0 0 6px;
+        }
+        .plan-desc {
+          font-size: 13px;
+          color: var(--text-muted);
+          margin: 0 0 20px;
+        }
+        .plan-price {
+          display: flex;
+          align-items: baseline;
+          gap: 4px;
+        }
+        .price-num {
+          font-family: var(--font-title);
+          font-size: 36px;
+          font-weight: 900;
+          color: var(--text-main);
+        }
+        .price-currency {
+          font-size: 16px;
+          font-weight: 800;
+          color: var(--color-primary);
+        }
+        .price-period {
+          font-size: 13px;
+          color: var(--text-muted);
+        }
+        .plan-features {
+          list-style: none;
+          padding: 0;
+          margin: 0 0 32px;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          font-size: 14px;
+          color: var(--text-main);
+        }
+        .btn-pricing-outline {
+          width: 100%;
+          padding: 12px;
+          border-radius: 12px;
+          border: 1.5px solid var(--border-color);
+          background: var(--bg-card);
+          color: var(--text-main);
+          font-weight: 700;
+          cursor: pointer;
+          margin-top: auto;
+          transition: all 0.2s;
+        }
+        .btn-pricing-outline:hover {
+          border-color: var(--color-primary);
+          color: var(--color-primary);
+        }
+        .btn-pricing-primary {
+          width: 100%;
+          padding: 13px;
+          border-radius: 12px;
+          border: none;
+          background: linear-gradient(135deg, var(--color-primary), #2563eb);
+          color: #fff;
+          font-weight: 800;
+          cursor: pointer;
+          margin-top: auto;
+          box-shadow: 0 6px 20px rgba(59,130,246,0.35);
+          transition: all 0.2s;
+        }
+        .btn-pricing-primary:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 10px 28px rgba(59,130,246,0.45);
+        }
+
+        /* ── TESTIMONIALS ── */
+        .testimonials-section {
+          padding: 80px 40px;
+          background: var(--bg-input);
+          border-top: 1px solid var(--border-color);
+          border-bottom: 1px solid var(--border-color);
+        }
+        .testimonials-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+          gap: 24px;
+          max-width: 1150px;
+          margin: 0 auto;
+        }
+        .testimonial-card {
+          background: var(--bg-card);
+          border: 1px solid var(--border-color);
+          border-radius: 20px;
+          padding: 28px;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          transition: transform 0.2s;
+        }
+        .testimonial-card:hover { transform: translateY(-4px); }
+        .t-stars { display: flex; gap: 4px; font-size: 14px; }
+        .t-comment {
+          font-size: 14px;
+          color: var(--text-main);
+          line-height: 1.6;
+          font-style: italic;
+          margin: 0;
+        }
+        .t-author {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-top: auto;
+          padding-top: 12px;
+          border-top: 1px solid var(--border-color);
+        }
+        .t-avatar {
+          width: 42px;
+          height: 42px;
+          border-radius: 50%;
+          background: var(--bg-input);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 20px;
+        }
+        .t-name { font-weight: 800; font-size: 14px; color: var(--text-main); }
+        .t-role { font-size: 12px; color: var(--text-muted); }
+
+        /* ── CONTACT ── */
+        .contact-section {
+          padding: 80px 40px;
+          max-width: 1150px;
+          margin: 0 auto;
+        }
+        .contact-container {
+          display: grid;
+          grid-template-columns: 1fr 1.3fr;
+          gap: 32px;
+          align-items: start;
+        }
+        @media (max-width: 768px) {
+          .contact-container { grid-template-columns: 1fr; }
+        }
+        .contact-info-panel {
+          background: var(--bg-card);
+          border: 1px solid var(--border-color);
+          border-radius: 20px;
+          padding: 32px;
+        }
+        .contact-info-panel h3 {
+          font-family: var(--font-title);
+          font-size: 20px;
+          font-weight: 800;
+          margin: 0 0 10px;
+        }
+        .contact-info-panel p {
+          font-size: 14px;
+          color: var(--text-muted);
+          line-height: 1.6;
+          margin: 0 0 24px;
+        }
+        .contact-info-list {
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+        }
+        .info-item {
+          display: flex;
+          align-items: flex-start;
+          gap: 14px;
+        }
+        .info-icon {
+          width: 40px;
+          height: 40px;
+          border-radius: 12px;
+          background: rgba(59,130,246,0.12);
+          color: var(--color-primary);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 16px;
+          flex-shrink: 0;
+        }
+        .info-item strong { display: block; font-size: 14px; color: var(--text-main); margin-bottom: 2px; }
+        .info-item p { font-size: 13px; color: var(--text-muted); margin: 0; }
+        .contact-form-panel {
+          background: var(--bg-card);
+          border: 1px solid var(--border-color);
+          border-radius: 20px;
+          padding: 32px;
+        }
 
         /* ── CTA ── */
         .cta-section {

@@ -6,10 +6,26 @@ export const Navbar = ({ onNavigate }) => {
   const { theme } = useApp();
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [activeSection, setActiveSection] = useState('hero');
   const isDark = theme && theme.includes('dark');
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 10);
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 10);
+
+      // ScrollSpy: Détection de la section active lors du défilement
+      const sectionIds = ['hero', 'features', 'pricing', 'testimonials', 'contact'];
+      const scrollPosition = window.scrollY + 120;
+
+      for (let i = sectionIds.length - 1; i >= 0; i--) {
+        const el = document.getElementById(sectionIds[i]);
+        if (el && el.offsetTop <= scrollPosition) {
+          setActiveSection(sectionIds[i]);
+          break;
+        }
+      }
+    };
+
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
@@ -25,16 +41,27 @@ export const Navbar = ({ onNavigate }) => {
   }, [menuOpen]);
 
   const navLinks = [
-    { label: 'Fonctionnalités', href: '#features' },
-    { label: 'Tarifs',          href: '#pricing' },
-    { label: 'Témoignages',     href: '#testimonials' },
-    { label: 'Contact',         href: '#contact' },
+    { label: 'Fonctionnalités', href: '#features', id: 'features' },
+    { label: 'Tarifs',          href: '#pricing',  id: 'pricing' },
+    { label: 'Témoignages',     href: '#testimonials', id: 'testimonials' },
+    { label: 'Contact',         href: '#contact',   id: 'contact' },
   ];
 
   const scrollTo = (href) => {
     setMenuOpen(false);
-    const el = document.querySelector(href);
-    if (el) el.scrollIntoView({ behavior: 'smooth' });
+    const targetId = href.replace('#', '');
+    const el = document.getElementById(targetId);
+    if (el) {
+      const navbarOffset = 72;
+      const elementPosition = el.getBoundingClientRect().top + window.pageYOffset;
+      const offsetPosition = elementPosition - navbarOffset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+      setActiveSection(targetId);
+    }
   };
 
   return (
@@ -114,27 +141,30 @@ export const Navbar = ({ onNavigate }) => {
             flex: 1,
             justifyContent: 'center',
           }}>
-            {navLinks.map(({ label, href }) => (
-              <button
-                key={href}
-                onClick={() => scrollTo(href)}
-                className="landing-nav-link-btn"
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: 500,
-                  color: 'var(--text-main)',
-                  padding: '8px 14px',
-                  borderRadius: '8px',
-                  transition: 'color 0.2s, background 0.2s',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {label}
-              </button>
-            ))}
+            {navLinks.map(({ label, href, id }) => {
+              const isActive = activeSection === id;
+              return (
+                <button
+                  key={href}
+                  onClick={() => scrollTo(href)}
+                  className={`landing-nav-link-btn ${isActive ? 'active' : ''}`}
+                  style={{
+                    background: isActive ? 'rgba(37,99,235,0.12)' : 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: isActive ? 700 : 500,
+                    color: isActive ? 'var(--color-primary)' : 'var(--text-main)',
+                    padding: '8px 14px',
+                    borderRadius: '8px',
+                    transition: 'all 0.2s ease',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
 
           {/* ── CTAs DESKTOP ── */}
