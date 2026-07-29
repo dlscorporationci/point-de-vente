@@ -473,36 +473,7 @@ export const Home = ({ setActiveTab }) => {
         </div>
       </section>
 
-      {/* ══════════ TÉMOIGNAGES ══════════ */}
-      <section id="testimonials" className="testimonials-section">
-        <div className="section-header">
-          <div className="section-badge">
-            <i className="fa-solid fa-comment-dots me-2"></i>Avis Clients
-          </div>
-          <h2 className="section-title">Approuvé par des centaines de commerçants</h2>
-          <p className="section-subtitle">Découvrez ce que disent nos utilisateurs au quotidien</p>
-        </div>
-
-        <div className="testimonials-grid">
-          {testimonials.map((t, i) => (
-            <div key={i} className="testimonial-card">
-              <div className="t-stars">
-                {Array.from({ length: t.stars }).map((_, s) => (
-                  <i key={s} className="fa-solid fa-star text-warning"></i>
-                ))}
-              </div>
-              <p className="t-comment">"{t.comment}"</p>
-              <div className="t-author">
-                <div className="t-avatar">{t.avatar}</div>
-                <div>
-                  <div className="t-name">{t.name}</div>
-                  <div className="t-role">{t.role} — <span className="text-primary">{t.company}</span></div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+      {/* ══════════ CONTACT ══════════ */}
 
       {/* ══════════ CONTACT ══════════ */}
       <section id="contact" className="contact-section">

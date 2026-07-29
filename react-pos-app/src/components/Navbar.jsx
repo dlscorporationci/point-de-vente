@@ -14,7 +14,7 @@ export const Navbar = ({ onNavigate }) => {
       setScrolled(window.scrollY > 10);
 
       // ScrollSpy: Détection de la section active lors du défilement
-      const sectionIds = ['hero', 'features', 'pricing', 'testimonials', 'contact'];
+      const sectionIds = ['hero', 'features', 'pricing', 'contact'];
       const scrollPosition = window.scrollY + 120;
 
       for (let i = sectionIds.length - 1; i >= 0; i--) {
@@ -43,7 +43,6 @@ export const Navbar = ({ onNavigate }) => {
   const navLinks = [
     { label: 'Fonctionnalités', href: '#features', id: 'features' },
     { label: 'Tarifs',          href: '#pricing',  id: 'pricing' },
-    { label: 'Témoignages',     href: '#testimonials', id: 'testimonials' },
     { label: 'Contact',         href: '#contact',   id: 'contact' },
   ];
 
