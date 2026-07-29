@@ -1,6 +1,8 @@
 import Dexie from 'dexie';
 
-export const db = new Dexie('ApexPOS_Offline_DB');
+const DexieEngine = Dexie.default || Dexie;
+
+export const db = new DexieEngine('ApexPOS_Offline_DB');
 
 db.version(1).stores({
   products: 'id, uuid, company_id, branch_id, barcode, sku, name, category_id, updated_at, deleted_at',
