@@ -1,7 +1,9 @@
 /**
  * Service de stockage et de gestion hors-ligne (Offline Storage Manager)
- * Permet de conserver le catalogue, les clients et la file d'attente des ventes en local.
+ * Combine localStorage et le moteur IndexedDB/SQLite localDatabase.
  */
+
+import { localDatabase } from './localDatabase';
 
 const QUEUE_KEY = 'apexpos_offline_sales_queue';
 const PRODUCTS_KEY = 'apexpos_cached_products';
@@ -15,6 +17,7 @@ export const offlineStorage = {
   saveProducts(products) {
     try {
       localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products || []));
+      localDatabase.saveProducts(products || []);
     } catch (e) {
       console.warn('Erreur stockage produits local:', e);
     }
@@ -32,6 +35,7 @@ export const offlineStorage = {
   saveCategories(categories) {
     try {
       localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories || []));
+      localDatabase.saveCategories(categories || []);
     } catch (e) {
       console.warn('Erreur stockage catégories local:', e);
     }
@@ -49,6 +53,7 @@ export const offlineStorage = {
   saveCustomers(customers) {
     try {
       localStorage.setItem(CUSTOMERS_KEY, JSON.stringify(customers || []));
+      localDatabase.saveCustomers(customers || []);
     } catch (e) {
       console.warn('Erreur stockage clients local:', e);
     }
@@ -87,6 +92,12 @@ export const offlineStorage = {
       };
       queue.push(formattedSale);
       localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
+
+      // Sauvegarde parallèle dans le moteur SQL local pour transactions et historique
+      localDatabase.saveSaleTransaction(salePayload, salePayload.items).catch(err => {
+        console.warn('Sauvegarde BDD locale transaction SQL:', err);
+      });
+
       return formattedSale;
     } catch (e) {
       console.error('Erreur mise en file d\'attente de la vente hors-ligne:', e);
@@ -98,6 +109,7 @@ export const offlineStorage = {
     try {
       const queue = this.getPendingSales().filter(item => item._local_id !== localId);
       localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
+      localDatabase.markSaleSynced(localId).catch(() => {});
     } catch (e) {
       console.error('Erreur suppression vente synchronisée:', e);
     }
