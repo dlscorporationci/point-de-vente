@@ -104,8 +104,8 @@ class User extends Authenticatable
             return false;
         }
 
-        // Si c'est le super-admin (slug 'super-admin'), il a toutes les permissions
-        if ($this->role && $this->role->slug === 'super-admin') {
+        // Les super-admins et admins de compagnie possèdent toutes les autorisations applicatives
+        if ($this->role && in_array($this->role->slug, ['super-admin', 'admin'])) {
             return true;
         }
 
