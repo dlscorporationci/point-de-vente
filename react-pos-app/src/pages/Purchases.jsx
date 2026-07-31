@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
+import { db } from '../services/db';
 
 export const Purchases = () => {
   const { user, token } = useApp();
@@ -78,17 +79,21 @@ export const Purchases = () => {
     setLoading(true);
     setError(null);
     try {
-      const purRes = await axios.get('/v1/purchases');
-      setPurchases(purRes.data.data || []);
+      const companyId = parseInt(localStorage.getItem('company-id') || 1);
+      let purData = [];
+      let supData = [];
+      let prodData = [];
 
-      const supRes = await axios.get('/v1/suppliers');
-      setSuppliers(supRes.data.data || []);
-
-      const prodRes = await axios.get('/v1/products');
-      setProducts(prodRes.data.data || []);
-
-      // Charger les boutiques
       try {
+        const purRes = await axios.get('/v1/purchases');
+        purData = purRes.data.data || [];
+
+        const supRes = await axios.get('/v1/suppliers');
+        supData = supRes.data.data || [];
+
+        const prodRes = await axios.get('/v1/products');
+        prodData = prodRes.data.data || [];
+
         const bRes = await axios.get('/v1/branches');
         const loadedBranches = bRes.data?.data || bRes.data || [];
         setBranches(loadedBranches);
@@ -97,21 +102,16 @@ export const Purchases = () => {
         } else if (loadedBranches.length > 0) {
           setSelectedBranchId(loadedBranches[0].id.toString());
         }
-      } catch {
-        /* silencieux */
+      } catch (netErr) {
+        console.warn('Mode hors-ligne, chargement des achats Dexie:', netErr);
+        purData = await db.purchases.where('company_id').equals(companyId).toArray();
+        supData = await db.suppliers.where('company_id').equals(companyId).toArray();
+        prodData = await db.products.where('company_id').equals(companyId).toArray();
       }
 
-      // Charger les réglages de TVA de l'entreprise
-      try {
-        const tenantRes = await axios.get('/v1/tenant-test');
-        const ts = tenantRes.data?.company?.tax_settings;
-        if (ts) {
-          const enableTax = ts.enable_tax !== false && ts.enable_tax !== '0' && ts.enable_tax !== 0;
-          setTaxRate(enableTax ? (ts.tax_rate?.toString() || '18') : '0');
-        }
-      } catch {
-        /* silencieux */
-      }
+      setPurchases(purData);
+      setSuppliers(supData);
+      setProducts(prodData);
     } catch (err) {
       setError('Impossible de charger le module des approvisionnements.');
     } finally {

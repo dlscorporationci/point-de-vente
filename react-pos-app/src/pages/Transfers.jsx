@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
+import { db } from '../services/db';
 
 export const Transfers = () => {
   const { user, token, activeBranch } = useApp();
@@ -33,14 +34,27 @@ export const Transfers = () => {
     setLoading(true);
     setError(null);
     try {
-      const transRes = await axios.get('/v1/transfers');
-      setTransfers(transRes.data.data || []);
+      const companyId = parseInt(localStorage.getItem('company-id') || 1);
+      let transData = [];
+      let prodData = [];
 
-      const branchesRes = await axios.get('/v1/branches');
-      setBranches(branchesRes.data || []);
+      try {
+        const transRes = await axios.get('/v1/transfers');
+        transData = transRes.data.data || [];
 
-      const prodRes = await axios.get('/v1/products');
-      setProducts(prodRes.data.data || []);
+        const branchesRes = await axios.get('/v1/branches');
+        setBranches(branchesRes.data || []);
+
+        const prodRes = await axios.get('/v1/products');
+        prodData = prodRes.data.data || [];
+      } catch (netErr) {
+        console.warn('Mode hors-ligne, chargement des transferts Dexie:', netErr);
+        transData = await db.transfers.where('company_id').equals(companyId).toArray();
+        prodData = await db.products.where('company_id').equals(companyId).toArray();
+      }
+
+      setTransfers(transData);
+      setProducts(prodData);
     } catch (err) {
       setError('Impossible de charger le module de transfert inter-boutique.');
     } finally {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
+import { db } from '../services/db';
 
 export const CashSessions = () => {
   const { user, token } = useApp();
@@ -37,15 +38,30 @@ export const CashSessions = () => {
     setLoading(true);
     setError(null);
     try {
-      const curRes = await axios.get('/v1/cash-sessions/current');
-      if (curRes.data && curRes.data.id) {
-        setCurrentSession(curRes.data);
-      } else {
-        setCurrentSession(null);
+      const companyId = parseInt(localStorage.getItem('company-id') || 1);
+      let activeSession = null;
+      let sessionHistory = [];
+
+      try {
+        const curRes = await axios.get('/v1/cash-sessions/current');
+        if (curRes.data && curRes.data.id) {
+          activeSession = curRes.data;
+        }
+
+        const allRes = await axios.get('/v1/cash-sessions');
+        sessionHistory = allRes.data.data || [];
+      } catch (netErr) {
+        console.warn('Mode hors-ligne, chargement des sessions de caisse Dexie:', netErr);
+        const localSessions = await db.cash_sessions
+          .where('company_id').equals(companyId)
+          .toArray();
+
+        activeSession = localSessions.find(s => s.status === 'open') || null;
+        sessionHistory = localSessions;
       }
 
-      const allRes = await axios.get('/v1/cash-sessions');
-      setAllSessions(allRes.data.data || []);
+      setCurrentSession(activeSession);
+      setAllSessions(sessionHistory);
     } catch (err) {
       setError('Impossible de charger le module de session de caisse.');
     } finally {

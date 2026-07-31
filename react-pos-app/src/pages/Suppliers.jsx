@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
+import { db } from '../services/db';
 
 export const Suppliers = () => {
   const { user, token } = useApp();
@@ -33,12 +34,24 @@ export const Suppliers = () => {
     setLoading(true);
     setError(null);
     try {
-      let url = '/v1/suppliers';
-      if (search) {
-        url += `?search=${encodeURIComponent(search)}`;
+      const companyId = parseInt(localStorage.getItem('company-id') || 1);
+      let supData = [];
+      try {
+        let url = '/v1/suppliers';
+        if (search) {
+          url += `?search=${encodeURIComponent(search)}`;
+        }
+        const res = await axios.get(url);
+        supData = res.data.data || [];
+      } catch (netErr) {
+        console.warn('Mode hors-ligne, chargement des fournisseurs Dexie:', netErr);
+        supData = await db.suppliers.where('company_id').equals(companyId).toArray();
+        if (search) {
+          const s = search.toLowerCase();
+          supData = supData.filter(sp => sp.name?.toLowerCase().includes(s) || sp.phone?.includes(s));
+        }
       }
-      const res = await axios.get(url);
-      setSuppliers(res.data.data || []);
+      setSuppliers(supData);
     } catch (err) {
       setError('Impossible de charger le référentiel des fournisseurs.');
     } finally {
