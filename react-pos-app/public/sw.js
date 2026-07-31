@@ -1,10 +1,11 @@
-const CACHE_NAME = 'apexpos-cache-v1';
-const DYNAMIC_CACHE = 'apexpos-dynamic-v1';
+const CACHE_NAME = 'apexpos-cache-v2';
+const DYNAMIC_CACHE = 'apexpos-dynamic-v2';
 
 // Static assets to cache immediately upon installation
 const STATIC_ASSETS = [
   './',
   './index.html',
+  './manifest.json',
   './favicon.svg'
 ];
 
@@ -29,7 +30,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch Event — Offline First strategy for static files, Network First for API
+// Fetch Event — Cache-First with Network Fallback & index.html SPA Fallback
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   const url = new URL(request.url);
@@ -59,21 +60,45 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static Assets / Page Navigation: Stale-While-Revalidate
+  // Static Assets / Page Navigation: Cache First with Network & index.html Fallback
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
-      const fetchPromise = fetch(request).then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200) {
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, networkResponse.clone());
-          });
-        }
-        return networkResponse;
-      }).catch(() => {
-        /* Fallback silencieux hors-ligne */
-      });
+      if (cachedResponse) {
+        // En arrière-plan, tenter de mettre à jour le cache si réseau disponible
+        fetch(request).then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(request, networkResponse);
+            });
+          }
+        }).catch(() => {});
 
-      return cachedResponse || fetchPromise;
+        return cachedResponse;
+      }
+
+      // Si non présent en cache, tenter la requête réseau
+      return fetch(request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(request, responseClone);
+            });
+          }
+          return networkResponse;
+        })
+        .catch(async () => {
+          // Si le réseau échoue (Mode Déconnecté F5), renvoyer index.html depuis le cache
+          const cache = await caches.open(CACHE_NAME);
+          const indexFallback = await cache.match('./index.html') || await cache.match('./') || await cache.match('/index.html');
+          if (indexFallback) {
+            return indexFallback;
+          }
+          return new Response('ApexPOS Mode Hors-Ligne', {
+            status: 200,
+            headers: new Headers({ 'Content-Type': 'text/html' })
+          });
+        });
     })
   );
 });

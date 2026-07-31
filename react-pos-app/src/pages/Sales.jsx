@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
+import { db } from '../services/db';
 
 export const Sales = () => {
   const { token } = useApp();
@@ -27,16 +28,56 @@ export const Sales = () => {
     setLoading(true);
     setError(null);
     try {
-      const params = { page };
-      if (search) params.search = search;
-      if (paymentMethod) params.payment_method = paymentMethod;
-      if (paymentStatus) params.payment_status = paymentStatus;
-      if (dateFrom) params.date_from = dateFrom;
-      if (dateTo) params.date_to = dateTo;
+      const companyId = parseInt(localStorage.getItem('company-id') || 1);
 
-      const res = await axios.get('/v1/sales', { params });
-      setSales(res.data.data || []);
-      setLastPage(res.data.last_page || 1);
+      // Récupérer les ventes hors-ligne Dexie
+      let localSales = [];
+      try {
+        localSales = await db.sales
+          .where('company_id').equals(companyId)
+          .reverse()
+          .toArray();
+      } catch (dexErr) {
+        console.warn('Erreur lecture sales Dexie:', dexErr);
+      }
+
+      let serverSales = [];
+      try {
+        const params = { page };
+        if (search) params.search = search;
+        if (paymentMethod) params.payment_method = paymentMethod;
+        if (paymentStatus) params.payment_status = paymentStatus;
+        if (dateFrom) params.date_from = dateFrom;
+        if (dateTo) params.date_to = dateTo;
+
+        const res = await axios.get('/v1/sales', { params });
+        serverSales = res.data.data || [];
+        setLastPage(res.data.last_page || 1);
+      } catch (netErr) {
+        console.warn('Mode hors-ligne, affichage des ventes locales Dexie:', netErr);
+      }
+
+      const offlineMapped = localSales.map(ls => ({
+        ...ls,
+        id: ls.id || ls.uuid,
+        sale_number: ls.sale_number || ('VTE-OFFLINE-' + String(ls.uuid).substring(0, 8)),
+        user: { name: ls.client_name || 'Opérateur Caisse' },
+        is_offline_pending: true
+      }));
+
+      const merged = [...offlineMapped, ...serverSales];
+      const seen = new Set();
+      const unique = [];
+
+      for (const s of merged) {
+        const key = s.uuid || s.sale_number || s.id;
+        if (!seen.has(key)) {
+          seen.add(key);
+          unique.push(s);
+        }
+      }
+
+      setSales(unique);
     } catch (err) {
       setError('Erreur lors du chargement des ventes.');
     } finally {
