@@ -207,13 +207,28 @@ export const PointDeVente = () => {
       if (navigator.onLine) {
         try {
           const saleRes = await axios.post('/v1/sales', payload);
-          const saleId = saleRes.data.sale?.id;
+          const saleObj = saleRes.data?.sale || saleRes.data;
+          const saleId = saleObj?.id;
 
-          try {
-            const saleDetailRes = await axios.get(`/v1/sales/${saleId}`);
-            setCompletedSale(saleDetailRes.data);
-          } catch {
-            setCompletedSale(saleRes.data.sale);
+          if (saleId) {
+            try {
+              const saleDetailRes = await axios.get(`/v1/sales/${saleId}`);
+              setCompletedSale(saleDetailRes.data?.sale || saleDetailRes.data || saleObj);
+            } catch {
+              setCompletedSale(saleObj);
+            }
+          } else {
+            setCompletedSale(saleObj || {
+              ...payload,
+              sale_number: 'VTE-' + Date.now(),
+              created_at: new Date().toISOString(),
+              details: cart.map(item => ({
+                product: item.product,
+                quantity: item.quantity,
+                selling_price: item.product.selling_price,
+                total: item.quantity * item.product.selling_price
+              }))
+            });
           }
           setSuccess('✅ Vente enregistrée avec succès !');
         } catch (serverErr) {
@@ -601,8 +616,8 @@ export const PointDeVente = () => {
 
       {/* MODAL RECU IMPRIMABLE */}
       {completedSale && (
-        <div className="modal-overlay">
-          <div className="modal-card card" style={{ maxWidth: '400px', textAlign: 'center' }}>
+        <div className="modal-overlay" style={{ zIndex: 3000 }}>
+          <div className="modal-card card" style={{ maxWidth: '420px', textAlign: 'center' }}>
             <h3 className="no-print">🧾 Ticket de Caisse</h3>
             <p className="no-print">Vente enregistrée avec succès. Vous pouvez imprimer le reçu ci-dessous.</p>
 
@@ -610,18 +625,18 @@ export const PointDeVente = () => {
             <div id="thermal-receipt" className="thermal-receipt-container">
               <div className="receipt-header">
                 <h2>{user?.company?.name || 'ApexPOS'}</h2>
-                <p>{completedSale.branch?.name || 'Boutique Centrale'}</p>
-                <p>{completedSale.branch?.address || 'Dakar Plateau'}</p>
-                <p>Tél: {completedSale.branch?.phone || '+221 33 000 00 00'}</p>
+                <p>{completedSale.branch?.name || user?.branch?.name || 'Boutique Centrale'}</p>
+                <p>{completedSale.branch?.address || user?.branch?.address || 'Dakar'}</p>
+                <p>{completedSale.branch?.phone ? `Tél: ${completedSale.branch.phone}` : ''}</p>
               </div>
 
               <div className="receipt-divider"></div>
 
               <div className="receipt-details">
-                <p><strong>N° Ticket:</strong> {completedSale.sale_number}</p>
-                <p><strong>Date:</strong> {new Date(completedSale.created_at).toLocaleString('fr-FR')}</p>
-                <p><strong>Caissier:</strong> {completedSale.user?.name || user?.name}</p>
-                <p><strong>Client:</strong> {completedSale.client_name}</p>
+                <p><strong>N° Ticket:</strong> {completedSale.sale_number || completedSale.uuid || 'N/A'}</p>
+                <p><strong>Date:</strong> {completedSale.created_at ? new Date(completedSale.created_at).toLocaleString('fr-FR') : new Date().toLocaleString('fr-FR')}</p>
+                <p><strong>Caissier:</strong> {completedSale.user?.name || user?.name || 'Caissier'}</p>
+                <p><strong>Client:</strong> {completedSale.client_name || 'Client Comptant'}</p>
                 {completedSale.client_phone && <p><strong>Tél Client:</strong> {completedSale.client_phone}</p>}
               </div>
 
@@ -636,18 +651,18 @@ export const PointDeVente = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {completedSale.details?.map((item, idx) => (
+                  {(completedSale.details || completedSale.items || completedSale.sale_details || []).map((item, idx) => (
                     <tr key={item.id || idx}>
                       <td>
                         {item.product?.name || item.product_name || item.name || 'Article'}
                         <br />
                         <span className="item-unit-price">
-                          {item.quantity} x {new Intl.NumberFormat('fr-FR').format(item.selling_price)}
-                          {parseFloat(item.discount) > 0 && ` (-${new Intl.NumberFormat('fr-FR').format(item.discount)})`}
+                          {item.quantity} x {new Intl.NumberFormat('fr-FR').format(parseFloat(item.selling_price) || 0)}
+                          {parseFloat(item.discount || 0) > 0 && ` (-${new Intl.NumberFormat('fr-FR').format(parseFloat(item.discount))})`}
                         </span>
                       </td>
                       <td style={{ textAlign: 'center' }}>{item.quantity}</td>
-                      <td style={{ textAlign: 'right' }}>{new Intl.NumberFormat('fr-FR').format(item.total)}</td>
+                      <td style={{ textAlign: 'right' }}>{new Intl.NumberFormat('fr-FR').format(parseFloat(item.total) || (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)))}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -658,21 +673,21 @@ export const PointDeVente = () => {
               <div className="receipt-totals">
                 <div className="receipt-total-row">
                   <span>Sous-total HT :</span>
-                  <span>{new Intl.NumberFormat('fr-FR').format(completedSale.subtotal)} XOF</span>
+                  <span>{new Intl.NumberFormat('fr-FR').format(parseFloat(completedSale.subtotal) || 0)} XOF</span>
                 </div>
-                {parseFloat(completedSale.discount) > 0 && (
+                {parseFloat(completedSale.discount || 0) > 0 && (
                   <div className="receipt-total-row">
                     <span>Remise :</span>
-                    <span>-{new Intl.NumberFormat('fr-FR').format(completedSale.discount)} XOF</span>
+                    <span>-{new Intl.NumberFormat('fr-FR').format(parseFloat(completedSale.discount))} XOF</span>
                   </div>
                 )}
                 <div className="receipt-total-row">
-                  <span>TVA {parseFloat(completedSale.tax) > 0 ? '' : '(Désactivée)'} :</span>
-                  <span>{new Intl.NumberFormat('fr-FR').format(completedSale.tax)} XOF</span>
+                  <span>TVA {parseFloat(completedSale.tax || 0) > 0 ? '' : '(Désactivée)'} :</span>
+                  <span>{new Intl.NumberFormat('fr-FR').format(parseFloat(completedSale.tax) || 0)} XOF</span>
                 </div>
                 <div className="receipt-total-row grand-total">
                   <span>TOTAL TTC :</span>
-                  <span>{new Intl.NumberFormat('fr-FR').format(completedSale.total)} XOF</span>
+                  <span>{new Intl.NumberFormat('fr-FR').format(parseFloat(completedSale.total) || 0)} XOF</span>
                 </div>
               </div>
 
@@ -685,8 +700,8 @@ export const PointDeVente = () => {
                 )}
                 {completedSale.payment_method === 'cash' && (
                   <>
-                    <p><strong>Montant Reçu:</strong> {new Intl.NumberFormat('fr-FR').format(completedSale.amount_received)} XOF</p>
-                    <p><strong>Rendu:</strong> {new Intl.NumberFormat('fr-FR').format(completedSale.amount_change)} XOF</p>
+                    <p><strong>Montant Reçu:</strong> {new Intl.NumberFormat('fr-FR').format(parseFloat(completedSale.amount_received) || 0)} XOF</p>
+                    <p><strong>Rendu:</strong> {new Intl.NumberFormat('fr-FR').format(parseFloat(completedSale.amount_change) || 0)} XOF</p>
                   </>
                 )}
               </div>

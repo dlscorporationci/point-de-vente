@@ -377,6 +377,18 @@ class SyncController extends Controller
         // Stocks de la boutique
         $stocks = BranchProduct::where('branch_id', $branchId)->get();
 
+        // Notifications serveur ciblées
+        $notifications = \App\Models\Notification::where('company_id', $companyId)
+            ->where(function ($q) use ($branchId) {
+                $q->where('branch_id', $branchId)->orWhereNull('branch_id');
+            })
+            ->where(function ($q) use ($user) {
+                $q->where('user_id', $user->id)->orWhereNull('user_id');
+            })
+            ->orderBy('created_at', 'desc')
+            ->limit(50)
+            ->get();
+
         // Calcul du nouveau curseur déterministe généré par le serveur Laravel
         $nextCursor = null;
         if ($products->isNotEmpty()) {
@@ -392,6 +404,7 @@ class SyncController extends Controller
             'categories' => $categories,
             'customers' => $customers,
             'stocks' => $stocks,
+            'notifications' => $notifications,
             'server_time' => now()->toIso8601String(),
         ]);
     }

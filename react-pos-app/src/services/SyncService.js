@@ -138,11 +138,17 @@ class SyncService {
           .modify({ status: 'synced', synced_at: new Date().toISOString() });
       }
 
-      // Marquer les opérations en conflit (Conservées avec raison explicite)
+      // Marquer les opérations en conflit (Conservées avec raison explicite et Toast UI immédiat)
       for (const c of conflicts) {
         await db.sync_queue
           .where('uuid').equals(c.uuid)
           .modify({ status: 'conflict', last_error: c.reason });
+
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('sync-conflict-toast', {
+            detail: { uuid: c.uuid, reason: c.reason }
+          }));
+        }
       }
 
       // Marquer les échecs avec réessai
@@ -184,10 +190,10 @@ class SyncService {
       }
     });
 
-    const { next_cursor, products = [], categories = [], customers = [], stocks = [] } = res.data;
+    const { next_cursor, products = [], categories = [], customers = [], stocks = [], notifications = [] } = res.data;
 
     // Mise à jour atomique du catalogue local Dexie
-    await db.transaction('rw', [db.products, db.categories, db.customers, db.stock, db.sync_metadata], async () => {
+    await db.transaction('rw', [db.products, db.categories, db.customers, db.stock, db.notifications, db.sync_metadata], async () => {
       // Mettre à jour les produits (et traiter les tombstones deleted_at)
       for (const p of products) {
         if (p.deleted_at) {
@@ -212,11 +218,20 @@ class SyncService {
         await db.stock.put(st);
       }
 
+      // Mettre à jour les notifications du serveur (dédupliquées par id)
+      for (const n of notifications) {
+        await db.notifications.put(n);
+      }
+
       // Enregistrer le curseur retourné par le serveur Laravel
       if (next_cursor) {
         await db.sync_metadata.put({ key: 'last_sync_cursor', value: next_cursor });
       }
     });
+
+    if (notifications.length > 0 && typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('notification-refresh'));
+    }
   }
 }
 

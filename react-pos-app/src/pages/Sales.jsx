@@ -315,12 +315,12 @@ export const Sales = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {selectedSale.details?.map((d, idx) => (
+                  {(selectedSale.details || selectedSale.items || selectedSale.sale_details || []).map((d, idx) => (
                     <tr key={idx}>
-                      <td style={{ textAlign: 'left' }}>{d.product?.name || `Produit #${d.product_id}`}</td>
+                      <td style={{ textAlign: 'left' }}>{d.product?.name || d.product_name || d.name || `Produit #${d.product_id}`}</td>
                       <td>{d.quantity}</td>
-                      <td>{new Intl.NumberFormat('fr-FR').format(d.selling_price)}</td>
-                      <td style={{ textAlign: 'right' }}>{new Intl.NumberFormat('fr-FR').format(d.total)}</td>
+                      <td>{new Intl.NumberFormat('fr-FR').format(parseFloat(d.selling_price) || 0)}</td>
+                      <td style={{ textAlign: 'right' }}>{new Intl.NumberFormat('fr-FR').format(parseFloat(d.total) || (parseFloat(d.quantity || 0) * parseFloat(d.selling_price || 0)))}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -332,21 +332,21 @@ export const Sales = () => {
               <div className="receipt-totals">
                 <div className="receipt-total-row">
                   <span>Sous-total HT</span>
-                  <span>{new Intl.NumberFormat('fr-FR').format(selectedSale.subtotal)} XOF</span>
+                  <span>{new Intl.NumberFormat('fr-FR').format(parseFloat(selectedSale.subtotal) || 0)} XOF</span>
                 </div>
-                {parseFloat(selectedSale.discount) > 0 && (
+                {parseFloat(selectedSale.discount || 0) > 0 && (
                   <div className="receipt-total-row">
                     <span>Remise</span>
-                    <span>-{new Intl.NumberFormat('fr-FR').format(selectedSale.discount)} XOF</span>
+                    <span>-{new Intl.NumberFormat('fr-FR').format(parseFloat(selectedSale.discount))} XOF</span>
                   </div>
                 )}
                 <div className="receipt-total-row">
                   <span>TVA (18%)</span>
-                  <span>{new Intl.NumberFormat('fr-FR').format(selectedSale.tax)} XOF</span>
+                  <span>{new Intl.NumberFormat('fr-FR').format(parseFloat(selectedSale.tax) || 0)} XOF</span>
                 </div>
                 <div className="receipt-total-row grand-total">
                   <span>TOTAL TTC</span>
-                  <span>{new Intl.NumberFormat('fr-FR').format(selectedSale.total)} XOF</span>
+                  <span>{new Intl.NumberFormat('fr-FR').format(parseFloat(selectedSale.total) || 0)} XOF</span>
                 </div>
               </div>
 
@@ -357,8 +357,8 @@ export const Sales = () => {
                 <p><strong>Mode :</strong> {payMethodLabel(selectedSale.payment_method)}</p>
                 {selectedSale.payment_method === 'cash' && (
                   <>
-                    <p><strong>Reçu :</strong> {new Intl.NumberFormat('fr-FR').format(selectedSale.amount_received)} XOF</p>
-                    <p><strong>Monnaie rendue :</strong> {new Intl.NumberFormat('fr-FR').format(selectedSale.amount_change)} XOF</p>
+                    <p><strong>Reçu :</strong> {new Intl.NumberFormat('fr-FR').format(parseFloat(selectedSale.amount_received) || 0)} XOF</p>
+                    <p><strong>Monnaie rendue :</strong> {new Intl.NumberFormat('fr-FR').format(parseFloat(selectedSale.amount_change) || 0)} XOF</p>
                   </>
                 )}
                 <p><strong>Statut :</strong> {selectedSale.payment_status === 'paid' ? 'Payé' : 'Impayé (Crédit)'}</p>

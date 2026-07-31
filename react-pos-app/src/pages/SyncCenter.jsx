@@ -43,9 +43,9 @@ export const SyncCenter = () => {
     await loadSyncData();
   };
 
-  const handleDeleteItem = async (uuid) => {
-    if (window.confirm('Voulez-vous annuler et supprimer cette opération hors-ligne de la file d\'attente ?')) {
-      await db.sync_queue.delete(uuid);
+  const handleIgnoreItem = async (uuid) => {
+    if (window.confirm('Voulez-vous marquer cette opération comme ignorée ? Elle sera conservée dans l\'historique d\'audit de synchronisation.')) {
+      await db.sync_queue.update(uuid, { status: 'ignored' });
       await loadSyncData();
     }
   };
@@ -185,6 +185,7 @@ export const SyncCenter = () => {
                       {item.status === 'syncing' && <span className="badge bg-info text-dark">🔄 Syncing...</span>}
                       {item.status === 'conflict' && <span className="badge bg-danger">⚠️ Conflit</span>}
                       {item.status === 'failed' && <span className="badge bg-dark">❌ Échec</span>}
+                      {item.status === 'ignored' && <span className="badge bg-secondary">⚫ Ignoré</span>}
                     </td>
                     <td>
                       {item.last_error ? (
@@ -197,7 +198,7 @@ export const SyncCenter = () => {
                     </td>
                     <td className="text-end">
                       <div className="d-flex justify-content-end gap-1">
-                        {(item.status === 'conflict' || item.status === 'failed') && (
+                        {(item.status === 'conflict' || item.status === 'failed' || item.status === 'ignored') && (
                           <button
                             onClick={() => handleRetryItem(item.uuid)}
                             className="btn btn-outline-warning btn-sm"
@@ -207,12 +208,12 @@ export const SyncCenter = () => {
                             Réessayer
                           </button>
                         )}
-                        {item.status !== 'synced' && (
+                        {item.status !== 'synced' && item.status !== 'ignored' && (
                           <button
-                            onClick={() => handleDeleteItem(item.uuid)}
-                            className="btn btn-outline-danger btn-sm"
+                            onClick={() => handleIgnoreItem(item.uuid)}
+                            className="btn btn-outline-secondary btn-sm"
                             style={{ fontSize: '11px', padding: '2px 8px' }}
-                            title="Supprimer l'opération locale"
+                            title="Ignorer sans supprimer de l'historique"
                           >
                             Ignorer
                           </button>
