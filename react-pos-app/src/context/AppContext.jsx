@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import axios from 'axios';
 import { offlineStorage } from '../services/offlineStorage';
+import { purgeLocalCacheOnLogout } from '../services/db';
 
 const AppContext = createContext(null);
 
@@ -246,6 +247,11 @@ export const AppProvider = ({ children }) => {
       localStorage.setItem('active-branch', JSON.stringify(newActive));
       localStorage.setItem('branch-id', newActive.id.toString());
       axios.defaults.headers.common['X-Branch-ID'] = newActive.id;
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('branch-switched', { detail: newActive }));
+      }
+
       return { success: true, message: res.data.message };
     } catch (err) {
       return { success: false, error: err.response?.data?.error || 'Impossible de changer de boutique.' };
@@ -307,6 +313,13 @@ export const AppProvider = ({ children }) => {
     delete axios.defaults.headers.common['Authorization'];
     delete axios.defaults.headers.common['X-Company-ID'];
     delete axios.defaults.headers.common['X-Branch-ID'];
+
+    // Purge du cache local sensible Dexie lors du logout (tout en conservant les pending non-sync)
+    purgeLocalCacheOnLogout().catch(() => {});
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('app-logout'));
+    }
   };
 
   // Intercepteur Axios pour gérer les erreurs 401 (Déconnexion automatique uniquement si token invalide sur route privée)
