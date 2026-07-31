@@ -290,6 +290,15 @@ export const AppProvider = ({ children }) => {
   };
 
   const login = (userData, userToken) => {
+    // 0. Réinitialisation étanche des anciennes clés d'en-tête et du stockage local
+    delete axios.defaults.headers.common['Authorization'];
+    delete axios.defaults.headers.common['X-Company-ID'];
+    delete axios.defaults.headers.common['X-Branch-ID'];
+    localStorage.removeItem('cached-branches');
+    localStorage.removeItem('active-branch');
+    localStorage.removeItem('branch-id');
+    localStorage.removeItem('company-id');
+
     // 1. Configuration SYNCHRONE immédiate d'Axios pour éviter d'envoyer la première requête sans jeton
     axios.defaults.headers.common['Authorization'] = `Bearer ${userToken}`;
     localStorage.setItem('token', userToken);
@@ -317,6 +326,9 @@ export const AppProvider = ({ children }) => {
       localStorage.setItem('active-branch', JSON.stringify(b));
       setActiveBranchState(b);
       setBranchIdState(b.id.toString());
+    } else {
+      setActiveBranchState(null);
+      setBranchIdState(null);
     }
 
     setToken(userToken);

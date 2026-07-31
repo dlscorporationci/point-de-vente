@@ -434,6 +434,7 @@ class AuthController extends Controller
             // 3. Créer l'utilisateur administrateur de l'entreprise
             $adminRole = \App\Models\Role::firstOrCreate(['slug' => 'admin'], ['name' => 'Administrateur']);
             $adminRoleId = $adminRole ? $adminRole->id : 2;
+            $randomPin = (string) random_int(1000, 9999);
 
             $user = User::create([
                 'company_id' => $company->id,
@@ -442,7 +443,7 @@ class AuthController extends Controller
                 'name'       => $request->name,
                 'email'      => $request->email,
                 'password'   => Hash::make($request->password),
-                'pin_code'   => '1234',
+                'pin_code'   => $randomPin,
                 'status'     => 'active',
             ]);
 
@@ -485,7 +486,7 @@ class AuthController extends Controller
                     ]
                 ],
                 'company_code' => $company->code,
-                'pin_code' => '1234',
+                'pin_code' => $randomPin,
                 'message' => 'Entreprise enregistrée avec succès.'
             ], 201);
         });
