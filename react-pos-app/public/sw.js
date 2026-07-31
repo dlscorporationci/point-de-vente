@@ -1,12 +1,12 @@
-const CACHE_NAME = 'apexpos-cache-v2';
-const DYNAMIC_CACHE = 'apexpos-dynamic-v2';
+const CACHE_NAME = 'apexpos-cache-v3';
+const DYNAMIC_CACHE = 'apexpos-dynamic-v3';
 
 // Static assets to cache immediately upon installation
 const STATIC_ASSETS = [
-  './',
-  './index.html',
-  './manifest.json',
-  './favicon.svg'
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/favicon.svg'
 ];
 
 // Install Event — Pre-cache core shell

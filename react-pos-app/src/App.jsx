@@ -24,6 +24,7 @@ import { Notifications } from './pages/Notifications'
 import { SyncCenter } from './pages/SyncCenter'
 import { NotificationBell } from './components/NotificationBell'
 import { NetworkStatusBadge } from './components/NetworkStatusBadge'
+import { InstallPWAButton } from './components/InstallPWAButton'
 import { AnimatedBubbles } from './components/AnimatedBubbles'
 import logo from './assets/logo.jpg'
 import { BranchSelectionPage } from './pages/BranchSelectionPage'
@@ -298,6 +299,9 @@ function MainContent() {
             {/* Badge de statut réseau et synchronisation hors-ligne */}
             <NetworkStatusBadge />
 
+            {/* Bouton de téléchargement / installation de l'application Mobile PWA */}
+            <InstallPWAButton />
+
             {/* Cloche de notifications système */}
             <NotificationBell onNavigate={navigate} />
 
@@ -360,6 +364,7 @@ function MainContent() {
           </div>
 
           <div className="drawer-links">
+            <InstallPWAButton isMobileDrawer={true} />
             {tabHistory.length > 0 && (
               <button 
                 className="drawer-link-btn" 
