@@ -1074,16 +1074,36 @@ p {
   .header-actions,
   .modal-actions,
   .js-bubbles-container,
-  button,
-  input,
-  select,
-  textarea {
+  .app-main-navbar,
+  .notifications-dropdown,
+  button {
     display: none !important;
   }
 
-  /* 2. ISOLATION ABSOLUE DES TICKETS THERMIQUES DE CAISSE (POS & VENTES) */
+  /* 2. ISOLATION ET VISIBILITÉ DU REÇU THERMIQUE DE CAISSE (POS & HISTORIQUE VENTES) */
   body * {
     visibility: hidden;
+  }
+
+  /* Rendre visibles les conteneurs parents du reçu */
+  #root,
+  .app-main-content,
+  .pos-container,
+  .sales-container,
+  .modal-overlay,
+  .modal-card {
+    visibility: visible !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    top: 0 !important;
+    left: 0 !important;
+    position: static !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    overflow: visible !important;
   }
 
   /* Force la visibilité absolue et l'affichage du ticket thermique */
@@ -1105,20 +1125,21 @@ p {
   .receipt-print-zone,
   .thermal-receipt-container {
     display: block !important;
-    position: absolute !important;
+    position: fixed !important;
     left: 0 !important;
     top: 0 !important;
     width: 78mm !important;
     max-width: 78mm !important;
-    margin: 0 auto !important;
+    margin: 0 !important;
     padding: 2mm 3mm !important;
     background: #ffffff !important;
-    font-family: 'Courier New', Courier, monospace !important;
+    color: #000000 !important;
+    font-family: 'Courier New', Courier, monospace, sans-serif !important;
     font-size: 11px !important;
     line-height: 1.25 !important;
     border: none !important;
     box-shadow: none !important;
-    z-index: 999999 !important;
+    z-index: 9999999 !important;
     page-break-after: avoid !important;
     page-break-inside: avoid !important;
     overflow: visible !important;

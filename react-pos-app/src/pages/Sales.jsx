@@ -95,10 +95,33 @@ export const Sales = () => {
 
   const viewSaleDetail = async (sale) => {
     try {
+      setError('');
+      if (sale.is_offline_pending || String(sale.id).startsWith('uuid-') || !sale.id) {
+        const items = await db.sale_items.where('sale_uuid').equals(sale.uuid || '').toArray();
+        setSelectedSale({
+          ...sale,
+          details: items.length > 0 ? items : (sale.details || sale.items || [])
+        });
+        return;
+      }
       const res = await axios.get(`/v1/sales/${sale.id}`);
-      setSelectedSale(res.data);
-    } catch {
-      setError('Impossible de charger le détail de cette vente.');
+      const saleData = res.data?.sale || res.data;
+      setSelectedSale(saleData || sale);
+    } catch (err) {
+      console.warn('Échec de chargement API du détail de vente, utilisation du fallback:', err);
+      if (sale.details || sale.items) {
+        setSelectedSale(sale);
+      } else {
+        try {
+          const localItems = await db.sale_items.where('sale_uuid').equals(sale.uuid || '').toArray();
+          setSelectedSale({
+            ...sale,
+            details: localItems
+          });
+        } catch {
+          setSelectedSale(sale);
+        }
+      }
     }
   };
 
