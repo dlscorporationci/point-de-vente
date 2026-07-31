@@ -38,9 +38,16 @@ export const SyncCenter = () => {
   };
 
   const handleRetryItem = async (uuid) => {
-    await db.sync_queue.update(uuid, { status: 'pending', attempts: 0 });
+    await db.sync_queue.update(uuid, { status: 'pending', attempts: 0, last_error: null });
     await syncService.runFullSync();
     await loadSyncData();
+  };
+
+  const handleDeleteItem = async (uuid) => {
+    if (window.confirm('Voulez-vous annuler et supprimer cette opération hors-ligne de la file d\'attente ?')) {
+      await db.sync_queue.delete(uuid);
+      await loadSyncData();
+    }
   };
 
   const stats = {
@@ -189,15 +196,28 @@ export const SyncCenter = () => {
                       )}
                     </td>
                     <td className="text-end">
-                      {(item.status === 'conflict' || item.status === 'failed') && (
-                        <button
-                          onClick={() => handleRetryItem(item.uuid)}
-                          className="btn btn-outline-warning btn-sm"
-                          style={{ fontSize: '11px', padding: '2px 8px' }}
-                        >
-                          Réessayer
-                        </button>
-                      )}
+                      <div className="d-flex justify-content-end gap-1">
+                        {(item.status === 'conflict' || item.status === 'failed') && (
+                          <button
+                            onClick={() => handleRetryItem(item.uuid)}
+                            className="btn btn-outline-warning btn-sm"
+                            style={{ fontSize: '11px', padding: '2px 8px' }}
+                            title="Réessayer de synchroniser"
+                          >
+                            Réessayer
+                          </button>
+                        )}
+                        {item.status !== 'synced' && (
+                          <button
+                            onClick={() => handleDeleteItem(item.uuid)}
+                            className="btn btn-outline-danger btn-sm"
+                            style={{ fontSize: '11px', padding: '2px 8px' }}
+                            title="Supprimer l'opération locale"
+                          >
+                            Ignorer
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

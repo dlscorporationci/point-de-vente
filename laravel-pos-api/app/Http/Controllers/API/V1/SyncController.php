@@ -87,18 +87,27 @@ class SyncController extends Controller
                         }
 
                         // Vérifier le stock disponible pour chaque article (Lock for update)
+                        // Vérifier le stock disponible pour chaque article (Lock for update)
                         $items = $payload['items'] ?? [];
                         foreach ($items as $item) {
                             $pId = $item['product_id'];
                             $qty = floatval($item['quantity']);
 
-                            $bp = BranchProduct::where('branch_id', $branchId)
-                                ->where('product_id', $pId)
-                                ->lockForUpdate()
-                                ->first();
+                            $bp = BranchProduct::firstOrCreate([
+                                'branch_id' => $branchId,
+                                'product_id' => $pId,
+                            ], [
+                                'quantity' => 0.00,
+                                'is_active' => true,
+                            ]);
 
-                            if ($bp && $bp->stock_quantity < $qty) {
-                                throw new \Exception("CONFLIT_STOCK: Stock insuffisant pour le produit #{$pId} (Disponible: {$bp->stock_quantity}, Demandé: {$qty})");
+                            $bp = BranchProduct::where('id', $bp->id)->lockForUpdate()->first();
+                            $availQty = $bp ? floatval($bp->quantity) : 0;
+
+                            if ($availQty < $qty) {
+                                $prod = Product::find($pId);
+                                $pName = $prod ? $prod->name : "Produit #{$pId}";
+                                throw new \Exception("CONFLIT_STOCK: Stock insuffisant pour \"{$pName}\" (Disponible: {$availQty}, Demandé: {$qty})");
                             }
                         }
 
@@ -161,7 +170,7 @@ class SyncController extends Controller
                                 ->first();
 
                             if ($bp) {
-                                $bp->decrement('stock_quantity', $q);
+                                $bp->decrement('quantity', $q);
                             }
                         }
                     }
@@ -171,12 +180,16 @@ class SyncController extends Controller
                         $pId = $payload['product_id'];
                         $qty = floatval($payload['quantity']);
 
-                        $bp = BranchProduct::where('branch_id', $branchId)
-                            ->where('product_id', $pId)
-                            ->first();
+                        $bp = BranchProduct::firstOrCreate([
+                            'branch_id' => $branchId,
+                            'product_id' => $pId,
+                        ], [
+                            'quantity' => 0.00,
+                            'is_active' => true,
+                        ]);
 
                         if ($bp) {
-                            $bp->increment('stock_quantity', $qty);
+                            $bp->increment('quantity', $qty);
                             StockMovement::create([
                                 'company_id' => $companyId,
                                 'branch_id' => $branchId,
