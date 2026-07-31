@@ -17,15 +17,32 @@ export const BranchSelectionPage = ({ onSelectBranch }) => {
         const res = await axios.get('/v1/branches');
         const list = res.data.branches || res.data || [];
         setBranches(list);
+        if (Array.isArray(list) && list.length > 0) {
+          localStorage.setItem('cached-branches', JSON.stringify(list));
+        }
       } catch (err) {
-        setError('Impossible de charger la liste des boutiques.');
+        // Mode Hors-Ligne : Récupération du cache des boutiques ou des boutiques assignées à l'utilisateur
+        const cached = localStorage.getItem('cached-branches');
+        let fallbackList = [];
+        if (cached) {
+          try { fallbackList = JSON.parse(cached); } catch {}
+        }
+        if (!fallbackList || fallbackList.length === 0) {
+          fallbackList = user?.assigned_branches || user?.branches || (activeBranch ? [activeBranch] : []);
+        }
+
+        if (fallbackList && fallbackList.length > 0) {
+          setBranches(fallbackList);
+        } else {
+          setError('Impossible de charger la liste des boutiques en ligne. Aucune boutique mise en cache.');
+        }
       } finally {
         setLoading(false);
       }
     };
 
     fetchBranches();
-  }, []);
+  }, [user, activeBranch]);
 
   const handleSelect = async (branch) => {
     setSelectingId(branch.id);

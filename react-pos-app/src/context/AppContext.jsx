@@ -240,20 +240,51 @@ export const AppProvider = ({ children }) => {
   // Basculer la boutique active
   const switchActiveBranch = async (targetBranchId) => {
     try {
-      const res = await axios.post('/v1/auth/switch-branch', { branch_id: parseInt(targetBranchId) });
-      const newActive = res.data.active_branch;
-      setActiveBranchState(newActive);
-      setBranchIdState(newActive.id.toString());
-      localStorage.setItem('active-branch', JSON.stringify(newActive));
-      localStorage.setItem('branch-id', newActive.id.toString());
-      axios.defaults.headers.common['X-Branch-ID'] = newActive.id;
+      if (navigator.onLine) {
+        const res = await axios.post('/v1/auth/switch-branch', { branch_id: parseInt(targetBranchId) });
+        const newActive = res.data.active_branch;
+        setActiveBranchState(newActive);
+        setBranchIdState(newActive.id.toString());
+        localStorage.setItem('active-branch', JSON.stringify(newActive));
+        localStorage.setItem('branch-id', newActive.id.toString());
+        axios.defaults.headers.common['X-Branch-ID'] = newActive.id;
 
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('branch-switched', { detail: newActive }));
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('branch-switched', { detail: newActive }));
+        }
+
+        return { success: true, message: res.data.message };
+      } else {
+        const cached = localStorage.getItem('cached-branches');
+        let branchesList = [];
+        if (cached) { try { branchesList = JSON.parse(cached); } catch {} }
+        
+        const targetBranch = branchesList.find(b => b.id === parseInt(targetBranchId)) 
+          || (user?.assigned_branches || user?.branches || []).find(b => b.id === parseInt(targetBranchId))
+          || { id: parseInt(targetBranchId), name: 'Boutique (Hors-Ligne)' };
+
+        setActiveBranchState(targetBranch);
+        setBranchIdState(targetBranch.id.toString());
+        localStorage.setItem('active-branch', JSON.stringify(targetBranch));
+        localStorage.setItem('branch-id', targetBranch.id.toString());
+        axios.defaults.headers.common['X-Branch-ID'] = targetBranch.id.toString();
+
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('branch-switched', { detail: targetBranch }));
+        }
+
+        return { success: true, message: 'Changement de boutique effectué hors-ligne.' };
       }
-
-      return { success: true, message: res.data.message };
     } catch (err) {
+      if (!navigator.onLine) {
+        const targetBranch = { id: parseInt(targetBranchId), name: 'Boutique (Hors-Ligne)' };
+        setActiveBranchState(targetBranch);
+        setBranchIdState(targetBranch.id.toString());
+        localStorage.setItem('active-branch', JSON.stringify(targetBranch));
+        localStorage.setItem('branch-id', targetBranch.id.toString());
+        axios.defaults.headers.common['X-Branch-ID'] = targetBranch.id.toString();
+        return { success: true, message: 'Changement de boutique effectué hors-ligne.' };
+      }
       return { success: false, error: err.response?.data?.error || 'Impossible de changer de boutique.' };
     }
   };
