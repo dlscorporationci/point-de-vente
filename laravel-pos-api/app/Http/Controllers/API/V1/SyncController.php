@@ -111,6 +111,30 @@ class SyncController extends Controller
                             }
                         }
 
+                        // Vérifier la limite de crédit si vente à crédit
+                        $customerId = $payload['customer_id'] ?? null;
+                        $paymentMethod = $payload['payment_method'] ?? 'cash';
+                        $paymentStatus = $payload['payment_status'] ?? 'paid';
+
+                        if ($customerId && ($paymentMethod === 'credit' || $paymentStatus === 'unpaid')) {
+                            $customer = Customer::where('id', $customerId)
+                                ->where('company_id', $companyId)
+                                ->lockForUpdate()
+                                ->first();
+
+                            if ($customer) {
+                                $currentDebt = floatval($customer->debt_balance ?? 0);
+                                $creditLimit = floatval($customer->credit_limit ?? 0);
+                                $newDebt = $currentDebt + $total;
+
+                                if ($creditLimit > 0 && $newDebt > $creditLimit) {
+                                    throw new \Exception("CONFLIT_CREDIT: Limite de crédit client dépassée pour \"{$customer->name}\" (Limite: {$creditLimit} FCFA, Dette actuelle: {$currentDebt} FCFA, Vente demandée: {$total} FCFA)");
+                                }
+
+                                $customer->increment('debt_balance', $total);
+                            }
+                        }
+
                         // Créer la vente
                         $subtotal = 0;
                         $itemDiscounts = 0;
@@ -135,10 +159,10 @@ class SyncController extends Controller
                             'branch_id' => $branchId,
                             'cash_session_id' => $session->id,
                             'user_id' => $user->id,
-                            'customer_id' => $payload['customer_id'] ?? null,
+                            'customer_id' => $customerId,
                             'sale_number' => $saleNumber,
-                            'payment_method' => $payload['payment_method'] ?? 'cash',
-                            'payment_status' => 'paid',
+                            'payment_method' => $paymentMethod,
+                            'payment_status' => $paymentStatus,
                             'amount_received' => floatval($payload['amount_received'] ?? $total),
                             'amount_change' => max(0, floatval($payload['amount_received'] ?? $total) - $total),
                             'subtotal' => $subtotal,
@@ -202,6 +226,77 @@ class SyncController extends Controller
                         }
                     }
 
+                    // --- TRANSFERTS INTER-BOUTIQUES HORS-LIGNE ---
+                    else if ($entityType === 'transfer') {
+                        $fromBranchId = $payload['from_branch_id'] ?? $branchId;
+                        $toBranchId = $payload['to_branch_id'] ?? null;
+                        $tItems = $payload['items'] ?? [];
+
+                        if ($action === 'create') {
+                            $transferNumber = 'TRSF-' . time() . '-' . rand(100, 999);
+                            $transfer = StockTransfer::create([
+                                'company_id' => $companyId,
+                                'from_branch_id' => $fromBranchId,
+                                'to_branch_id' => $toBranchId,
+                                'transfer_number' => $transferNumber,
+                                'status' => 'pending',
+                                'notes' => $payload['notes'] ?? 'Transfert initié hors-ligne',
+                            ]);
+
+                            foreach ($tItems as $tItem) {
+                                DB::table('stock_transfer_details')->insert([
+                                    'stock_transfer_id' => $transfer->id,
+                                    'product_id' => $tItem['product_id'],
+                                    'quantity' => floatval($tItem['quantity']),
+                                    'created_at' => now(),
+                                    'updated_at' => now(),
+                                ]);
+                            }
+                        } else if ($action === 'ship') {
+                            $transferId = $payload['transfer_id'] ?? null;
+                            $transfer = StockTransfer::where('id', $transferId)->where('company_id', $companyId)->first();
+
+                            if ($transfer) {
+                                $details = DB::table('stock_transfer_details')->where('stock_transfer_id', $transfer->id)->get();
+                                foreach ($details as $detail) {
+                                    $bp = BranchProduct::where('branch_id', $transfer->from_branch_id)
+                                        ->where('product_id', $detail->product_id)
+                                        ->lockForUpdate()
+                                        ->first();
+
+                                    $avail = $bp ? floatval($bp->quantity) : 0;
+                                    if ($avail < floatval($detail->quantity)) {
+                                        $prod = Product::find($detail->product_id);
+                                        $pName = $prod ? $prod->name : "Produit #{$detail->product_id}";
+                                        throw new \Exception("CONFLIT_TRANSFERT: Stock insuffisant dans la boutique d'origine pour expédier \"{$pName}\" (Disponible: {$avail}, Demandé: {$detail->quantity})");
+                                    }
+                                    $bp->decrement('quantity', floatval($detail->quantity));
+                                }
+                                $transfer->update(['status' => 'shipped']);
+                            }
+                        } else if ($action === 'receive') {
+                            $transferId = $payload['transfer_id'] ?? null;
+                            $transfer = StockTransfer::where('id', $transferId)->where('company_id', $companyId)->first();
+
+                            if ($transfer && $transfer->status === 'shipped') {
+                                $details = DB::table('stock_transfer_details')->where('stock_transfer_id', $transfer->id)->get();
+                                foreach ($details as $detail) {
+                                    $bp = BranchProduct::firstOrCreate([
+                                        'branch_id' => $transfer->to_branch_id,
+                                        'product_id' => $detail->product_id,
+                                    ], [
+                                        'quantity' => 0.00,
+                                        'is_active' => true,
+                                    ]);
+
+                                    $bp = BranchProduct::where('id', $bp->id)->lockForUpdate()->first();
+                                    $bp->increment('quantity', floatval($detail->quantity));
+                                }
+                                $transfer->update(['status' => 'received']);
+                            }
+                        }
+                    }
+
                     // 2. Enregistrer la clé d'Idempotence dans la BDD serveur
                     DB::table('sync_idempotency')->insert([
                         'uuid' => $uuid,
@@ -216,15 +311,16 @@ class SyncController extends Controller
                     $syncedUuids[] = $uuid;
                 });
             } catch (\Exception $e) {
-                if (str_contains($e->getMessage(), 'CONFLIT_STOCK')) {
+                $msg = $e->getMessage();
+                if (str_contains($msg, 'CONFLIT_STOCK') || str_contains($msg, 'CONFLIT_CREDIT') || str_contains($msg, 'CONFLIT_TRANSFERT')) {
                     $conflicts[] = [
                         'uuid' => $uuid,
-                        'reason' => $e->getMessage(),
+                        'reason' => $msg,
                     ];
                 } else {
                     $failed[] = [
                         'uuid' => $uuid,
-                        'error' => $e->getMessage(),
+                        'error' => $msg,
                     ];
                 }
             }
