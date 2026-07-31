@@ -404,29 +404,7 @@ export const Login = ({ setActiveTab }) => {
                   />
                 </div>
 
-                {/* Pavé Numérique Tactile POS */}
-                <div className="pin-keypad-grid mb-3">
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
-                    <button 
-                      key={num} 
-                      type="button"
-                      className="keypad-btn"
-                      onClick={() => handleKeyPress(num)}
-                      disabled={loading}
-                    >
-                      {num}
-                    </button>
-                  ))}
-                  <button type="button" className="keypad-btn btn-clear" onClick={handleClear} disabled={loading}>
-                    C
-                  </button>
-                  <button type="button" className="keypad-btn" onClick={() => handleKeyPress(0)} disabled={loading}>
-                    0
-                  </button>
-                  <button type="button" className="keypad-btn btn-backspace" onClick={handleBackspace} disabled={loading}>
-                    <i className="fa-solid fa-delete-left"></i>
-                  </button>
-                </div>
+
 
                 <button type="submit" className="btn btn-primary btn-block btn-lg mt-2" disabled={loading}>
                   {loading ? 'Authentification...' : 'Se Connecter'}
