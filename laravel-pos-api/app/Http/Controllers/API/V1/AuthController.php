@@ -456,14 +456,37 @@ class AuthController extends Controller
                     'name' => $user->name,
                     'email' => $user->email,
                     'status' => $user->status,
-                    'role' => $user->role->slug,
-                    'permissions' => $user->role->permissions->pluck('slug'),
+                    'role' => $user->role ? $user->role->slug : 'admin',
+                    'permissions' => $user->role ? $user->role->permissions->pluck('slug') : [],
                     'company_id' => $user->company_id,
+                    'company' => [
+                        'id' => $company->id,
+                        'name' => $company->name,
+                        'code' => $company->code,
+                        'tax_settings' => $company->tax_settings ?? ['tax_rate' => 18, 'enable_tax' => true],
+                    ],
                     'branch' => [
                         'id' => $branch->id,
                         'name' => $branch->name,
                     ],
-                ]
+                    'active_branch' => [
+                        'id' => $branch->id,
+                        'name' => $branch->name,
+                        'type' => $branch->type,
+                        'status' => $branch->status,
+                    ],
+                    'assigned_branches' => [
+                        [
+                            'id' => $branch->id,
+                            'name' => $branch->name,
+                            'type' => $branch->type,
+                            'status' => $branch->status,
+                        ]
+                    ]
+                ],
+                'company_code' => $company->code,
+                'pin_code' => '1234',
+                'message' => 'Entreprise enregistrée avec succès.'
             ], 201);
         });
     }
