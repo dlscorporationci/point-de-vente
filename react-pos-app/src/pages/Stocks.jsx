@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
+import { db } from '../services/db';
 
 export const Stocks = () => {
   const { user, token } = useApp();
@@ -28,11 +29,35 @@ export const Stocks = () => {
     setLoading(true);
     setError(null);
     try {
-      const stockRes = await axios.get('/v1/stock/current');
-      setCurrentStocks(stockRes.data);
+      const companyId = parseInt(localStorage.getItem('company-id') || 1);
+      let stocksData = [];
+      let movementsData = [];
 
-      const movRes = await axios.get('/v1/stock/movements');
-      setMovements(movRes.data.data || []);
+      try {
+        const stockRes = await axios.get('/v1/stock/current');
+        stocksData = stockRes.data || [];
+
+        const movRes = await axios.get('/v1/stock/movements');
+        movementsData = movRes.data.data || [];
+      } catch (netErr) {
+        console.warn('Mode hors-ligne, affichage des stocks depuis Dexie:', netErr);
+        
+        const localProducts = await db.products
+          .where('company_id').equals(companyId)
+          .toArray();
+
+        stocksData = localProducts.map(p => ({
+          id: p.id,
+          product_id: p.id,
+          product: p,
+          quantity: p.stock_quantity ?? p.quantity ?? 0,
+          stock_quantity: p.stock_quantity ?? p.quantity ?? 0,
+          branch: { name: 'Ma Boutique' }
+        }));
+      }
+
+      setCurrentStocks(stocksData);
+      setMovements(movementsData);
     } catch (err) {
       setError('Impossible de charger les données d\'inventaire.');
     } finally {

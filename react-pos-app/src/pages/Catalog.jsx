@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
+import { db } from '../services/db';
 
 export const getImageUrl = (imagePath) => {
   if (!imagePath) return null;
@@ -162,29 +163,51 @@ export const Catalog = () => {
     setLoading(true);
     setError(null);
     try {
+      const companyId = parseInt(localStorage.getItem('company-id') || 1);
+
       // 1. Charger les catégories
-      const catRes = await axios.get('/v1/categories');
-      setCategories(catRes.data);
+      let catData = [];
+      try {
+        const catRes = await axios.get('/v1/categories');
+        catData = catRes.data || [];
+      } catch (netErr) {
+        catData = await db.categories.where('company_id').equals(companyId).toArray();
+      }
+      setCategories(catData);
 
       if (isAdmin) {
         axios.get('/v1/branches').then(r => setBranches(r.data.data || r.data || [])).catch(() => {});
       }
 
       // 2. Charger les produits (avec filtres optionnels)
-      let url = '/v1/products';
-      const params = [];
-      if (search) params.push(`search=${encodeURIComponent(search)}`);
-      if (selectedCategory) params.push(`category_id=${selectedCategory}`);
-      if (params.length > 0) url += `?${params.join('&')}`;
+      let prodData = [];
+      try {
+        let url = '/v1/products';
+        const params = [];
+        if (search) params.push(`search=${encodeURIComponent(search)}`);
+        if (selectedCategory) params.push(`category_id=${selectedCategory}`);
+        if (params.length > 0) url += `?${params.join('&')}`;
 
-      const prodRes = await axios.get(url);
-      setProducts(prodRes.data.data || []);
+        const prodRes = await axios.get(url);
+        prodData = prodRes.data.data || [];
+      } catch (netErr) {
+        let query = db.products.where('company_id').equals(companyId);
+        let items = await query.filter(p => !p.deleted_at).toArray();
+
+        if (search) {
+          const s = search.toLowerCase();
+          items = items.filter(p => p.name?.toLowerCase().includes(s) || p.sku?.toLowerCase().includes(s) || p.barcode?.includes(s));
+        }
+
+        if (selectedCategory) {
+          items = items.filter(p => String(p.category_id) === String(selectedCategory));
+        }
+
+        prodData = items;
+      }
+      setProducts(prodData);
     } catch (err) {
-      setError(
-        err.response?.data?.error || 
-        err.response?.data?.message || 
-        'Impossible de charger le catalogue. Vérifiez les privilèges ou la configuration de l\'entreprise.'
-      );
+      setError('Impossible de charger le catalogue.');
     } finally {
       setLoading(false);
     }

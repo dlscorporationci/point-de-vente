@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
+import { db } from '../services/db';
 
 export const Customers = () => {
   const { token, user } = useApp();
@@ -35,14 +36,23 @@ export const Customers = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get('/v1/customers', {
-        params: {
-          page,
-          search: search || undefined
+      const companyId = parseInt(localStorage.getItem('company-id') || 1);
+      let custData = [];
+      try {
+        const response = await axios.get('/v1/customers', {
+          params: { page, search: search || undefined }
+        });
+        custData = response.data.data || [];
+        setLastPage(response.data.last_page || 1);
+      } catch (netErr) {
+        console.warn('Mode hors-ligne, chargement des clients Dexie:', netErr);
+        custData = await db.customers.where('company_id').equals(companyId).toArray();
+        if (search) {
+          const s = search.toLowerCase();
+          custData = custData.filter(c => c.name?.toLowerCase().includes(s) || c.phone?.includes(s));
         }
-      });
-      setCustomers(response.data.data || []);
-      setLastPage(response.data.last_page || 1);
+      }
+      setCustomers(custData);
     } catch (err) {
       setError(err.response?.data?.error || 'Erreur lors du chargement des clients.');
     } finally {
