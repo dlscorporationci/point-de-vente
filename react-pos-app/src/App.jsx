@@ -158,7 +158,7 @@ function MainContent() {
     return () => clearInterval(timer)
   }, [])
 
-  const isAuthenticated = !!(user && (user.id || user.email) && token && token !== 'null' && token !== 'undefined');
+  const isAuthenticated = !!(user && (user.id || user.email || user.name));
   const isAppHeaderVisible = isAuthenticated && activeTab !== 'home' && activeTab !== 'auth' && activeTab !== 'register';
 
   return (

@@ -4,7 +4,7 @@ import { useApp } from '../context/AppContext';
 import { offlineStorage } from '../services/offlineStorage';
 
 export const Dashboard = ({ setActiveTab }) => {
-  const { user, activeBranch, assignedBranches } = useApp();
+  const { user, activeBranch, assignedBranches, logout } = useApp();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -130,6 +130,16 @@ export const Dashboard = ({ setActiveTab }) => {
             onClick={() => setActiveTab('pos')}
           >
             <i className="fa-solid fa-cash-register me-1"></i> Ouvrir le POS
+          </button>
+          <button 
+            className="btn btn-outline-danger btn-sm ms-2"
+            onClick={() => {
+              logout();
+              if (setActiveTab) setActiveTab('auth');
+            }}
+            title="Se déconnecter de la session"
+          >
+            <i className="fa-solid fa-right-from-bracket me-1"></i> Déconnexion
           </button>
         </div>
       </div>
