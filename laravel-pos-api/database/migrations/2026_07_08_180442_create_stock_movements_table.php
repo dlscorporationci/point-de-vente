@@ -17,7 +17,7 @@ return new class extends Migration
             $table->foreignId('branch_id')->constrained('branches')->onDelete('cascade');
             $table->foreignId('product_id')->constrained('products')->onDelete('cascade');
             $table->decimal('quantity', 10, 2); // Quantité déplacée (ex: +5.00 ou -2.50)
-            $table->enum('type', ['purchase', 'sale', 'adjustment', 'transfer']);
+            $table->string('type', 50);
             $table->unsignedBigInteger('reference_id')->nullable();
             $table->string('description', 255)->nullable();
             $table->timestamps();

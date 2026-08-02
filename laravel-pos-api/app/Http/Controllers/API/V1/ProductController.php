@@ -143,7 +143,7 @@ class ProductController extends Controller
                     'company_id'   => $companyId,
                     'branch_id'    => $bId,
                     'product_id'   => $product->id,
-                    'type'         => 'initial',
+                    'type'         => 'adjustment',
                     'quantity'     => $initialStock,
                     'reference_id' => $product->id,
                     'description'  => "Stock initial création de produit par {$user->name}",
