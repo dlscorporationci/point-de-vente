@@ -375,10 +375,13 @@ export const PointDeVente = () => {
             ) : (
               <div className="pos-products-grid">
                 {filteredProducts.map(p => {
-                  const stockVal = parseFloat(p.quantity !== undefined ? p.quantity : (p.stock !== undefined ? p.stock : 0));
+                  const rawStock = parseFloat(p.quantity !== undefined ? p.quantity : (p.stock !== undefined ? p.stock : 0));
+                  const cartItem = cart.find(item => item.product.id === p.id);
+                  const qtyInCart = cartItem ? cartItem.quantity : 0;
+                  const availableRemainingStock = Math.max(0, rawStock - qtyInCart);
                   const alertVal = parseFloat(p.alert_quantity || 5);
-                  const isOut = stockVal <= 0;
-                  const isLow = !isOut && stockVal <= alertVal;
+                  const isOut = availableRemainingStock <= 0;
+                  const isLow = !isOut && availableRemainingStock <= alertVal;
 
                   return (
                     <div key={p.id} onClick={() => handleAddToCart(p)} className="pos-product-card">
@@ -398,7 +401,7 @@ export const PointDeVente = () => {
                           {new Intl.NumberFormat('fr-FR').format(p.selling_price)} XOF
                         </span>
 
-                        {/* Badge de Stock (Placé en bas à gauche pour ne jamais masquer le prix en haut à droite) */}
+                        {/* Badge de Stock Dynamique (Diminue au fur et à mesure des ajouts au panier) */}
                         <div style={{
                           position: 'absolute',
                           bottom: '6px',
@@ -414,11 +417,15 @@ export const PointDeVente = () => {
                           backdropFilter: 'blur(4px)'
                         }}>
                           {isOut ? (
-                            <><i className="fa-solid fa-ban me-1"></i> Rupture (0)</>
+                            qtyInCart > 0 ? (
+                              <><i className="fa-solid fa-cart-shopping me-1"></i> Max en panier ({rawStock})</>
+                            ) : (
+                              <><i className="fa-solid fa-ban me-1"></i> Rupture (0)</>
+                            )
                           ) : isLow ? (
-                            <><i className="fa-solid fa-triangle-exclamation me-1"></i> Faible: {stockVal}</>
+                            <><i className="fa-solid fa-triangle-exclamation me-1"></i> Dispo: {availableRemainingStock}</>
                           ) : (
-                            <><i className="fa-solid fa-boxes-stacked me-1"></i> Stock: {stockVal}</>
+                            <><i className="fa-solid fa-boxes-stacked me-1"></i> Dispo: {availableRemainingStock}</>
                           )}
                         </div>
                       </div>
@@ -544,7 +551,7 @@ export const PointDeVente = () => {
               <button 
                 onClick={() => {
                   if (cart.length > 0) {
-                    setAmountReceived(totals.total.toString());
+                    setAmountReceived('');
                     setShowPayModal(true);
                   }
                 }} 
