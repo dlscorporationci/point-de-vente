@@ -241,6 +241,7 @@ Route::prefix('v1')->middleware('tenant')->group(function () {
             Route::post('/admin/payments',                    [\App\Http\Controllers\API\V1\SuperAdminController::class, 'storePayment']);
             Route::get('/admin/invoices',                     [\App\Http\Controllers\API\V1\SuperAdminController::class, 'invoicesList']);
             Route::post('/admin/invoices/generate',           [\App\Http\Controllers\API\V1\SuperAdminController::class, 'generateInvoice']);
+            Route::post('/admin/notifications/send',           [\App\Http\Controllers\API\V1\SuperAdminController::class, 'sendNotification']);
 
             // Mode Maintenance Applicatif (Console SuperAdmin)
             Route::get('/maintenance',        [\App\Http\Controllers\API\V1\MaintenanceController::class, 'index']);

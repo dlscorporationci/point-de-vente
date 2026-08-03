@@ -813,6 +813,57 @@ class SuperAdminController extends Controller
     }
 
     /**
+     * Transmettre une notification / alerte système à une entreprise ou à toutes les entreprises.
+     */
+    public function sendNotification(Request $request)
+    {
+        $this->authorizeSuperAdmin($request);
+
+        $validated = $request->validate([
+            'company_id' => 'nullable',
+            'title'      => 'required|string|max:255',
+            'message'    => 'required|string',
+            'type'       => 'nullable|string',
+            'priority'   => 'nullable|string',
+        ]);
+
+        $companyId = !empty($validated['company_id']) ? (int)$validated['company_id'] : null;
+        $title = $validated['title'];
+        $message = $validated['message'];
+        $type = $validated['type'] ?? 'subscription';
+        $priority = ($type === 'danger' || $type === 'critical') ? 'critical' : (($type === 'warning') ? 'warning' : 'normal');
+
+        if ($companyId) {
+            \App\Models\Notification::create([
+                'company_id' => $companyId,
+                'user_id'    => null,
+                'title'      => $title,
+                'message'    => $message,
+                'type'       => $type,
+                'priority'   => $priority,
+                'actor_id'   => $request->user() ? $request->user()->id : null,
+                'data'       => json_encode(['source' => 'superadmin_notice'])
+            ]);
+        } else {
+            $companies = \App\Models\Company::all();
+            foreach ($companies as $comp) {
+                \App\Models\Notification::create([
+                    'company_id' => $comp->id,
+                    'user_id'    => null,
+                    'title'      => $title,
+                    'message'    => $message,
+                    'type'       => $type,
+                    'priority'   => $priority,
+                    'actor_id'   => $request->user() ? $request->user()->id : null,
+                    'data'       => json_encode(['source' => 'superadmin_global_notice'])
+                ]);
+            }
+        }
+
+        return response()->json(['message' => 'Notification transmise avec succès aux administrateurs.']);
+    }
+
+    /**
      * Helper pour valider le statut Super Admin du demandeur.
      */
     protected function authorizeSuperAdmin(Request $request)

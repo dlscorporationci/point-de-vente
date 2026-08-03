@@ -270,13 +270,13 @@ export const BackOffice = () => {
         message: notifyMessage,
         type: notifyType
       });
-      setSuccess("Notification transmise avec succès.");
+      window.dispatchEvent(new Event('notification-refresh'));
+      setSuccess("Notification transmise avec succès aux administrateurs de l'entreprise.");
       setShowNotifyModal(false);
       setNotifyTitle('');
       setNotifyMessage('');
     } catch (err) {
-      setSuccess("Notification transmise avec succès.");
-      setShowNotifyModal(false);
+      setError(err.response?.data?.error || err.response?.data?.message || "Erreur lors de la transmission de la notification.");
     } finally {
       setActionSaving(false);
     }
