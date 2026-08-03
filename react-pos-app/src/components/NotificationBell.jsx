@@ -167,6 +167,8 @@ export const NotificationBell = ({ onNavigate }) => {
     }
   };
 
+  const isSuperAdmin = user?.email === 'superadmin@dls.com' || user?.role?.slug === 'super-admin' || user?.role?.slug === 'superadmin' || user?.role === 'super-admin' || !user?.company_id;
+
   if (!user) return null;
 
   return (
@@ -329,8 +331,8 @@ export const NotificationBell = ({ onNavigate }) => {
         document.body
       )}
 
-      {/* BANNIÈRE RECTANGULAIRE FIXE DE NOTIFICATION OFFICIELLE SUR L'ÉCRAN DE L'UTILISATEUR */}
-      {latestNotice && ReactDOM.createPortal(
+      {/* BANNIÈRE RECTANGULAIRE FIXE DE NOTIFICATION OFFICIELLE SUR L'ÉCRAN DE L'UTILISATEUR (EXCLUT SUPERADMIN) */}
+      {latestNotice && !isSuperAdmin && ReactDOM.createPortal(
         <div style={{
           position: 'fixed',
           top: '64px',
