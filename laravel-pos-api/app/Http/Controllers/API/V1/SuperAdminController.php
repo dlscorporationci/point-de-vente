@@ -718,37 +718,46 @@ class SuperAdminController extends Controller
     {
         $this->authorizeSuperAdmin($request);
 
-        $validated = $request->validate([
-            'company_id'      => 'required|exists:companies,id',
-            'subscription_id' => 'nullable|exists:company_subscriptions,id',
-            'amount'          => 'required|numeric|min:0',
-            'payment_method'  => 'required|in:cash,mobile_money,bank_transfer,card,cheque',
-            'reference'       => 'nullable|string|max:100',
-            'status'          => 'required|in:pending,paid,failed,cancelled,refunded',
-            'notes'           => 'nullable|string',
-        ]);
+        $companyId = $request->input('company_id');
+        $amount = floatval($request->input('amount', 0));
+        $paymentMethod = $request->input('payment_method', 'cash');
+        $status = $request->input('status', 'paid');
 
-        $uuid = (string) \Illuminate\Support\Str::uuid();
-        $validated['uuid'] = $uuid;
-        $validated['currency'] = 'FCFA';
-        $validated['payment_date'] = now();
-        $validated['user_id'] = $request->user()->id;
-        if ($validated['status'] === 'paid') {
-            $validated['validated_at'] = now();
+        if (!$companyId || $amount <= 0) {
+            return response()->json(['error' => 'Veuillez sélectionner une entreprise et un montant valide.'], 422);
         }
 
-        $payment = \App\Models\SubscriptionPayment::create($validated);
+        $subscription = \App\Models\CompanySubscription::where('company_id', $companyId)->first();
 
-        // Si associé à un abonnement et statut paid, mettre à jour l'abonnement
-        if ($payment->subscription_id && $payment->status === 'paid') {
-            $sub = \App\Models\CompanySubscription::find($payment->subscription_id);
-            if ($sub) {
-                $sub->status = 'active';
-                $sub->save();
+        $payment = \App\Models\SubscriptionPayment::create([
+            'uuid'            => (string) \Illuminate\Support\Str::uuid(),
+            'company_id'      => $companyId,
+            'subscription_id' => $subscription ? $subscription->id : null,
+            'amount'          => $amount,
+            'currency'        => 'XOF',
+            'payment_method'  => in_array($paymentMethod, ['cash', 'mobile_money', 'bank_transfer', 'card', 'cheque', 'wave', 'orange_money']) ? $paymentMethod : 'cash',
+            'status'          => $status,
+            'reference'       => $request->input('reference', 'PAY-' . strtoupper(substr(uniqid(), -6))),
+            'notes'           => $request->input('notes', 'Règlement enregistré par SuperAdmin'),
+            'payment_date'    => now(),
+            'user_id'         => $request->user() ? $request->user()->id : null,
+            'validated_at'    => $status === 'paid' ? now() : null,
+        ]);
+
+        if ($payment->status === 'paid') {
+            if ($subscription) {
+                $subscription->status = 'active';
+                $subscription->save();
+            }
+            $comp = \App\Models\Company::find($companyId);
+            if ($comp) {
+                $comp->status = 'active';
+                $comp->subscription_expires_at = now()->addDays(30);
+                $comp->save();
             }
         }
 
-        return response()->json(['message' => 'Paiement enregistré avec succès.', 'payment' => $payment->load(['company', 'subscription'])], 201);
+        return response()->json(['message' => 'Paiement enregistré avec succès.', 'payment' => $payment->load(['company'])], 201);
     }
 
     /**
