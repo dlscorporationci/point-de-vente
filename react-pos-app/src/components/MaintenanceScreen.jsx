@@ -1,6 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
+const formatDateSafe = (dateStr) => {
+  if (!dateStr) return null;
+  try {
+    const cleanStr = typeof dateStr === 'string' ? dateStr.replace(' ', 'T') : dateStr;
+    const d = new Date(cleanStr);
+    if (isNaN(d.getTime())) return null;
+    return d.toLocaleString('fr-FR');
+  } catch {
+    return null;
+  }
+};
+
 export const MaintenanceScreen = ({ maintenanceInfo: propMaintInfo }) => {
   const [maintInfo, setMaintInfo] = useState(propMaintInfo || null);
 
@@ -12,8 +24,8 @@ export const MaintenanceScreen = ({ maintenanceInfo: propMaintInfo }) => {
     const checkStatus = async () => {
       try {
         const res = await axios.get('/v1/maintenance/status');
-        if (res.data.in_maintenance) {
-          setMaintInfo(res.data.maintenance);
+        if (res.data && res.data.in_maintenance) {
+          setMaintInfo(res.data.maintenance || { message: 'L\'application est temporairement en maintenance.' });
         }
       } catch (err) {
         /* silencieux */
@@ -82,13 +94,13 @@ export const MaintenanceScreen = ({ maintenanceInfo: propMaintInfo }) => {
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
             <span style={{ color: '#64748b' }}>Début :</span>
             <span style={{ fontWeight: 'bold', color: '#e2e8f0' }}>
-              {maintInfo?.started_at ? new Date(maintInfo.started_at).toLocaleString('fr-FR') : 'En cours'}
+              {formatDateSafe(maintInfo?.started_at) || 'En cours'}
             </span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span style={{ color: '#64748b' }}>Fin estimée :</span>
             <span style={{ fontWeight: 'bold', color: '#38bdf8' }}>
-              {maintInfo?.estimated_end_at ? new Date(maintInfo.estimated_end_at).toLocaleString('fr-FR') : 'Prochainement'}
+              {formatDateSafe(maintInfo?.estimated_end_at) || 'Prochainement'}
             </span>
           </div>
         </div>
