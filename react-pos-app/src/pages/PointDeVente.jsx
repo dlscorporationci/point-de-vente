@@ -624,10 +624,23 @@ export const PointDeVente = () => {
             {/* Reçu thermique réel */}
             <div id="thermal-receipt" className="thermal-receipt-container">
               <div className="receipt-header">
+                {user?.company?.logo_path && (user?.company?.pos_settings?.show_logo_on_receipt ?? true) && (
+                  <img 
+                    src={user.company.logo_path.startsWith('http') ? user.company.logo_path : `http://127.0.0.1:8000${user.company.logo_path}`} 
+                    alt="Logo" 
+                    style={{ maxHeight: '50px', maxWidth: '140px', objectFit: 'contain', marginBottom: '8px' }} 
+                  />
+                )}
                 <h2>{user?.company?.name || 'ApexPOS'}</h2>
-                <p>{completedSale.branch?.name || user?.branch?.name || 'Boutique Centrale'}</p>
-                <p>{completedSale.branch?.address || user?.branch?.address || 'Dakar'}</p>
+                {user?.company?.pos_settings?.receipt_header && (
+                  <p style={{ fontWeight: 'bold', fontSize: '11px', margin: '3px 0' }}>{user.company.pos_settings.receipt_header}</p>
+                )}
+                <p>{completedSale.branch?.name || user?.branch?.name || 'Boutique'}</p>
+                <p>{completedSale.branch?.address || user?.branch?.address || ''}</p>
                 <p>{completedSale.branch?.phone ? `Tél: ${completedSale.branch.phone}` : ''}</p>
+                {user?.company?.pos_settings?.receipt_rccm_ifu && (
+                  <p style={{ fontSize: '10px', color: '#555', marginTop: '4px' }}>{user.company.pos_settings.receipt_rccm_ifu}</p>
+                )}
               </div>
 
               <div className="receipt-divider"></div>
@@ -707,9 +720,15 @@ export const PointDeVente = () => {
               </div>
 
               <div className="receipt-footer">
-                <p>Merci de votre confiance !</p>
-                <p>Retour ou échange sous 7 jours avec ce ticket.</p>
-                <p>À bientôt !</p>
+                {user?.company?.pos_settings?.receipt_footer ? (
+                  <p style={{ whiteSpace: 'pre-line' }}>{user.company.pos_settings.receipt_footer}</p>
+                ) : (
+                  <>
+                    <p>Merci de votre confiance !</p>
+                    <p>Retour ou échange sous 7 jours avec ce ticket.</p>
+                    <p>À bientôt !</p>
+                  </>
+                )}
               </div>
             </div>
 

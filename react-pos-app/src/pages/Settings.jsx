@@ -7,7 +7,7 @@ import { CustomRolesModal } from '../components/CustomRolesModal';
 import { AccessZonesModal } from '../components/AccessZonesModal';
 
 export const Settings = () => {
-  const { token, user, companyId } = useApp();
+  const { token, user, companyId, updateCompanyLogo } = useApp();
 
   const isAdmin = user?.role === 'admin' || user?.role === 'super-admin' ||
                   user?.role?.slug === 'admin' || user?.role?.slug === 'super-admin';
@@ -195,6 +195,9 @@ export const Settings = () => {
       setSuccess("✅ Informations de l'entreprise et logo enregistrés avec succès.");
       if (res.data.company && res.data.company.logo_path) {
         setLogoPreview(res.data.company.logo_path);
+        if (typeof updateCompanyLogo === 'function') {
+          updateCompanyLogo(res.data.company.logo_path);
+        }
       }
       setCompanyLogo(null);
     } catch (err) {

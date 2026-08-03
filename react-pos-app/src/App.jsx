@@ -59,6 +59,14 @@ function MainContent() {
     setMenuOpen(false)
   }
 
+  const getCompanyLogoUrl = (logoPath) => {
+    if (!logoPath) return logo;
+    if (logoPath.startsWith('http://') || logoPath.startsWith('https://') || logoPath.startsWith('data:')) {
+      return logoPath;
+    }
+    return `http://127.0.0.1:8000${logoPath}`;
+  };
+
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (menuOpen && drawerRef.current && !drawerRef.current.contains(e.target)) setMenuOpen(false)
@@ -261,7 +269,7 @@ function MainContent() {
 
             {/* Logo & Titre ApexPOS */}
             <div className="navbar-logo" onClick={() => navigate('home')} style={{ cursor: 'pointer' }}>
-              <img src={logo} alt="Logo" className="navbar-logo-img" />
+              <img src={getCompanyLogoUrl(user?.company?.logo_path)} alt="Logo" className="navbar-logo-img" />
               <span>
                 <span className="logo-text-apex">Apex</span>
                 <span className="logo-text-pos">POS</span>
@@ -414,7 +422,7 @@ function MainContent() {
         <nav ref={drawerRef} className={`side-drawer ${menuOpen ? 'open' : ''}`}>
           <div className="drawer-header">
             <div className="drawer-logo">
-              <img src={logo} alt="Logo" className="navbar-logo-img" />
+              <img src={getCompanyLogoUrl(user?.company?.logo_path)} alt="Logo" className="navbar-logo-img" />
               <span><span className="logo-text-apex">Apex</span><span className="logo-text-pos">POS</span></span>
             </div>
             <button className="drawer-close-btn" onClick={() => setMenuOpen(false)} aria-label="Fermer">

@@ -401,6 +401,21 @@ export const AppProvider = ({ children }) => {
     setBranchIdState(newBranchId);
   };
 
+  const updateCompanyLogo = useCallback((newLogoPath) => {
+    setUser(prev => {
+      if (!prev) return prev;
+      const updated = {
+        ...prev,
+        company: {
+          ...(prev.company || {}),
+          logo_path: newLogoPath
+        }
+      };
+      localStorage.setItem('user', JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
   return (
     <AppContext.Provider value={{
       theme,
@@ -421,6 +436,7 @@ export const AppProvider = ({ children }) => {
       token,
       login,
       logout,
+      updateCompanyLogo,
       isOnline,
       pendingSalesCount,
       isSyncing,
