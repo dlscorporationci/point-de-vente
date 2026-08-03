@@ -75,6 +75,91 @@ class SuperAdminController extends Controller
     }
 
     /**
+     * Obtenir la liste de toutes les formules d'abonnement.
+     */
+    public function plans(Request $request)
+    {
+        $this->authorizeSuperAdmin($request);
+        $plans = \App\Models\SubscriptionPlan::orderBy('price_monthly', 'asc')->get();
+        return response()->json($plans);
+    }
+
+    /**
+     * Créer une nouvelle formule d'abonnement.
+     */
+    public function storePlan(Request $request)
+    {
+        $this->authorizeSuperAdmin($request);
+
+        $validated = $request->validate([
+            'name'          => 'required|string|max:100',
+            'slug'          => 'required|string|max:50|unique:subscription_plans,slug',
+            'description'   => 'nullable|string',
+            'price_monthly' => 'required|numeric|min:0',
+            'price_yearly'  => 'required|numeric|min:0',
+            'max_branches'  => 'required|integer|min:1',
+            'max_users'     => 'required|integer|min:1',
+            'max_products'  => 'required|integer|min:1',
+            'features'      => 'nullable|array',
+            'is_active'     => 'boolean',
+            'is_popular'    => 'boolean',
+        ]);
+
+        $plan = \App\Models\SubscriptionPlan::create($validated);
+
+        return response()->json([
+            'message' => 'Formule d\'abonnement créée avec succès.',
+            'plan' => $plan
+        ], 201);
+    }
+
+    /**
+     * Mettre à jour une formule d'abonnement existante.
+     */
+    public function updatePlan(Request $request, $id)
+    {
+        $this->authorizeSuperAdmin($request);
+
+        $plan = \App\Models\SubscriptionPlan::findOrFail($id);
+
+        $validated = $request->validate([
+            'name'          => 'sometimes|required|string|max:100',
+            'slug'          => 'sometimes|required|string|max:50|unique:subscription_plans,slug,' . $plan->id,
+            'description'   => 'nullable|string',
+            'price_monthly' => 'sometimes|required|numeric|min:0',
+            'price_yearly'  => 'sometimes|required|numeric|min:0',
+            'max_branches'  => 'sometimes|required|integer|min:1',
+            'max_users'     => 'sometimes|required|integer|min:1',
+            'max_products'  => 'sometimes|required|integer|min:1',
+            'features'      => 'nullable|array',
+            'is_active'     => 'boolean',
+            'is_popular'    => 'boolean',
+        ]);
+
+        $plan->update($validated);
+
+        return response()->json([
+            'message' => 'Formule d\'abonnement mise à jour avec succès.',
+            'plan' => $plan->fresh()
+        ]);
+    }
+
+    /**
+     * Supprimer une formule d'abonnement.
+     */
+    public function deletePlan(Request $request, $id)
+    {
+        $this->authorizeSuperAdmin($request);
+
+        $plan = \App\Models\SubscriptionPlan::findOrFail($id);
+        $plan->delete();
+
+        return response()->json([
+            'message' => 'Formule d\'abonnement supprimée.'
+        ]);
+    }
+
+    /**
      * Liste des entreprises (tenants) enregistrées.
      */
     public function companies(Request $request)

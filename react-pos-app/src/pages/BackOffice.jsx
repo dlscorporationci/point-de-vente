@@ -3,8 +3,6 @@ import axios from 'axios';
 import { useApp } from '../context/AppContext';
 import { PasswordInput } from '../components/PasswordInput';
 import { CountUp } from '../components/CountUp';
-import { RevenueLineChart, PaymentMethodsBarChart } from '../components/SaaSCharts';
-
 import { AuditLogs } from './AuditLogs';
 
 export const BackOffice = () => {
@@ -13,11 +11,31 @@ export const BackOffice = () => {
   const [metrics, setMetrics] = useState(null);
   const [recentActivities, setRecentActivities] = useState([]);
   
-  // Entreprises
+  // ── FORMULES & OFFRES D'ABONNEMENT (PLANS) ──
+  const [plans, setPlans] = useState([]);
+  const [plansLoading, setPlansLoading] = useState(false);
+  const [showCreatePlanModal, setShowCreatePlanModal] = useState(false);
+  const [showEditPlanModal, setShowEditPlanModal] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState(null);
+
+  const [planName, setPlanName] = useState('');
+  const [planSlug, setPlanSlug] = useState('');
+  const [planDescription, setPlanDescription] = useState('');
+  const [planPriceMonthly, setPlanPriceMonthly] = useState(0);
+  const [planPriceYearly, setPlanPriceYearly] = useState(0);
+  const [planMaxBranches, setPlanMaxBranches] = useState(1);
+  const [planMaxUsers, setPlanMaxUsers] = useState(3);
+  const [planMaxProducts, setPlanMaxProducts] = useState(1000);
+  const [planFeaturesText, setPlanFeaturesText] = useState('');
+  const [planIsActive, setPlanIsActive] = useState(true);
+  const [planIsPopular, setPlanIsPopular] = useState(false);
+
+  // ── ENTREPRISES ──
   const [companies, setCompanies] = useState([]);
   const [companiesLoading, setCompaniesLoading] = useState(false);
   const [searchCompany, setSearchCompany] = useState('');
   const [filterCompanyStatus, setFilterCompanyStatus] = useState('');
+  const [filterCompanyPlan, setFilterCompanyPlan] = useState('');
   
   // Modales & Formulaires Entreprise
   const [showCreateCompanyModal, setShowCreateCompanyModal] = useState(false);
@@ -28,21 +46,20 @@ export const BackOffice = () => {
   const [companyPlan, setCompanyPlan] = useState('pro');
   const [companyExpiresAt, setCompanyExpiresAt] = useState('');
   const [companyStatus, setCompanyStatus] = useState('active');
-  const [filterCompanyPlan, setFilterCompanyPlan] = useState('');
 
-  // Utilisateurs
+  // ── UTILISATEURS GLOBATION ──
   const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [selectedUserToReset, setSelectedUserToReset] = useState(null);
   const [newPassword, setNewPassword] = useState('');
   const [newPasswordConfirm, setNewPasswordConfirm] = useState('');
 
-  // Maintenance & Système
+  // ── MAINTENANCE & SYSTÈME ──
   const [systemInfo, setSystemInfo] = useState(null);
   const [systemLoading, setSystemLoading] = useState(false);
   const [backupLoading, setBackupLoading] = useState(false);
 
-  // Messages
+  // ── MESSAGES ET ÉTATS ──
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -66,7 +83,21 @@ export const BackOffice = () => {
     }
   };
 
-  // 2. Charger les entreprises (avec fallback résilient)
+  // 2. Charger les Formules d'Abonnement (Plans)
+  const loadPlans = async () => {
+    if (!token) return;
+    setPlansLoading(true);
+    try {
+      const res = await axios.get('/v1/admin/plans');
+      setPlans(res.data || []);
+    } catch (err) {
+      console.error("Plans load error:", err);
+    } finally {
+      setPlansLoading(false);
+    }
+  };
+
+  // 3. Charger les Entreprises (Tenants)
   const loadCompanies = async () => {
     if (!token) return;
     setCompaniesLoading(true);
@@ -87,7 +118,7 @@ export const BackOffice = () => {
     }
   };
 
-  // 3. Charger les utilisateurs
+  // 4. Charger les Utilisateurs Globaux
   const loadUsers = async () => {
     if (!token) return;
     setUsersLoading(true);
@@ -102,7 +133,7 @@ export const BackOffice = () => {
     }
   };
 
-  // 4. Charger l'état système
+  // 5. Charger l'état système
   const loadSystemInfo = async () => {
     if (!token) return;
     setSystemLoading(true);
@@ -118,14 +149,117 @@ export const BackOffice = () => {
 
   useEffect(() => {
     if (!token || !isSuperAdmin) return;
+    loadPlans();
     loadCompanies();
     if (activeSubTab === 'dashboard') loadDashboard();
+    if (activeSubTab === 'plans') loadPlans();
     if (activeSubTab === 'companies') loadCompanies();
     if (activeSubTab === 'users') loadUsers();
     if (activeSubTab === 'system') loadSystemInfo();
   }, [token, activeSubTab]);
 
-  // Actions Entreprise
+  // ── GESTION DES FORMULES (PLANS) ──
+  const handleCreatePlan = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+    try {
+      const featuresArray = planFeaturesText.split('\n').map(f => f.trim()).filter(Boolean);
+      await axios.post('/v1/admin/plans', {
+        name: planName,
+        slug: planSlug || planName.toLowerCase().replace(/[^a-z0-9]/g, '_'),
+        description: planDescription,
+        price_monthly: parseFloat(planPriceMonthly) || 0,
+        price_yearly: parseFloat(planPriceYearly) || 0,
+        max_branches: parseInt(planMaxBranches) || 1,
+        max_users: parseInt(planMaxUsers) || 3,
+        max_products: parseInt(planMaxProducts) || 1000,
+        features: featuresArray,
+        is_active: planIsActive,
+        is_popular: planIsPopular
+      });
+      setSuccess(`La formule "${planName}" a été créée avec succès.`);
+      setShowCreatePlanModal(false);
+      resetPlanForm();
+      loadPlans();
+    } catch (err) {
+      setError(err.response?.data?.message || err.response?.data?.error || "Erreur de création de la formule.");
+    }
+  };
+
+  const handleEditPlan = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+    try {
+      const featuresArray = planFeaturesText.split('\n').map(f => f.trim()).filter(Boolean);
+      await axios.put(`/v1/admin/plans/${selectedPlan.id}`, {
+        name: planName,
+        slug: planSlug,
+        description: planDescription,
+        price_monthly: parseFloat(planPriceMonthly) || 0,
+        price_yearly: parseFloat(planPriceYearly) || 0,
+        max_branches: parseInt(planMaxBranches) || 1,
+        max_users: parseInt(planMaxUsers) || 3,
+        max_products: parseInt(planMaxProducts) || 1000,
+        features: featuresArray,
+        is_active: planIsActive,
+        is_popular: planIsPopular
+      });
+      setSuccess(`La formule "${planName}" a été mise à jour.`);
+      setShowEditPlanModal(false);
+      resetPlanForm();
+      loadPlans();
+    } catch (err) {
+      setError(err.response?.data?.message || err.response?.data?.error || "Erreur de modification de la formule.");
+    }
+  };
+
+  const handleDeletePlan = async (plan) => {
+    if (!window.confirm(`Supprimer la formule "${plan.name}" ?Cette action est irréversible.`)) return;
+    setError(null);
+    setSuccess(null);
+    try {
+      await axios.delete(`/v1/admin/plans/${plan.id}`);
+      setSuccess(`Formule "${plan.name}" supprimée.`);
+      loadPlans();
+    } catch (err) {
+      setError("Impossible de supprimer cette formule d'abonnement.");
+    }
+  };
+
+  const openEditPlanModal = (p) => {
+    setSelectedPlan(p);
+    setPlanName(p.name);
+    setPlanSlug(p.slug);
+    setPlanDescription(p.description || '');
+    setPlanPriceMonthly(p.price_monthly || 0);
+    setPlanPriceYearly(p.price_yearly || 0);
+    setPlanMaxBranches(p.max_branches || 1);
+    setPlanMaxUsers(p.max_users || 3);
+    setPlanMaxProducts(p.max_products || 1000);
+    setPlanFeaturesText(Array.isArray(p.features) ? p.features.join('\n') : '');
+    setPlanIsActive(p.is_active !== false);
+    setPlanIsPopular(!!p.is_popular);
+    setShowEditPlanModal(true);
+  };
+
+  const resetPlanForm = () => {
+    setPlanName('');
+    setPlanSlug('');
+    setPlanDescription('');
+    setPlanPriceMonthly(0);
+    setPlanPriceYearly(0);
+    setPlanMaxBranches(1);
+    setPlanMaxUsers(3);
+    setPlanMaxProducts(1000);
+    setPlanFeaturesText('');
+    setPlanIsActive(true);
+    setPlanIsPopular(false);
+    setSelectedPlan(null);
+  };
+
+  // ── GESTION DES ENTREPRISES (TENANTS) ──
   const handleCreateCompany = async (e) => {
     e.preventDefault();
     setError(null);
@@ -137,14 +271,14 @@ export const BackOffice = () => {
         subscription_plan: companyPlan,
         subscription_expires_at: companyExpiresAt || null
       });
-      setSuccess(`L'entreprise "${companyName}" a été enregistrée avec succès sous la formule ${companyPlan.toUpperCase()}.`);
+      setSuccess(`L'entreprise "${companyName}" a été enregistrée sous la formule ${companyPlan.toUpperCase()}.`);
       setShowCreateCompanyModal(false);
       resetCompanyForm();
       loadCompanies();
       loadDashboard();
       loadUsers();
     } catch (err) {
-      setError(err.response?.data?.message || "Erreur de création de l'entreprise.");
+      setError(err.response?.data?.message || "Erreur lors de la création de l'entreprise.");
     }
   };
 
@@ -159,7 +293,7 @@ export const BackOffice = () => {
         subscription_plan: companyPlan,
         subscription_expires_at: companyExpiresAt || null
       });
-      setSuccess(`L'entreprise "${companyName}" a été mise à jour.`);
+      setSuccess(`L'entreprise "${companyName}" a été mise à jour avec succès.`);
       setShowEditCompanyModal(false);
       resetCompanyForm();
       loadCompanies();
@@ -168,7 +302,7 @@ export const BackOffice = () => {
     }
   };
 
-  const openEditModal = (company) => {
+  const openEditCompanyModal = (company) => {
     setSelectedCompany(company);
     setCompanyName(company.name);
     setCompanyStatus(company.status || 'active');
@@ -198,12 +332,34 @@ export const BackOffice = () => {
     setSelectedCompany(null);
   };
 
-  // Actions Utilisateurs
-  const toggleUserStatus = async (userToToggle) => {
+  // ── GESTION DES MOTS DE PASSE & MAINTENANCE ──
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    if (newPassword !== newPasswordConfirm) {
+      setError("Les mots de passe ne correspondent pas.");
+      return;
+    }
     setError(null);
     setSuccess(null);
     try {
-      const res = await axios.post(`/v1/admin/users/${userToToggle.id}/toggle-status`);
+      await axios.post(`/v1/admin/users/${selectedUserToReset.id}/reset-password`, {
+        password: newPassword,
+        password_confirmation: newPasswordConfirm
+      });
+      setSuccess(`Mot de passe réinitialisé pour l'utilisateur ${selectedUserToReset.name}.`);
+      setSelectedUserToReset(null);
+      setNewPassword('');
+      setNewPasswordConfirm('');
+    } catch (err) {
+      setError("Erreur lors de la réinitialisation du mot de passe.");
+    }
+  };
+
+  const toggleUserStatus = async (targetUser) => {
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await axios.post(`/v1/admin/users/${targetUser.id}/toggle-status`);
       setSuccess(res.data.message);
       loadUsers();
     } catch (err) {
@@ -211,31 +367,6 @@ export const BackOffice = () => {
     }
   };
 
-  const handleResetPassword = async (e) => {
-    e.preventDefault();
-    setError(null);
-    setSuccess(null);
-
-    if (newPassword !== newPasswordConfirm) {
-      setError("Les mots de passe ne correspondent pas.");
-      return;
-    }
-
-    try {
-      await axios.post(`/v1/admin/users/${selectedUserToReset.id}/reset-password`, {
-        password: newPassword,
-        password_confirmation: newPasswordConfirm
-      });
-      setSuccess(`Le mot de passe de l'utilisateur ${selectedUserToReset.name} a été réinitialisé.`);
-      setSelectedUserToReset(null);
-      setNewPassword('');
-      setNewPasswordConfirm('');
-    } catch (err) {
-      setError(err.response?.data?.message || "Erreur de réinitialisation.");
-    }
-  };
-
-  // Maintenance & Backup
   const triggerBackup = async () => {
     setBackupLoading(true);
     setError(null);
@@ -243,9 +374,8 @@ export const BackOffice = () => {
     try {
       const res = await axios.post('/v1/admin/backups/generate');
       setSuccess(`Sauvegarde réussie : Fichier ${res.data.backup_file} créé (${res.data.size}).`);
-      if (typeof loadBackups === 'function') loadBackups();
     } catch (err) {
-      setError(err.response?.data?.error || err.response?.data?.message || "Erreur lors de la génération de la sauvegarde.");
+      setError(err.response?.data?.error || err.response?.data?.message || "Erreur de sauvegarde.");
     } finally {
       setBackupLoading(false);
     }
@@ -253,10 +383,10 @@ export const BackOffice = () => {
 
   // Filtrage local des entreprises
   const filteredCompanies = companies.filter(c => {
-    const matchesSearch = c.name.toLowerCase().includes(searchCompany.toLowerCase());
+    const matchesSearch = c.name.toLowerCase().includes(searchCompany.toLowerCase()) || (c.code && c.code.toLowerCase().includes(searchCompany.toLowerCase()));
     const matchesStatus = filterCompanyStatus === '' || c.status === filterCompanyStatus;
     const plan = c.subscription_plan || 'starter';
-    const matchesPlan = filterCompanyPlan === '' || plan === filterCompanyPlan || (filterCompanyPlan === 'pro' && plan === 'premium') || (filterCompanyPlan === 'starter' && plan === 'basic');
+    const matchesPlan = filterCompanyPlan === '' || plan === filterCompanyPlan;
     return matchesSearch && matchesStatus && matchesPlan;
   });
 
@@ -276,11 +406,11 @@ export const BackOffice = () => {
     <div className="admin-container">
       <div className="admin-layout card">
         
-        {/* Header */}
+        {/* Header Backoffice */}
         <div className="admin-header">
           <div>
-            <h2><i className="fa-solid fa-gears text-primary me-2"></i> Console SaaS & Plateforme</h2>
-            <p className="admin-subtitle">Portail de supervision, d'abonnements et de maintenance multi-entreprises.</p>
+            <h2><i className="fa-solid fa-gears text-primary me-2"></i> Console SaaS & Offres</h2>
+            <p className="admin-subtitle">Portail de supervision, d'abonnements et de gestion des entreprises de la plateforme.</p>
           </div>
           <div className="admin-subtabs">
             <button className={`subtab-btn ${activeSubTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveSubTab('dashboard')}>
@@ -288,6 +418,9 @@ export const BackOffice = () => {
             </button>
             <button className={`subtab-btn ${activeSubTab === 'companies' ? 'active' : ''}`} onClick={() => setActiveSubTab('companies')}>
               🏢 Entreprises ({companies.length})
+            </button>
+            <button className={`subtab-btn ${activeSubTab === 'plans' ? 'active' : ''}`} onClick={() => setActiveSubTab('plans')}>
+              💎 Formules & Offres ({plans.length})
             </button>
             <button className={`subtab-btn ${activeSubTab === 'users' ? 'active' : ''}`} onClick={() => setActiveSubTab('users')}>
               👥 Utilisateurs
@@ -317,36 +450,37 @@ export const BackOffice = () => {
                     <span className="metric-number">
                       <CountUp end={metrics?.companies_count || 0} format={false} />
                     </span>
-                    <span className="kpi-badge up">
-                      +{metrics?.new_signups_count || 0} ce mois-ci
-                    </span>
+                    <span className="kpi-badge up">{metrics?.companies_active || 0} actives</span>
                   </div>
 
                   <div className="metric-box">
-                    <span className="metric-title">Entreprises Actives</span>
-                    <span className="metric-number">
-                      <CountUp end={metrics?.companies_active || 0} format={false} />
-                    </span>
-                    <span className="kpi-info-label" style={{ color: '#ef4444' }}>
-                      {metrics?.companies_suspended || 0} suspendues
-                    </span>
-                  </div>
-
-                  <div className="metric-box">
-                    <span className="metric-title">Utilisateurs Globaux</span>
+                    <span className="metric-title">Comptes Opérateurs</span>
                     <span className="metric-number">
                       <CountUp end={metrics?.users_count || 0} format={false} />
                     </span>
-                    <span className="kpi-info-label">
-                      {metrics?.admins_count || 0} Administrateurs d'entreprises • {metrics?.employees_count || 0} Employés
+                    <span className="kpi-badge neutral">{metrics?.admins_count || 0} admins</span>
+                  </div>
+
+                  <div className="metric-box">
+                    <span className="metric-title">Inscriptions du Mois</span>
+                    <span className="metric-number">
+                      <CountUp end={metrics?.new_signups_count || 0} format={false} />
                     </span>
+                    <span className="kpi-badge up">+ Ce mois</span>
+                  </div>
+
+                  <div className="metric-box">
+                    <span className="metric-title">Formules Actives</span>
+                    <span className="metric-number">
+                      <CountUp end={plans.length} format={false} />
+                    </span>
+                    <span className="kpi-badge up">Offres SaaS</span>
                   </div>
                 </div>
 
-                {/* Timeline d'activité globale du SaaS */}
-                <div className="admin-activity-grid mt-4">
-                  <div className="activity-card card" style={{ gridColumn: 'span 2' }}>
-                    <h3><i className="fa-solid fa-history text-primary me-2"></i> Journal d'activité globale de la plateforme</h3>
+                <div className="mt-4">
+                  <div className="card" style={{ padding: '20px' }}>
+                    <h4><i className="fa-solid fa-clock-rotate-left text-primary me-2"></i> Activités système récentes</h4>
                     <div className="activity-timeline mt-3">
                       {recentActivities.length === 0 ? (
                         <p className="text-muted">Aucune activité enregistrée.</p>
@@ -358,7 +492,7 @@ export const BackOffice = () => {
                             </div>
                             <div className="timeline-content">
                               <p className="timeline-text">
-                                <strong>{log.user?.name || 'Système'}</strong> (Tenant ID: {log.company_id || 'Global'}) a effectué l'action <code>{log.action}</code> sur le module <code>{log.auditable_type.replace('App\\Models\\', '')}</code>
+                                <strong>{log.user?.name || 'Système'}</strong> (Tenant ID: {log.company_id || 'Global'}) a effectué <code>{log.action}</code>
                               </p>
                               <span className="timeline-time">{new Date(log.created_at).toLocaleString('fr-FR')} • IP: {log.ip_address}</span>
                             </div>
@@ -382,7 +516,7 @@ export const BackOffice = () => {
                   <input
                     type="text"
                     className="form-control"
-                    placeholder="Rechercher une entreprise..."
+                    placeholder="Rechercher par nom ou code entreprise..."
                     value={searchCompany}
                     onChange={(e) => setSearchCompany(e.target.value)}
                   />
@@ -397,9 +531,9 @@ export const BackOffice = () => {
                 <div className="filter-group" style={{ minWidth: '180px' }}>
                   <select className="form-control" value={filterCompanyPlan} onChange={(e) => setFilterCompanyPlan(e.target.value)}>
                     <option value="">Toutes les formules</option>
-                    <option value="starter">📦 Formule Starter</option>
-                    <option value="pro">⭐ Formule Pro</option>
-                    <option value="enterprise">👑 Formule Entreprise</option>
+                    {plans.map(p => (
+                      <option key={p.id} value={p.slug}>{p.name}</option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -419,51 +553,55 @@ export const BackOffice = () => {
                 <table className="saas-table">
                   <thead>
                     <tr>
-                      <th>Entreprise</th>
-                      <th>Formule Abonnement</th>
-                      <th>Points de Vente</th>
-                      <th>Utilisateurs</th>
+                      <th>Entreprise & Code POS</th>
+                      <th>Formule d'Abonnement</th>
+                      <th>Boutiques</th>
+                      <th>Comptes</th>
                       <th>Statut</th>
                       <th style={{ textAlign: 'right' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredCompanies.map(c => (
-                      <tr key={c.id} className="hover-row">
-                        <td>
-                          <strong style={{ fontSize: '15px' }}>{c.name}</strong>
-                          <div className="text-muted" style={{ fontSize: '11px', marginTop: '2px' }}>Code: {c.code}</div>
-                        </td>
-                        <td>
-                          {(!c.subscription_plan || c.subscription_plan === 'starter' || c.subscription_plan === 'basic') && (
-                            <span className="badge bg-secondary" style={{ fontSize: '12px', padding: '6px 12px', borderRadius: '6px' }}>📦 Formule Starter</span>
-                          )}
-                          {(c.subscription_plan === 'pro' || c.subscription_plan === 'premium') && (
-                            <span className="badge bg-primary" style={{ fontSize: '12px', padding: '6px 12px', borderRadius: '6px' }}>⭐ Formule Pro</span>
-                          )}
-                          {c.subscription_plan === 'enterprise' && (
-                            <span className="badge" style={{ background: '#8b5cf6', color: '#fff', fontWeight: 700, fontSize: '12px', padding: '6px 12px', borderRadius: '6px' }}>👑 Formule Entreprise</span>
-                          )}
-                        </td>
-                        <td style={{ fontWeight: 600 }}>{c.branches_count} boutiques</td>
-                        <td style={{ fontWeight: 600 }}>{c.users_count} comptes</td>
-                        <td>
-                          {c.status === 'active' ? (
-                            <span className="badge badge-success" style={{ padding: '6px 12px' }}>Actif</span>
-                          ) : (
-                            <span className="badge badge-error" style={{ padding: '6px 12px' }}>Suspendu</span>
-                          )}
-                        </td>
-                        <td style={{ textAlign: 'right' }}>
-                          <button onClick={() => openEditModal(c)} className="btn btn-secondary me-2 btn-sm" style={{ padding: '8px 14px' }}>
-                            <i className="fa-solid fa-pen me-1"></i> Gérer
-                          </button>
-                          <button onClick={() => toggleCompanyStatus(c)} className={`btn btn-sm ${c.status === 'active' ? 'btn-danger' : 'btn-success'}`} style={{ padding: '8px 14px' }}>
-                            {c.status === 'active' ? 'Suspendre' : 'Activer'}
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {filteredCompanies.map(c => {
+                      const matchedPlan = plans.find(p => p.slug === c.subscription_plan);
+                      return (
+                        <tr key={c.id} className="hover-row">
+                          <td>
+                            <strong style={{ fontSize: '15px' }}>{c.name}</strong>
+                            <div className="text-muted" style={{ fontSize: '12px', marginTop: '2px', fontFamily: 'monospace' }}>
+                              🔑 Code: <strong>{c.code}</strong>
+                            </div>
+                          </td>
+                          <td>
+                            <span className="badge bg-primary" style={{ fontSize: '12px', padding: '6px 12px', borderRadius: '6px' }}>
+                              {matchedPlan ? matchedPlan.name : (c.subscription_plan || 'Starter').toUpperCase()}
+                            </span>
+                            {c.subscription_expires_at && (
+                              <div className="text-muted small mt-1">
+                                Expire le: {new Date(c.subscription_expires_at).toLocaleDateString('fr-FR')}
+                              </div>
+                            )}
+                          </td>
+                          <td style={{ fontWeight: 600 }}>{c.branches_count} boutiques</td>
+                          <td style={{ fontWeight: 600 }}>{c.users_count} utilisateurs</td>
+                          <td>
+                            {c.status === 'active' ? (
+                              <span className="badge badge-success" style={{ padding: '6px 12px' }}>Actif</span>
+                            ) : (
+                              <span className="badge badge-error" style={{ padding: '6px 12px' }}>Suspendu</span>
+                            )}
+                          </td>
+                          <td style={{ textAlign: 'right' }}>
+                            <button onClick={() => openEditCompanyModal(c)} className="btn btn-secondary me-2 btn-sm" style={{ padding: '8px 14px' }}>
+                              <i className="fa-solid fa-pen me-1"></i> Gérer
+                            </button>
+                            <button onClick={() => toggleCompanyStatus(c)} className={`btn btn-sm ${c.status === 'active' ? 'btn-danger' : 'btn-success'}`} style={{ padding: '8px 14px' }}>
+                              {c.status === 'active' ? 'Suspendre' : 'Activer'}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -471,7 +609,96 @@ export const BackOffice = () => {
           </div>
         )}
 
+        {/* 3. GESTION DYNAMIQUE DES FORMULES & OFFRES D'ABONNEMENT */}
+        {activeSubTab === 'plans' && (
+          <div>
+            <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap" style={{ gap: '16px' }}>
+              <div>
+                <h3 className="m-0" style={{ fontWeight: 800 }}>Formules & Offres d'Abonnement SaaS</h3>
+                <p className="text-muted small m-0">Créez et personnalisez les détails de chaque formule (prix, nombre de boutiques autorisées, limites et fonctionnalités).</p>
+              </div>
+              <button 
+                onClick={() => { resetPlanForm(); setShowCreatePlanModal(true); }} 
+                className="btn btn-primary"
+                style={{ height: '42px', fontWeight: 700 }}
+              >
+                <i className="fa-solid fa-plus me-1"></i> Nouvelle Formule d'Abonnement
+              </button>
+            </div>
 
+            {plansLoading ? (
+              <div className="loading-spinner">Chargement des formules d'abonnement...</div>
+            ) : (
+              <div className="plans-grid-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
+                {plans.map(p => (
+                  <div key={p.id} className={`plan-card card ${p.is_popular ? 'border-primary' : ''}`} style={{ padding: '24px', position: 'relative', background: 'var(--bg-card)', borderRadius: '16px', border: p.is_popular ? '2px solid var(--color-primary)' : '1px solid var(--border-color)' }}>
+                    {p.is_popular && (
+                      <span className="badge bg-primary" style={{ position: 'absolute', top: '16px', right: '16px', fontSize: '11px', padding: '4px 10px' }}>
+                        POPULAIRE
+                      </span>
+                    )}
+
+                    <h4 style={{ fontWeight: 800, fontSize: '20px', marginBottom: '6px' }}>{p.name}</h4>
+                    <span className="text-muted small d-block mb-3" style={{ fontFamily: 'monospace' }}>Slug: {p.slug}</span>
+                    <p className="text-muted" style={{ fontSize: '13px', minHeight: '38px' }}>{p.description || 'Aucune description spécifiée.'}</p>
+
+                    <div className="plan-price-box my-3" style={{ background: 'var(--bg-input, #f8fafc)', padding: '14px', borderRadius: '12px', textAlign: 'center' }}>
+                      <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--color-primary)' }}>
+                        {(p.price_monthly || 0).toLocaleString('fr-FR')} XOF <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-muted)' }}>/ mois</span>
+                      </div>
+                      <div className="text-muted small mt-1">
+                        Ou {(p.price_yearly || 0).toLocaleString('fr-FR')} XOF / an
+                      </div>
+                    </div>
+
+                    <div className="plan-quotas-list mb-3" style={{ fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div className="d-flex justify-content-between">
+                        <span>🏬 Boutiques autorisées :</span>
+                        <strong>{p.max_branches >= 999 ? 'Illimité' : `${p.max_branches} boutique(s)`}</strong>
+                      </div>
+                      <div className="d-flex justify-content-between">
+                        <span>👤 Comptes utilisateurs :</span>
+                        <strong>{p.max_users >= 999 ? 'Illimité' : `${p.max_users} comptes`}</strong>
+                      </div>
+                      <div className="d-flex justify-content-between">
+                        <span>📦 Produits au catalogue :</span>
+                        <strong>{p.max_products >= 999999 ? 'Illimité' : `${p.max_products} articles`}</strong>
+                      </div>
+                    </div>
+
+                    {Array.isArray(p.features) && p.features.length > 0 && (
+                      <div className="plan-features-box mb-4">
+                        <strong className="d-block mb-2 text-muted" style={{ fontSize: '11px', uppercase: 'uppercase' }}>Inclus dans l'offre :</strong>
+                        <ul style={{ paddingLeft: '18px', margin: 0, fontSize: '13px', color: 'var(--text-main)' }}>
+                          {p.features.map((feat, idx) => (
+                            <li key={idx} style={{ marginBottom: '4px' }}>{feat}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    <div className="d-flex gap-2 mt-auto">
+                      <button 
+                        onClick={() => openEditPlanModal(p)} 
+                        className="btn btn-outline-primary flex-1 btn-sm"
+                        style={{ fontWeight: 700 }}
+                      >
+                        <i className="fa-solid fa-pen me-1"></i> Modifier
+                      </button>
+                      <button 
+                        onClick={() => handleDeletePlan(p)} 
+                        className="btn btn-outline-danger btn-sm"
+                        style={{ fontWeight: 700 }}
+                      >
+                        <i className="fa-solid fa-trash me-1"></i>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 4. GESTION DES UTILISATEURS */}
         {activeSubTab === 'users' && (
@@ -526,23 +753,22 @@ export const BackOffice = () => {
           </div>
         )}
 
-        {/* 5. MAINTENANCE & SYSTEME */}
+        {/* 5. MAINTENANCE & SYSTÈME */}
         {activeSubTab === 'system' && (
           <div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-              
               <div className="card" style={{ padding: '24px' }}>
-                <h3><i className="fa-solid fa-database text-primary me-2"></i> Outil de sauvegarde globale</h3>
-                <p className="text-muted small mt-2">Générez un fichier compressé contenant un export SQL complet de l'application et les médias importés.</p>
+                <h3><i className="fa-solid fa-database text-primary me-2"></i> Sauvegarde globale SQL</h3>
+                <p className="text-muted small mt-2">Générez un export SQL complet de l'ensemble de la base de données multi-entreprises.</p>
                 <div style={{ marginTop: '24px' }}>
-                  <button onClick={triggerBackup} disabled={backupLoading} className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                  <button onClick={triggerBackup} disabled={backupLoading} className="btn btn-primary">
                     {backupLoading ? 'Création de la sauvegarde en cours...' : '🚀 Lancer une sauvegarde manuelle'}
                   </button>
                 </div>
               </div>
 
               <div className="card" style={{ padding: '24px' }}>
-                <h3><i className="fa-solid fa-server text-success me-2"></i> Indicateurs techniques réels</h3>
+                <h3><i className="fa-solid fa-server text-success me-2"></i> Santé de l'infrastructure</h3>
                 {systemLoading || !systemInfo ? (
                   <p className="text-muted">Chargement de la santé du serveur...</p>
                 ) : (
@@ -551,35 +777,17 @@ export const BackOffice = () => {
                       <span>Espace Disque : <strong>{systemInfo.disk.used_gb} GB</strong> / {systemInfo.disk.total_gb} GB</span>
                       <strong>{systemInfo.disk.used_percent}%</strong>
                     </div>
-                    <div className="bar-track">
-                      <div className="bar-fill" style={{ '--target-width': `${systemInfo.disk.used_percent}%`, backgroundColor: '#f59e0b' }} />
-                    </div>
-
                     <div className="d-flex justify-content-between">
                       <span>Processeur (CPU)</span>
                       <strong>{systemInfo.performance.cpu_load_percent}%</strong>
                     </div>
-                    <div className="bar-track">
-                      <div className="bar-fill" style={{ '--target-width': `${systemInfo.performance.cpu_load_percent}%`, backgroundColor: '#10b981' }} />
-                    </div>
-
                     <div className="d-flex justify-content-between">
                       <span>Mémoire RAM</span>
                       <strong>{systemInfo.performance.memory_usage_percent}%</strong>
                     </div>
-                    <div className="bar-track">
-                      <div className="bar-fill" style={{ '--target-width': `${systemInfo.performance.memory_usage_percent}%`, backgroundColor: '#3b82f6' }} />
-                    </div>
-
-                    <div style={{ marginTop: '10px', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      <div><strong>Version API Core :</strong> {systemInfo.core_version}</div>
-                      <div><strong>Laravel :</strong> {systemInfo.laravel_version}</div>
-                      <div><strong>PHP :</strong> {systemInfo.php_version}</div>
-                    </div>
                   </div>
                 )}
               </div>
-
             </div>
           </div>
         )}
@@ -593,7 +801,149 @@ export const BackOffice = () => {
 
       </div>
 
-      {/* MODALE : CREATION D'UNE ENTREPRISE */}
+      {/* ── MODALE : CRÉER UNE FORMULE D'ABONNEMENT ── */}
+      {showCreatePlanModal && (
+        <div className="modal-overlay" onClick={() => setShowCreatePlanModal(false)}>
+          <div className="modal-card card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '560px', textAlign: 'left' }}>
+            <h3>Créer une nouvelle Formule d'Abonnement</h3>
+            <form onSubmit={handleCreatePlan} style={{ marginTop: '15px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div className="row">
+                <div className="col-md-6 form-group">
+                  <label className="form-label">Nom de la formule *</label>
+                  <input type="text" className="form-control" required placeholder="Ex: Offre Franchise Pro" value={planName} onChange={e => setPlanName(e.target.value)} />
+                </div>
+                <div className="col-md-6 form-group">
+                  <label className="form-label">Identifiant (Slug) *</label>
+                  <input type="text" className="form-control" required placeholder="Ex: pro_franchise" value={planSlug} onChange={e => setPlanSlug(e.target.value)} />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Description de l'offre</label>
+                <textarea className="form-control" rows="2" placeholder="Description affichée sur la tarification..." value={planDescription} onChange={e => setPlanDescription(e.target.value)}></textarea>
+              </div>
+
+              <div className="row">
+                <div className="col-md-6 form-group">
+                  <label className="form-label">Prix Mensuel (XOF) *</label>
+                  <input type="number" className="form-control" min="0" required value={planPriceMonthly} onChange={e => setPlanPriceMonthly(e.target.value)} />
+                </div>
+                <div className="col-md-6 form-group">
+                  <label className="form-label">Prix Annuel (XOF) *</label>
+                  <input type="number" className="form-control" min="0" required value={planPriceYearly} onChange={e => setPlanPriceYearly(e.target.value)} />
+                </div>
+              </div>
+
+              <div className="row">
+                <div className="col-md-4 form-group">
+                  <label className="form-label">Max Boutiques *</label>
+                  <input type="number" className="form-control" min="1" required value={planMaxBranches} onChange={e => setPlanMaxBranches(e.target.value)} title="Saisir 999 pour illimité" />
+                </div>
+                <div className="col-md-4 form-group">
+                  <label className="form-label">Max Utilisateurs *</label>
+                  <input type="number" className="form-control" min="1" required value={planMaxUsers} onChange={e => setPlanMaxUsers(e.target.value)} />
+                </div>
+                <div className="col-md-4 form-group">
+                  <label className="form-label">Max Articles *</label>
+                  <input type="number" className="form-control" min="1" required value={planMaxProducts} onChange={e => setPlanMaxProducts(e.target.value)} />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Fonctionnalités incluses (1 par ligne)</label>
+                <textarea className="form-control" rows="3" placeholder="5 Boutiques autorisées&#10;Gestion de stock avancée&#10;Support VIP 24/7" value={planFeaturesText} onChange={e => setPlanFeaturesText(e.target.value)}></textarea>
+              </div>
+
+              <div className="d-flex gap-4">
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: 600 }}>
+                  <input type="checkbox" checked={planIsActive} onChange={e => setPlanIsActive(e.target.checked)} /> Offre active
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: 600 }}>
+                  <input type="checkbox" checked={planIsPopular} onChange={e => setPlanIsPopular(e.target.checked)} /> Badge Populaire
+                </label>
+              </div>
+
+              <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '15px' }}>
+                <button type="button" onClick={() => setShowCreatePlanModal(false)} className="btn btn-cancel">Annuler</button>
+                <button type="submit" className="btn btn-primary">Créer la formule</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODALE : MODIFIER UNE FORMULE D'ABONNEMENT ── */}
+      {showEditPlanModal && (
+        <div className="modal-overlay" onClick={() => setShowEditPlanModal(false)}>
+          <div className="modal-card card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '560px', textAlign: 'left' }}>
+            <h3>Modifier la Formule : {selectedPlan?.name}</h3>
+            <form onSubmit={handleEditPlan} style={{ marginTop: '15px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div className="row">
+                <div className="col-md-6 form-group">
+                  <label className="form-label">Nom de la formule *</label>
+                  <input type="text" className="form-control" required value={planName} onChange={e => setPlanName(e.target.value)} />
+                </div>
+                <div className="col-md-6 form-group">
+                  <label className="form-label">Identifiant (Slug) *</label>
+                  <input type="text" className="form-control" required value={planSlug} onChange={e => setPlanSlug(e.target.value)} />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Description de l'offre</label>
+                <textarea className="form-control" rows="2" value={planDescription} onChange={e => setPlanDescription(e.target.value)}></textarea>
+              </div>
+
+              <div className="row">
+                <div className="col-md-6 form-group">
+                  <label className="form-label">Prix Mensuel (XOF) *</label>
+                  <input type="number" className="form-control" min="0" required value={planPriceMonthly} onChange={e => setPlanPriceMonthly(e.target.value)} />
+                </div>
+                <div className="col-md-6 form-group">
+                  <label className="form-label">Prix Annuel (XOF) *</label>
+                  <input type="number" className="form-control" min="0" required value={planPriceYearly} onChange={e => setPlanPriceYearly(e.target.value)} />
+                </div>
+              </div>
+
+              <div className="row">
+                <div className="col-md-4 form-group">
+                  <label className="form-label">Max Boutiques *</label>
+                  <input type="number" className="form-control" min="1" required value={planMaxBranches} onChange={e => setPlanMaxBranches(e.target.value)} />
+                </div>
+                <div className="col-md-4 form-group">
+                  <label className="form-label">Max Utilisateurs *</label>
+                  <input type="number" className="form-control" min="1" required value={planMaxUsers} onChange={e => setPlanMaxUsers(e.target.value)} />
+                </div>
+                <div className="col-md-4 form-group">
+                  <label className="form-label">Max Articles *</label>
+                  <input type="number" className="form-control" min="1" required value={planMaxProducts} onChange={e => setPlanMaxProducts(e.target.value)} />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Fonctionnalités incluses (1 par ligne)</label>
+                <textarea className="form-control" rows="3" value={planFeaturesText} onChange={e => setPlanFeaturesText(e.target.value)}></textarea>
+              </div>
+
+              <div className="d-flex gap-4">
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: 600 }}>
+                  <input type="checkbox" checked={planIsActive} onChange={e => setPlanIsActive(e.target.checked)} /> Offre active
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: 600 }}>
+                  <input type="checkbox" checked={planIsPopular} onChange={e => setPlanIsPopular(e.target.checked)} /> Badge Populaire
+                </label>
+              </div>
+
+              <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '15px' }}>
+                <button type="button" onClick={() => setShowEditPlanModal(false)} className="btn btn-cancel">Annuler</button>
+                <button type="submit" className="btn btn-primary">Enregistrer les modifications</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODALE : CRÉATION D'UNE ENTREPRISE ── */}
       {showCreateCompanyModal && (
         <div className="modal-overlay" onClick={() => setShowCreateCompanyModal(false)}>
           <div className="modal-card card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px', textAlign: 'left' }}>
@@ -614,9 +964,11 @@ export const BackOffice = () => {
               <div className="form-group">
                 <label className="form-label">Formule d'Abonnement (Plan) *</label>
                 <select className="form-control" value={companyPlan} onChange={(e) => setCompanyPlan(e.target.value)}>
-                  <option value="starter">📦 Formule Starter (15 000 XOF/mois - 1 boutique, 2 comptes)</option>
-                  <option value="pro">⭐ Formule Pro (35 000 XOF/mois - 3 boutiques, 5 comptes)</option>
-                  <option value="enterprise">👑 Formule Entreprise (75 000 XOF/mois - Illimité)</option>
+                  {plans.map(p => (
+                    <option key={p.id} value={p.slug}>
+                      {p.name} ({p.max_branches >= 999 ? 'Illimité' : `${p.max_branches} boutique(s)`} - {p.price_monthly.toLocaleString('fr-FR')} XOF/mois)
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -647,7 +999,7 @@ export const BackOffice = () => {
         </div>
       )}
 
-      {/* MODALE : MODIFICATION D'UNE ENTREPRISE */}
+      {/* ── MODALE : MODIFICATION D'UNE ENTREPRISE ── */}
       {showEditCompanyModal && (
         <div className="modal-overlay" onClick={() => setShowEditCompanyModal(false)}>
           <div className="modal-card card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px', textAlign: 'left' }}>
@@ -667,9 +1019,11 @@ export const BackOffice = () => {
               <div className="form-group">
                 <label className="form-label">Formule d'Abonnement (Plan)</label>
                 <select className="form-control" value={companyPlan} onChange={(e) => setCompanyPlan(e.target.value)}>
-                  <option value="starter">📦 Formule Starter (15 000 XOF/mois - 1 boutique, 2 comptes)</option>
-                  <option value="pro">⭐ Formule Pro (35 000 XOF/mois - 3 boutiques, 5 comptes)</option>
-                  <option value="enterprise">👑 Formule Entreprise (75 000 XOF/mois - Illimité)</option>
+                  {plans.map(p => (
+                    <option key={p.id} value={p.slug}>
+                      {p.name} ({p.max_branches >= 999 ? 'Illimité' : `${p.max_branches} boutique(s)`} - {p.price_monthly.toLocaleString('fr-FR')} XOF/mois)
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -700,7 +1054,7 @@ export const BackOffice = () => {
         </div>
       )}
 
-      {/* MODALE DE REINITIALISATION DE MOT DE PASSE UTILISATEUR */}
+      {/* ── MODALE DE REINITIALISATION DE MOT DE PASSE ── */}
       {selectedUserToReset && (
         <div className="modal-overlay" onClick={() => setSelectedUserToReset(null)}>
           <div className="modal-card card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px', textAlign: 'left' }}>
@@ -748,228 +1102,108 @@ export const BackOffice = () => {
 
         .admin-layout {
           width: 100%;
-          max-width: 1200px;
-          padding: 32px;
-          margin-top: 100px;
-          text-align: left;
+          max-width: 1280px;
+          padding: 28px;
+          background: var(--bg-card);
+          border-radius: 16px;
+          border: 1px solid var(--border-color);
+          box-shadow: var(--shadow-lg);
         }
 
         .admin-header {
           display: flex;
-          flex-direction: column;
-          border-bottom: 1px solid var(--border-color);
-          padding-bottom: 24px;
+          align-items: center;
+          justify-content: space-between;
           margin-bottom: 24px;
-        }
-
-        .admin-subtitle {
-          font-size: 13px;
-          color: var(--text-muted);
-          font-weight: 500;
-          margin-top: 4px;
+          flex-wrap: wrap;
+          gap: 16px;
         }
 
         .admin-subtabs {
           display: flex;
-          gap: 12px;
-          margin-top: 16px;
+          gap: 8px;
           flex-wrap: wrap;
         }
 
         .subtab-btn {
-          padding: 8px 16px;
-          font-size: 13px;
-          font-weight: 700;
-          color: var(--text-muted);
-          background: transparent;
+          background: var(--bg-input, rgba(0,0,0,0.04));
           border: 1px solid var(--border-color);
-          border-radius: var(--border-radius-sm);
+          color: var(--text-muted);
+          font-weight: 700;
+          font-size: 13px;
+          padding: 8px 14px;
+          border-radius: 8px;
           cursor: pointer;
-          transition: all var(--transition-fast);
+          transition: all 0.2s;
         }
 
-        .subtab-btn:hover, .subtab-btn.active {
-          color: var(--text-main);
-          background: var(--bg-input);
-          border-color: var(--text-main);
+        .subtab-btn.active, .subtab-btn:hover {
+          background: var(--color-primary);
+          color: #fff;
+          border-color: var(--color-primary);
         }
 
         .admin-metrics-grid {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-          gap: 20px;
-          margin-bottom: 24px;
+          gap: 16px;
         }
 
         .metric-box {
-          background: var(--bg-input);
+          background: var(--bg-input, rgba(0,0,0,0.02));
           border: 1px solid var(--border-color);
-          border-radius: var(--border-radius-sm);
+          border-radius: 12px;
           padding: 20px;
           display: flex;
           flex-direction: column;
-          gap: 8px;
+          gap: 6px;
         }
 
         .metric-title {
-          font-size: 11px;
+          font-size: 12px;
+          font-weight: 700;
           color: var(--text-muted);
           text-transform: uppercase;
-          letter-spacing: 0.5px;
-          font-weight: 700;
         }
 
         .metric-number {
-          font-size: 26px;
+          font-size: 28px;
           font-weight: 800;
           color: var(--text-main);
         }
 
         .kpi-badge {
-          display: inline-flex;
-          align-items: center;
+          display: inline-block;
           font-size: 11px;
           font-weight: 700;
-          padding: 3px 8px;
+          padding: 2px 8px;
           border-radius: 4px;
-          align-self: flex-start;
+          width: fit-content;
         }
 
-        .kpi-badge.up {
-          background: rgba(16, 185, 129, 0.15);
-          color: #10b981;
-        }
-
-        .kpi-info-label {
-          font-size: 11px;
-          color: var(--text-muted);
-        }
-
-        .admin-charts-grid {
-          display: grid;
-          grid-template-columns: 1.5fr 1fr;
-          gap: 20px;
-        }
-
-        @media (max-width: 768px) {
-          .admin-charts-grid {
-            grid-template-columns: 1fr;
-          }
-        }
-
-        .admin-activity-grid {
-          display: grid;
-          grid-template-columns: 1fr;
-          gap: 20px;
-        }
-
-        .activity-timeline {
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-        }
-
-        .timeline-item {
-          display: flex;
-          gap: 14px;
-          align-items: flex-start;
-        }
-
-        .timeline-icon {
-          width: 32px;
-          height: 32px;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 14px;
-          flex-shrink: 0;
-        }
-
-        .bg-primary-light { background: rgba(59, 130, 246, 0.15); }
-
-        .timeline-content {
-          text-align: left;
-        }
-
-        .timeline-text {
-          font-size: 13px;
-          color: var(--text-main);
-          margin-bottom: 2px;
-        }
-
-        .timeline-time {
-          font-size: 11px;
-          color: var(--text-muted);
-        }
-
-        .server-health-stats {
-          text-align: left;
-        }
-
-        .server-health-stats span {
-          font-size: 13px;
-          color: var(--text-muted);
-        }
-
-        .server-health-stats strong {
-          color: var(--text-main);
-        }
-
-        .filters-bar {
-          display: flex !important;
-          flex-direction: row !important;
-          flex-wrap: wrap !important;
-          gap: 14px !important;
-          align-items: center !important;
-        }
+        .kpi-badge.up { background: rgba(16, 185, 129, 0.12); color: #10b981; }
+        .kpi-badge.neutral { background: rgba(59, 130, 246, 0.12); color: #3b82f6; }
 
         .saas-table {
           width: 100%;
-          border-collapse: separate !important;
-          border-spacing: 0 12px !important;
-          margin-top: 12px;
-        }
-
-        .saas-table th {
-          padding: 16px 20px !important;
-          font-family: var(--font-title);
-          font-size: 12px !important;
-          font-weight: 800 !important;
-          color: var(--text-muted);
-          text-transform: uppercase;
-          letter-spacing: 0.8px;
-          border-bottom: 2px solid var(--border-color);
-          white-space: nowrap !important;
+          border-collapse: collapse;
           text-align: left;
         }
 
-        .saas-table td {
-          padding: 18px 20px !important;
-          background: var(--bg-card);
-          border-top: 1px solid var(--border-color);
+        .saas-table th, .saas-table td {
+          padding: 14px 16px;
           border-bottom: 1px solid var(--border-color);
-          font-size: 14px;
-          color: var(--text-main);
-          vertical-align: middle;
-          white-space: nowrap !important;
         }
 
-        .saas-table tr td:first-child {
-          border-left: 1px solid var(--border-color);
-          border-top-left-radius: 12px;
-          border-bottom-left-radius: 12px;
+        .saas-table th {
+          font-size: 11px;
+          font-weight: 700;
+          color: var(--text-muted);
+          text-transform: uppercase;
+          background: var(--bg-input, rgba(0,0,0,0.02));
         }
 
-        .saas-table tr td:last-child {
-          border-right: 1px solid var(--border-color);
-          border-top-right-radius: 12px;
-          border-bottom-right-radius: 12px;
-        }
-
-        .saas-table tr:hover td {
-          background: var(--bg-input);
-        }
+        .flex-1 { flex: 1; }
       `}</style>
     </div>
   );

@@ -172,6 +172,13 @@ Route::prefix('v1')->middleware('tenant')->group(function () {
             Route::get('/admin/companies',                    [\App\Http\Controllers\API\V1\SuperAdminController::class, 'companies']);
             Route::post('/admin/companies',                   [\App\Http\Controllers\API\V1\SuperAdminController::class, 'createCompany']);
             Route::match(['post', 'put'], '/admin/companies/{id}', [\App\Http\Controllers\API\V1\SuperAdminController::class, 'updateCompany']);
+
+            // Gestion des Formules & Offres d'Abonnement
+            Route::get('/admin/plans',                         [\App\Http\Controllers\API\V1\SuperAdminController::class, 'plans']);
+            Route::post('/admin/plans',                        [\App\Http\Controllers\API\V1\SuperAdminController::class, 'storePlan']);
+            Route::put('/admin/plans/{id}',                    [\App\Http\Controllers\API\V1\SuperAdminController::class, 'updatePlan']);
+            Route::delete('/admin/plans/{id}',                 [\App\Http\Controllers\API\V1\SuperAdminController::class, 'deletePlan']);
+
             Route::get('/admin/users',                        [\App\Http\Controllers\API\V1\SuperAdminController::class, 'users']);
             Route::post('/admin/users/{id}/reset-password',   [\App\Http\Controllers\API\V1\SuperAdminController::class, 'resetUserPassword']);
             Route::post('/admin/users/{id}/toggle-status',    [\App\Http\Controllers\API\V1\SuperAdminController::class, 'toggleUserStatus']);
