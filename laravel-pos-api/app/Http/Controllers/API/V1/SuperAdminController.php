@@ -777,26 +777,37 @@ class SuperAdminController extends Controller
     {
         $this->authorizeSuperAdmin($request);
 
-        $validated = $request->validate([
-            'company_id'      => 'required|exists:companies,id',
-            'subscription_id' => 'nullable|exists:company_subscriptions,id',
-            'payment_id'      => 'nullable|exists:subscription_payments,id',
-            'billing_period'  => 'required|string',
-            'subtotal'        => 'required|numeric|min:0',
-            'tax_amount'      => 'nullable|numeric|min:0',
-            'total_amount'    => 'required|numeric|min:0',
-            'status'          => 'required|in:draft,issued,paid,partially_paid,overdue,cancelled',
-            'issue_date'      => 'required|date',
-            'due_date'        => 'required|date|after_or_equal:issue_date',
-        ]);
+        $companyId = $request->input('company_id');
+        if (!$companyId) {
+            return response()->json(['error' => 'Veuillez spécifier une entreprise.'], 422);
+        }
+
+        $company = \App\Models\Company::findOrFail($companyId);
+        $subscription = \App\Models\CompanySubscription::where('company_id', $companyId)->where('status', 'active')->first();
+        
+        $plan = $subscription ? $subscription->plan : \App\Models\SubscriptionPlan::where('slug', $company->subscription_plan)->first();
+        
+        $price = $plan ? floatval($plan->price_monthly ?: $plan->price_yearly ?: 50000) : 50000;
+        $subtotal = $request->input('subtotal', $price);
+        $taxAmount = $request->input('tax_amount', 0);
+        $totalAmount = $request->input('total_amount', $subtotal + $taxAmount);
 
         $nextNum = \App\Models\SubscriptionInvoice::count() + 1;
         $invNum = 'INV-' . date('Y') . '-' . str_pad($nextNum, 4, '0', STR_PAD_LEFT);
 
-        $validated['uuid'] = (string) \Illuminate\Support\Str::uuid();
-        $validated['invoice_number'] = $invNum;
-
-        $invoice = \App\Models\SubscriptionInvoice::create($validated);
+        $invoice = \App\Models\SubscriptionInvoice::create([
+            'uuid'            => (string) \Illuminate\Support\Str::uuid(),
+            'invoice_number'  => $invNum,
+            'company_id'      => $companyId,
+            'subscription_id' => $subscription ? $subscription->id : null,
+            'billing_period'  => $request->input('billing_period', date('F Y')),
+            'subtotal'        => $subtotal,
+            'tax_amount'      => $taxAmount,
+            'total_amount'    => $totalAmount,
+            'status'          => $request->input('status', 'issued'),
+            'issue_date'      => $request->input('issue_date', date('Y-m-d')),
+            'due_date'        => $request->input('due_date', date('Y-m-d', strtotime('+30 days'))),
+        ]);
 
         return response()->json(['message' => 'Facture générée avec succès.', 'invoice' => $invoice->load(['company', 'subscription'])], 201);
     }
