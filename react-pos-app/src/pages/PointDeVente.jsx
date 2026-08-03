@@ -376,31 +376,8 @@ export const PointDeVente = () => {
                   const isLow = !isOut && stockVal <= alertVal;
 
                   return (
-                    <div key={p.id} onClick={() => handleAddToCart(p)} className="pos-product-card" style={{ position: 'relative' }}>
-                      {/* Badge de Stock Disponible (Partie 9) */}
-                      <div style={{
-                        position: 'absolute',
-                        top: '8px',
-                        left: '8px',
-                        zIndex: 3,
-                        padding: '3px 8px',
-                        borderRadius: '12px',
-                        fontSize: '11px',
-                        fontWeight: 'bold',
-                        backgroundColor: isOut ? '#ef4444' : (isLow ? '#f59e0b' : '#10b981'),
-                        color: '#ffffff',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                      }}>
-                        {isOut ? (
-                          <><i className="fa-solid fa-ban me-1"></i> Rupture (0)</>
-                        ) : isLow ? (
-                          <><i className="fa-solid fa-triangle-exclamation me-1"></i> Faible: {stockVal}</>
-                        ) : (
-                          <><i className="fa-solid fa-boxes-stacked me-1"></i> Stock: {stockVal}</>
-                        )}
-                      </div>
-
-                      <div className="pos-prod-img-box">
+                    <div key={p.id} onClick={() => handleAddToCart(p)} className="pos-product-card">
+                      <div className="pos-prod-img-box" style={{ position: 'relative' }}>
                         {p.image_path ? (
                           <img 
                             src={getImageUrl(p.image_path)} 
@@ -415,6 +392,30 @@ export const PointDeVente = () => {
                         <span className="pos-prod-price-badge">
                           {new Intl.NumberFormat('fr-FR').format(p.selling_price)} XOF
                         </span>
+
+                        {/* Badge de Stock (Placé en bas à gauche pour ne jamais masquer le prix en haut à droite) */}
+                        <div style={{
+                          position: 'absolute',
+                          bottom: '6px',
+                          left: '6px',
+                          zIndex: 2,
+                          padding: '2px 6px',
+                          borderRadius: '8px',
+                          fontSize: '10px',
+                          fontWeight: 'bold',
+                          backgroundColor: isOut ? 'rgba(239, 68, 68, 0.95)' : (isLow ? 'rgba(245, 158, 11, 0.95)' : 'rgba(16, 185, 129, 0.95)'),
+                          color: '#ffffff',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                          backdropFilter: 'blur(4px)'
+                        }}>
+                          {isOut ? (
+                            <><i className="fa-solid fa-ban me-1"></i> Rupture (0)</>
+                          ) : isLow ? (
+                            <><i className="fa-solid fa-triangle-exclamation me-1"></i> Faible: {stockVal}</>
+                          ) : (
+                            <><i className="fa-solid fa-boxes-stacked me-1"></i> Stock: {stockVal}</>
+                          )}
+                        </div>
                       </div>
                       <div className="pos-prod-info">
                         <div className="pos-prod-name">{p.name}</div>
