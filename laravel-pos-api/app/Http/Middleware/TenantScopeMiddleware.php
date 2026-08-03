@@ -73,7 +73,7 @@ class TenantScopeMiddleware
         }
 
         // 2. Traitement des routes d'authentification publiques (non bloquantes sur le Tenant)
-        $isPublicAuth = $request->is('*/auth/login') || $request->is('*/auth/login-pin') || $request->is('*/auth/register') || $request->is('*/tenant-test');
+        $isPublicAuth = $request->is('*/auth/*') || $request->is('*/maintenance/status') || $request->is('*/tenant-test');
 
         if ($isPublicAuth) {
             if ($companyId) {

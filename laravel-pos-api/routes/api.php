@@ -24,6 +24,7 @@ Route::prefix('v1')->middleware('tenant')->group(function () {
         Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
         Route::get('/auth/companies',       [AuthController::class, 'getPublicCompanies']);
         Route::get('/auth/companies/{id}/users', [AuthController::class, 'getPublicUsers']);
+        Route::get('/maintenance/status',   [\App\Http\Controllers\API\V1\MaintenanceController::class, 'status']);
     });
 
     // Routes d'authentification protégées par Sanctum
@@ -233,8 +234,7 @@ Route::prefix('v1')->middleware('tenant')->group(function () {
             Route::post('/maintenance/toggle', [\App\Http\Controllers\API\V1\MaintenanceController::class, 'toggle']);
         });
 
-        // Statut public de maintenance applicative
-        Route::get('/maintenance/status', [\App\Http\Controllers\API\V1\MaintenanceController::class, 'status']);
+        // Statut public de maintenance applicative (déplacé dans le groupe public ci-dessus)
 
         // -----------------------------------------------------------------------
         // Module Documentaire & Système Central d'Exportations (Tous Utilisateurs Authentifiés)
