@@ -396,6 +396,51 @@ function MainContent() {
         </div>
       )}
 
+      {/* ── BANNIÈRE D'AVERTISSEMENT ABONNEMENT SAAS IMPAYÉ / EXPIRÉ ── */}
+      {(() => {
+        const expiresAtStr = user?.company?.subscription_expires_at;
+        const isCompanySuspended = user?.company?.status === 'suspended' || user?.company?.status === 'inactive';
+        const expiresDate = expiresAtStr ? new Date(expiresAtStr) : null;
+        const now = new Date();
+        const daysLeft = expiresDate ? Math.ceil((expiresDate - now) / (1000 * 60 * 60 * 24)) : null;
+
+        const isSubExpired = expiresDate && expiresDate < now;
+        const isSubExpiringSoon = !isSubExpired && daysLeft !== null && daysLeft <= 7;
+        const showSubWarning = isAuthenticated && !isSuperAdmin && (isSubExpired || isCompanySuspended || isSubExpiringSoon);
+
+        if (!showSubWarning) return null;
+
+        return (
+          <div style={{
+            position: 'fixed',
+            top: isAppHeaderVisible ? '64px' : '0px',
+            left: 0,
+            right: 0,
+            zIndex: 999,
+            backgroundColor: (isSubExpired || isCompanySuspended) ? '#dc2626' : '#d97706',
+            color: '#ffffff',
+            padding: '8px 16px',
+            fontSize: '13px',
+            fontWeight: 700,
+            textAlign: 'center',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+            display: 'flex',
+            alignItems: 'center',
+            justify: 'center',
+            gap: '10px'
+          }}>
+            <i className={(isSubExpired || isCompanySuspended) ? "fa-solid fa-triangle-exclamation text-white" : "fa-solid fa-clock text-white"}></i>
+            <span>
+              {(isSubExpired || isCompanySuspended) ? (
+                <><strong>ABONNEMENT EXPIRÉ / IMPAYÉ :</strong> Votre redevance d'abonnement SaaS est arrivée à échéance. Veuillez contacter l'administration pour régulariser votre compte.</>
+              ) : (
+                <><strong>RAPPEL ÉCHÉANCE ABONNEMENT :</strong> Votre abonnement expire dans {daysLeft} jour(s) ({expiresDate ? expiresDate.toLocaleDateString('fr-FR') : ''}). Pensez à renouveler votre licence.</>
+              )}
+            </span>
+          </div>
+        );
+      })()}
+
       {/* ── NAVBAR (EN-TÊTE PRINCIPAL) - Masqué sur la page d'accueil / connexion ou si non connecté ── */}
       {isAppHeaderVisible && (
         <header className="app-main-navbar" style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '64px', minHeight: '64px', maxHeight: '64px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', flexWrap: 'nowrap', overflow: 'visible', zIndex: 1000 }}>
@@ -678,9 +723,25 @@ function MainContent() {
       )}
 
       {/* ── CONTENU PRINCIPAL (Pulsation pleine page sans header sur home/auth) ── */}
-      <main className="app-main-content" style={{ paddingTop: isAppHeaderVisible ? '74px' : '0px', minHeight: isAppHeaderVisible ? 'calc(100vh - 74px)' : '100vh', width: '100%', boxSizing: 'border-box' }}>
-        {renderContent()}
-      </main>
+      {(() => {
+        const expiresAtStr = user?.company?.subscription_expires_at;
+        const isCompanySuspended = user?.company?.status === 'suspended' || user?.company?.status === 'inactive';
+        const expiresDate = expiresAtStr ? new Date(expiresAtStr) : null;
+        const now = new Date();
+        const daysLeft = expiresDate ? Math.ceil((expiresDate - now) / (1000 * 60 * 60 * 24)) : null;
+
+        const isSubExpired = expiresDate && expiresDate < now;
+        const isSubExpiringSoon = !isSubExpired && daysLeft !== null && daysLeft <= 7;
+        const showSubWarning = isAuthenticated && !isSuperAdmin && (isSubExpired || isCompanySuspended || isSubExpiringSoon);
+
+        const calculatedPaddingTop = isAppHeaderVisible ? (showSubWarning ? '104px' : '74px') : (showSubWarning ? '36px' : '0px');
+
+        return (
+          <main className="app-main-content" style={{ paddingTop: calculatedPaddingTop, minHeight: isAppHeaderVisible ? 'calc(100vh - 74px)' : '100vh', width: '100%', boxSizing: 'border-box' }}>
+            {renderContent()}
+          </main>
+        );
+      })()}
       <AnimatedBubbles />
 
       <style>{`
