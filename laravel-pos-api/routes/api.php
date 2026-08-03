@@ -131,6 +131,10 @@ Route::prefix('v1')->middleware('tenant')->group(function () {
         // -----------------------------------------------------------------------
         // Référentiel Fournisseurs & Clients
         // -----------------------------------------------------------------------
+        Route::get('/supplier-packs', [\App\Http\Controllers\API\V1\SupplierController::class, 'getPacks']);
+        Route::post('/supplier-packs', [\App\Http\Controllers\API\V1\SupplierController::class, 'storePack']);
+        Route::get('/supplier-types', [\App\Http\Controllers\API\V1\SupplierController::class, 'getTypes']);
+        Route::post('/supplier-types', [\App\Http\Controllers\API\V1\SupplierController::class, 'storeType']);
         Route::apiResource('suppliers', \App\Http\Controllers\API\V1\SupplierController::class);
         Route::apiResource('customers', \App\Http\Controllers\API\V1\CustomerController::class);
 
@@ -229,7 +233,16 @@ Route::prefix('v1')->middleware('tenant')->group(function () {
 
             // -----------------------------------------------------------------------
             // Mode Maintenance Applicatif (Console SuperAdmin)
-            // -----------------------------------------------------------------------
+            // -----------------------------------------------------------------------            // Statistiques Globale Plateau SaaS & Abonnements/Paiements/Factures
+            Route::get('/admin/global-stats',                 [\App\Http\Controllers\API\V1\SuperAdminController::class, 'globalStats']);
+            Route::get('/admin/subscriptions',                [\App\Http\Controllers\API\V1\SuperAdminController::class, 'subscriptionsList']);
+            Route::post('/admin/subscriptions',               [\App\Http\Controllers\API\V1\SuperAdminController::class, 'createSubscription']);
+            Route::get('/admin/payments',                     [\App\Http\Controllers\API\V1\SuperAdminController::class, 'paymentsList']);
+            Route::post('/admin/payments',                    [\App\Http\Controllers\API\V1\SuperAdminController::class, 'storePayment']);
+            Route::get('/admin/invoices',                     [\App\Http\Controllers\API\V1\SuperAdminController::class, 'invoicesList']);
+            Route::post('/admin/invoices/generate',           [\App\Http\Controllers\API\V1\SuperAdminController::class, 'generateInvoice']);
+
+            // Mode Maintenance Applicatif (Console SuperAdmin)
             Route::get('/maintenance',        [\App\Http\Controllers\API\V1\MaintenanceController::class, 'index']);
             Route::post('/maintenance/toggle', [\App\Http\Controllers\API\V1\MaintenanceController::class, 'toggle']);
         });

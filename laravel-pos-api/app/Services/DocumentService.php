@@ -201,6 +201,47 @@ class DocumentService
                     ['key' => 'description',  'label' => 'Détails & Portée',         'align' => 'left'],
                 ],
             ],
+            'subscriptions_list' => [
+                'type'     => 'subscriptions_list',
+                'title'    => 'REGISTRE DES ABONNEMENTS SAAS',
+                'subtitle' => 'Suivi des contrats, périodes de facturation et statuts des entreprises',
+                'columns'  => [
+                    ['key' => 'company',     'label' => 'Entreprise',      'align' => 'left'],
+                    ['key' => 'plan',        'label' => 'Formule Plan',    'align' => 'center'],
+                    ['key' => 'period',      'label' => 'Période',         'align' => 'center'],
+                    ['key' => 'amount',      'label' => 'Montant (FCFA)',  'align' => 'right'],
+                    ['key' => 'start_date',  'label' => 'Début',           'align' => 'left'],
+                    ['key' => 'end_date',    'label' => 'Échéance',        'align' => 'left'],
+                    ['key' => 'status',      'label' => 'Statut',          'align' => 'center'],
+                ],
+            ],
+            'payments_list' => [
+                'type'     => 'payments_list',
+                'title'    => 'JOURNAL DES PAIEMENTS D\'ABONNEMENT',
+                'subtitle' => 'Enregistrement des règlements reçus, modes de paiement et références',
+                'columns'  => [
+                    ['key' => 'date',        'label' => 'Date Règlement',  'align' => 'left'],
+                    ['key' => 'company',     'label' => 'Entreprise',      'align' => 'left'],
+                    ['key' => 'amount',      'label' => 'Montant (FCFA)',  'align' => 'right'],
+                    ['key' => 'method',      'label' => 'Mode Règlement',  'align' => 'center'],
+                    ['key' => 'reference',   'label' => 'Référence Trans.', 'align' => 'left'],
+                    ['key' => 'status',      'label' => 'Statut',          'align' => 'center'],
+                ],
+            ],
+            'invoices_list' => [
+                'type'     => 'invoices_list',
+                'title'    => 'LIVRE DES FACTURES CLIENTS SAAS',
+                'subtitle' => 'Factures d\'abonnement générées, montants HT/TTC et dates d\'échéance',
+                'columns'  => [
+                    ['key' => 'number',      'label' => 'N° Facture',      'align' => 'left'],
+                    ['key' => 'company',     'label' => 'Entreprise',      'align' => 'left'],
+                    ['key' => 'period',      'label' => 'Période',         'align' => 'center'],
+                    ['key' => 'total_amount','label' => 'Montant TTC',     'align' => 'right'],
+                    ['key' => 'issue_date',  'label' => 'Émission',        'align' => 'left'],
+                    ['key' => 'due_date',    'label' => 'Échéance',        'align' => 'left'],
+                    ['key' => 'status',      'label' => 'Statut',          'align' => 'center'],
+                ],
+            ],
         ];
     }
 
@@ -528,6 +569,71 @@ class DocumentService
                 ];
                 $totals = [
                     'Supervision globale plateforme' => 'Rapport généré le ' . date('d/m/Y H:i')
+                ];
+                break;
+
+            case 'subscriptions_list':
+                $subs = \App\Models\CompanySubscription::with(['company', 'plan'])->get();
+                $sumAmt = 0;
+                foreach ($subs as $s) {
+                    $amt = floatval($s->amount || 0);
+                    $sumAmt += $amt;
+                    $rows[] = [
+                        'company'    => $s->company ? $s->company->name : 'N/A',
+                        'plan'       => $s->plan ? $s->plan->name : 'Sur-mesure',
+                        'period'     => strtoupper($s->billing_period ?: 'Mensuel'),
+                        'amount'     => number_format($amt, 0, ',', ' '),
+                        'start_date' => $s->start_date ? $s->start_date->format('d/m/Y') : '—',
+                        'end_date'   => $s->end_date ? $s->end_date->format('d/m/Y') : '—',
+                        'status'     => strtoupper($s->status ?: 'ACTIF'),
+                    ];
+                }
+                $totals = [
+                    'Nombre d\'abonnements' => count($subs),
+                    'Montant cumulé'       => $sumAmt
+                ];
+                break;
+
+            case 'payments_list':
+                $payments = \App\Models\SubscriptionPayment::with(['company'])->get();
+                $sumPaid = 0;
+                foreach ($payments as $p) {
+                    $amt = floatval($p->amount || 0);
+                    if ($p->status === 'paid') $sumPaid += $amt;
+                    $rows[] = [
+                        'date'      => $p->payment_date ? $p->payment_date->format('d/m/Y H:i') : '',
+                        'company'   => $p->company ? $p->company->name : 'N/A',
+                        'amount'    => number_format($amt, 0, ',', ' '),
+                        'method'    => strtoupper($p->payment_method ?: 'Mobile Money'),
+                        'reference' => $p->reference ?: 'PAY-' . $p->id,
+                        'status'    => strtoupper($p->status ?: 'PAYÉ'),
+                    ];
+                }
+                $totals = [
+                    'Nombre de paiements'  => count($payments),
+                    'Montant total réglé'  => $sumPaid
+                ];
+                break;
+
+            case 'invoices_list':
+                $invoices = \App\Models\SubscriptionInvoice::with(['company'])->get();
+                $sumInv = 0;
+                foreach ($invoices as $inv) {
+                    $amt = floatval($inv->total_amount || 0);
+                    $sumInv += $amt;
+                    $rows[] = [
+                        'number'       => $inv->invoice_number,
+                        'company'      => $inv->company ? $inv->company->name : 'N/A',
+                        'period'       => strtoupper($inv->billing_period ?: 'Mensuel'),
+                        'total_amount' => number_format($amt, 0, ',', ' '),
+                        'issue_date'   => $inv->issue_date ? $inv->issue_date->format('d/m/Y') : '',
+                        'due_date'     => $inv->due_date ? $inv->due_date->format('d/m/Y') : '',
+                        'status'       => strtoupper($inv->status ?: 'ÉMISE'),
+                    ];
+                }
+                $totals = [
+                    'Nombre de factures' => count($invoices),
+                    'Montant total émis' => $sumInv
                 ];
                 break;
 

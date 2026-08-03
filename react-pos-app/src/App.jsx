@@ -28,6 +28,7 @@ import { InstallPWAButton } from './components/InstallPWAButton'
 import { AnimatedBubbles } from './components/AnimatedBubbles'
 import logo from './assets/logo.jpg'
 import { BranchSelectionPage } from './pages/BranchSelectionPage'
+import { SessionLockScreen } from './components/SessionLockScreen'
 import { Dashboard } from './pages/Dashboard'
 import { DocumentCenter } from './pages/DocumentCenter'
 import { CommunicationCenter } from './pages/CommunicationCenter'
@@ -133,6 +134,57 @@ function MainContent() {
     document.body.style.overflow = menuOpen ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
   }, [menuOpen])
+
+  // Partie 6 : Détection du survol de l'extrême bord gauche (x <= 10px) pour ouvrir la sidebar
+  useEffect(() => {
+    let hoverTimer;
+    const handleMouseMove = (e) => {
+      if (window.innerWidth <= 768) return; // Sur mobile/tactile, conserver le bouton tactile
+      if (e.clientX <= 10) {
+        if (!hoverTimer) {
+          hoverTimer = setTimeout(() => {
+            setMenuOpen(true);
+          }, 150);
+        }
+      } else if (e.clientX > 300) {
+        if (hoverTimer) {
+          clearTimeout(hoverTimer);
+          hoverTimer = null;
+        }
+      }
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      if (hoverTimer) clearTimeout(hoverTimer);
+    };
+  }, []);
+
+  // Partie 7 : Verrouillage automatique de session par inactivité (5 minutes)
+  const [isSessionLocked, setIsSessionLocked] = useState(false);
+  const { logout } = useApp();
+
+  useEffect(() => {
+    if (!user) return;
+    let idleTimer;
+    const IDLE_TIMEOUT = 5 * 60 * 1000;
+
+    const resetIdleTimer = () => {
+      if (idleTimer) clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        setIsSessionLocked(true);
+      }, IDLE_TIMEOUT);
+    };
+
+    const events = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart'];
+    events.forEach(evt => window.addEventListener(evt, resetIdleTimer));
+    resetIdleTimer();
+
+    return () => {
+      if (idleTimer) clearTimeout(idleTimer);
+      events.forEach(evt => window.removeEventListener(evt, resetIdleTimer));
+    };
+  }, [user]);
 
   // État des accordéons de la navigation latérale (ouvert/fermé)
   const [openNavGroups, setOpenNavGroups] = useState({
@@ -282,6 +334,20 @@ function MainContent() {
   // Bloquer l'accès à toute l'application en cas de maintenance (Sauf pour le Super-Admin ou pendant la connexion Admin)
   if (maintenanceInfo && !isSuperAdmin && activeTab !== 'auth') {
     return <MaintenanceScreen maintenanceInfo={maintenanceInfo} onAdminLogin={() => setActiveTab('auth')} />;
+  }
+
+  // Verrouillage automatique de session par inactivité
+  if (isSessionLocked && user) {
+    return (
+      <SessionLockScreen
+        user={user}
+        onUnlock={() => setIsSessionLocked(false)}
+        onSwitchAccount={() => {
+          setIsSessionLocked(false);
+          logout();
+        }}
+      />
+    );
   }
 
   const isAuthenticated = !!(user && (user.id || user.email || user.name));

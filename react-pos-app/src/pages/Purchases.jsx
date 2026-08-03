@@ -169,7 +169,7 @@ export const Purchases = () => {
       const activeBranchId = parseInt(selectedBranchId || user?.branch_id || (branches[0] && branches[0].id) || '1');
       await axios.post('/v1/purchases', {
         branch_id: activeBranchId,
-        supplier_id: parseInt(supplierId),
+        supplier_id: supplierId ? parseInt(supplierId) : null,
         status,
         payment_status: paymentStatus === 'partially_paid' ? 'partial' : paymentStatus,
         amount_paid: parseFloat(amountPaid || '0'),
@@ -313,14 +313,13 @@ export const Purchases = () => {
                     </div>
                   )}
                   <div className="form-group">
-                    <label className="form-label">Fournisseur *</label>
+                    <label className="form-label">Fournisseur (Optionnel)</label>
                     <select 
                       className="form-control" 
                       value={supplierId}
                       onChange={(e) => setSupplierId(e.target.value)}
-                      required
                     >
-                      <option value="">Sélectionner...</option>
+                      <option value="">[ Aucun fournisseur ]</option>
                       {suppliers.map(s => (
                         <option key={s.id} value={s.id}>{s.name} (Solde : {s.debt_balance} XOF)</option>
                       ))}

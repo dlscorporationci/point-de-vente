@@ -159,4 +159,68 @@ class SupplierController extends Controller
 
         return response()->json(['message' => 'Fournisseur supprimé avec succès.']);
     }
+
+    /**
+     * Liste des packs de fournisseurs.
+     */
+    public function getPacks(Request $request)
+    {
+        $companyId = app(\App\Services\TenantManager::class)->getCompanyId();
+        $packs = \App\Models\SupplierPack::with(['types.categories'])->where('company_id', $companyId)->get();
+        return response()->json($packs);
+    }
+
+    /**
+     * Création d'un pack de fournisseurs.
+     */
+    public function storePack(Request $request)
+    {
+        $companyId = app(\App\Services\TenantManager::class)->getCompanyId();
+        $validated = $request->validate([
+            'name' => 'required|string|max:100',
+            'description' => 'nullable|string',
+        ]);
+        $validated['company_id'] = $companyId;
+        $validated['uuid'] = (string) \Illuminate\Support\Str::uuid();
+
+        $pack = \App\Models\SupplierPack::create($validated);
+        return response()->json($pack, 201);
+    }
+
+    /**
+     * Liste des types de fournisseurs.
+     */
+    public function getTypes(Request $request)
+    {
+        $companyId = app(\App\Services\TenantManager::class)->getCompanyId();
+        $types = \App\Models\SupplierType::with(['pack', 'categories'])->where('company_id', $companyId)->get();
+        return response()->json($types);
+    }
+
+    /**
+     * Création d'un type de fournisseur.
+     */
+    public function storeType(Request $request)
+    {
+        $companyId = app(\App\Services\TenantManager::class)->getCompanyId();
+        $validated = $request->validate([
+            'name' => 'required|string|max:100',
+            'pack_id' => 'nullable|exists:supplier_packs,id',
+            'code' => 'nullable|string|max:50',
+            'category_ids' => 'nullable|array',
+            'category_ids.*' => 'exists:categories,id',
+        ]);
+        $categoryIds = $request->input('category_ids', []);
+        unset($validated['category_ids']);
+
+        $validated['company_id'] = $companyId;
+        $validated['uuid'] = (string) \Illuminate\Support\Str::uuid();
+
+        $type = \App\Models\SupplierType::create($validated);
+        if (!empty($categoryIds)) {
+            $type->categories()->sync($categoryIds);
+        }
+
+        return response()->json($type->load('categories'), 201);
+    }
 }

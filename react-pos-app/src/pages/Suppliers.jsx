@@ -30,6 +30,14 @@ export const Suppliers = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
+  // Packs et Types de Fournisseurs
+  const [activeTab, setActiveTab] = useState('suppliers'); // 'suppliers' | 'packs'
+  const [packs, setPacks] = useState([]);
+  const [showPackModal, setShowPackModal] = useState(false);
+  const [packName, setPackName] = useState('');
+  const [packDesc, setPackDesc] = useState('');
+  const [packSaving, setPackSaving] = useState(false);
+
   // Charger les données
   const loadData = async () => {
     if (!token) return;
@@ -45,6 +53,9 @@ export const Suppliers = () => {
         }
         const res = await axios.get(url);
         supData = res.data.data || [];
+
+        const packRes = await axios.get('/v1/supplier-packs');
+        setPacks(packRes.data || []);
       } catch (netErr) {
         console.warn('Mode hors-ligne, chargement des fournisseurs Dexie:', netErr);
         supData = await db.suppliers.where('company_id').equals(companyId).toArray();
@@ -58,6 +69,24 @@ export const Suppliers = () => {
       setError('Impossible de charger le référentiel des fournisseurs.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreatePack = async (e) => {
+    e.preventDefault();
+    setPackSaving(true);
+    setError(null);
+    try {
+      await axios.post('/v1/supplier-packs', { name: packName, description: packDesc });
+      setSuccess(`Pack de fournisseurs "${packName}" créé avec succès.`);
+      setPackName('');
+      setPackDesc('');
+      setShowPackModal(false);
+      loadData();
+    } catch (err) {
+      setError('Erreur lors de la création du pack.');
+    } finally {
+      setPackSaving(false);
     }
   };
 
@@ -165,14 +194,35 @@ export const Suppliers = () => {
             <p className="suppliers-subtitle">Comptes courants & Coordonnées d'achats</p>
           </div>
           
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <div className="btn-group me-2" role="group">
+              <button 
+                className={`btn btn-sm ${activeTab === 'suppliers' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                onClick={() => setActiveTab('suppliers')}
+              >
+                🤝 Répertoire
+              </button>
+              <button 
+                className={`btn btn-sm ${activeTab === 'packs' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                onClick={() => setActiveTab('packs')}
+              >
+                📦 Packs & Types
+              </button>
+            </div>
+
             <button onClick={() => setShowExportModal(true)} className="btn btn-outline-secondary" style={{ fontWeight: 700 }}>
               <i className="fa-solid fa-file-export me-1"></i> Exporter
             </button>
-            {hasCreatePermission && (
-              <button onClick={() => openForm(null)} className="btn btn-primary">
-                <i className="fa-solid fa-plus me-1"></i> Nouveau Fournisseur
+            {activeTab === 'packs' ? (
+              <button onClick={() => setShowPackModal(true)} className="btn btn-primary">
+                <i className="fa-solid fa-plus me-1"></i> Nouveau Pack
               </button>
+            ) : (
+              hasCreatePermission && (
+                <button onClick={() => openForm(null)} className="btn btn-primary">
+                  <i className="fa-solid fa-plus me-1"></i> Nouveau Fournisseur
+                </button>
+              )
             )}
           </div>
         </div>
@@ -251,6 +301,76 @@ export const Suppliers = () => {
             </div>
           </div>
         )}
+
+        {/* Modal de création de Pack de Fournisseurs (Partie 12) */}
+        {showPackModal && (
+          <div className="modal-overlay">
+            <div className="modal-card card" style={{ maxWidth: '500px' }}>
+              <h3>📦 Nouveau Pack de Fournisseurs</h3>
+              <form onSubmit={handleCreatePack}>
+                <div className="form-group" style={{ marginBottom: '16px' }}>
+                  <label className="form-label">Nom du Pack *</label>
+                  <input 
+                    type="text" 
+                    className="form-control"
+                    placeholder="Ex: Grossistes Quincaillerie" 
+                    value={packName}
+                    onChange={(e) => setPackName(e.target.value)}
+                    required 
+                  />
+                </div>
+                <div className="form-group" style={{ marginBottom: '20px' }}>
+                  <label className="form-label">Description / Catégories associées</label>
+                  <textarea 
+                    className="form-control" 
+                    rows={3} 
+                    placeholder="Ex: Catégories Ciment, Peinture, Plomberie..."
+                    value={packDesc}
+                    onChange={(e) => setPackDesc(e.target.value)}
+                  />
+                </div>
+                <div className="modal-actions" style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                  <button type="button" onClick={() => setShowPackModal(false)} className="btn btn-secondary">Annuler</button>
+                  <button type="submit" disabled={packSaving} className="btn btn-primary">
+                    {packSaving ? 'Enregistrement...' : 'Créer le Pack'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* CONTENU SECONDAIRE : VUE PACKS & TYPES */}
+        {activeTab === 'packs' ? (
+          <div style={{ marginTop: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
+              {packs.length === 0 ? (
+                <div className="empty-state card" style={{ padding: '32px', textAlign: 'center', gridColumn: '1 / -1' }}>
+                  <i className="fa-solid fa-boxes-packing" style={{ fontSize: '36px', color: '#64748b', marginBottom: '12px' }}></i>
+                  <p>Aucun pack de fournisseurs configuré pour le moment.</p>
+                  <button onClick={() => setShowPackModal(true)} className="btn btn-primary btn-sm" style={{ marginTop: '12px' }}>
+                    + Créer le premier Pack
+                  </button>
+                </div>
+              ) : (
+                packs.map(pack => (
+                  <div key={pack.id} className="card" style={{ padding: '20px', border: '1px solid var(--border-color)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <h4 style={{ margin: 0, fontWeight: 'bold', color: 'var(--color-primary)' }}>📦 {pack.name}</h4>
+                      <span className="badge badge-success">Actif</span>
+                    </div>
+                    <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 12px 0' }}>
+                      {pack.description || 'Aucune description'}
+                    </p>
+                    <div style={{ fontSize: '12px', color: '#94a3b8', borderTop: '1px solid var(--border-color)', paddingTop: '8px' }}>
+                      Types associés : {pack.types ? pack.types.length : 0} type(s)
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        ) : null}
 
         {/* Recherche */}
         <form onSubmit={handleSearchSubmit} className="filters-bar">

@@ -571,6 +571,237 @@ class SuperAdminController extends Controller
     }
 
     /**
+     * Statistiques globales agrégées du SuperAdmin (Plateforme SaaS ApexPOS).
+     */
+    public function globalStats(Request $request)
+    {
+        $this->authorizeSuperAdmin($request);
+
+        // 1. Entreprises
+        $totalCompanies = Company::count();
+        $activeCompanies = Company::where('status', 'active')->count();
+        $suspendedCompanies = Company::where('status', 'inactive')->count();
+        $trialCompanies = \App\Models\CompanySubscription::where('status', 'trial')->count();
+
+        // 2. Abonnements
+        $totalSubscriptions = \App\Models\CompanySubscription::count();
+        $activeSubscriptions = \App\Models\CompanySubscription::where('status', 'active')->count();
+        $expiredSubscriptions = \App\Models\CompanySubscription::where('status', 'expired')->count();
+        $expiringSoon = \App\Models\CompanySubscription::where('status', 'active')
+            ->whereBetween('end_date', [now(), now()->addDays(7)])->count();
+
+        // 3. Financier & Paiements
+        $totalRevenue = \App\Models\SubscriptionPayment::where('status', 'paid')->sum('amount');
+        $receivedPaymentsCount = \App\Models\SubscriptionPayment::where('status', 'paid')->count();
+        $pendingPaymentsCount = \App\Models\SubscriptionPayment::where('status', 'pending')->count();
+        $failedPaymentsCount = \App\Models\SubscriptionPayment::where('status', 'failed')->count();
+
+        // 4. Factures
+        $totalInvoices = \App\Models\SubscriptionInvoice::count();
+        $unpaidInvoices = \App\Models\SubscriptionInvoice::whereIn('status', ['issued', 'overdue'])->count();
+        $unpaidAmount = \App\Models\SubscriptionInvoice::whereIn('status', ['issued', 'overdue'])->sum('total_amount');
+
+        // 5. Structure & Volumes
+        $totalBranches = \App\Models\Branch::count();
+        $totalUsers = User::withoutGlobalScopes()->count();
+        $activeUsers = User::withoutGlobalScopes()->where('status', 'active')->count();
+
+        // 6. Agrégation par mois (Chiffre d'affaires & Abonnements)
+        $monthlyRevenue = \App\Models\SubscriptionPayment::where('status', 'paid')
+            ->selectRaw('DATE_FORMAT(payment_date, "%Y-%m") as month, SUM(amount) as total')
+            ->groupBy('month')
+            ->orderBy('month', 'desc')
+            ->limit(12)
+            ->get();
+
+        return response()->json([
+            'overview' => [
+                'total_companies'        => $totalCompanies,
+                'active_companies'       => $activeCompanies,
+                'suspended_companies'    => $suspendedCompanies,
+                'trial_companies'        => $trialCompanies,
+                'total_subscriptions'    => $totalSubscriptions,
+                'active_subscriptions'   => $activeSubscriptions,
+                'expired_subscriptions'  => $expiredSubscriptions,
+                'expiring_soon'          => $expiringSoon,
+                'total_revenue'          => (float) $totalRevenue,
+                'received_payments_count'=> $receivedPaymentsCount,
+                'pending_payments_count' => $pendingPaymentsCount,
+                'failed_payments_count'  => $failedPaymentsCount,
+                'total_invoices'         => $totalInvoices,
+                'unpaid_invoices'        => $unpaidInvoices,
+                'unpaid_amount'          => (float) $unpaidAmount,
+                'total_branches'         => $totalBranches,
+                'total_users'            => $totalUsers,
+                'active_users'           => $activeUsers,
+            ],
+            'monthly_revenue' => $monthlyRevenue
+        ]);
+    }
+
+    /**
+     * Liste et gestion des abonnements des entreprises.
+     */
+    public function subscriptionsList(Request $request)
+    {
+        $this->authorizeSuperAdmin($request);
+
+        $query = \App\Models\CompanySubscription::with(['company', 'plan', 'payments', 'invoices']);
+
+        if ($request->has('status') && !empty($request->status)) {
+            $query->where('status', $request->status);
+        }
+        if ($request->has('company_id') && !empty($request->company_id)) {
+            $query->where('company_id', $request->company_id);
+        }
+
+        return response()->json($query->orderByDesc('created_at')->paginate(20));
+    }
+
+    /**
+     * Créer / Renouveler un abonnement d'entreprise.
+     */
+    public function createSubscription(Request $request)
+    {
+        $this->authorizeSuperAdmin($request);
+
+        $validated = $request->validate([
+            'company_id'     => 'required|exists:companies,id',
+            'plan_id'        => 'nullable|exists:subscription_plans,id',
+            'billing_period' => 'required|in:monthly,quarterly,semi_annual,annual,custom',
+            'amount'         => 'required|numeric|min:0',
+            'start_date'     => 'required|date',
+            'end_date'       => 'required|date|after:start_date',
+            'status'         => 'required|in:trial,active,pending,expired,suspended,cancelled',
+            'auto_renew'     => 'boolean',
+        ]);
+
+        $uuid = (string) \Illuminate\Support\Str::uuid();
+        $validated['uuid'] = $uuid;
+        $validated['currency'] = 'FCFA';
+
+        $sub = \App\Models\CompanySubscription::create($validated);
+
+        // Mettre à jour aussi le statut de l'entreprise si nécessaire
+        $company = Company::find($validated['company_id']);
+        if ($company && $validated['status'] === 'active') {
+            $company->status = 'active';
+            $company->save();
+        }
+
+        return response()->json(['message' => 'Abonnement créé avec succès.', 'subscription' => $sub->load(['company', 'plan'])], 201);
+    }
+
+    /**
+     * Liste et gestion des paiements d'abonnement.
+     */
+    public function paymentsList(Request $request)
+    {
+        $this->authorizeSuperAdmin($request);
+
+        $query = \App\Models\SubscriptionPayment::with(['company', 'subscription.plan', 'user']);
+
+        if ($request->has('status') && !empty($request->status)) {
+            $query->where('status', $request->status);
+        }
+        if ($request->has('company_id') && !empty($request->company_id)) {
+            $query->where('company_id', $request->company_id);
+        }
+
+        return response()->json($query->orderByDesc('payment_date')->paginate(20));
+    }
+
+    /**
+     * Valider ou enregistrer un paiement d'abonnement.
+     */
+    public function storePayment(Request $request)
+    {
+        $this->authorizeSuperAdmin($request);
+
+        $validated = $request->validate([
+            'company_id'      => 'required|exists:companies,id',
+            'subscription_id' => 'nullable|exists:company_subscriptions,id',
+            'amount'          => 'required|numeric|min:0',
+            'payment_method'  => 'required|in:cash,mobile_money,bank_transfer,card,cheque',
+            'reference'       => 'nullable|string|max:100',
+            'status'          => 'required|in:pending,paid,failed,cancelled,refunded',
+            'notes'           => 'nullable|string',
+        ]);
+
+        $uuid = (string) \Illuminate\Support\Str::uuid();
+        $validated['uuid'] = $uuid;
+        $validated['currency'] = 'FCFA';
+        $validated['payment_date'] = now();
+        $validated['user_id'] = $request->user()->id;
+        if ($validated['status'] === 'paid') {
+            $validated['validated_at'] = now();
+        }
+
+        $payment = \App\Models\SubscriptionPayment::create($validated);
+
+        // Si associé à un abonnement et statut paid, mettre à jour l'abonnement
+        if ($payment->subscription_id && $payment->status === 'paid') {
+            $sub = \App\Models\CompanySubscription::find($payment->subscription_id);
+            if ($sub) {
+                $sub->status = 'active';
+                $sub->save();
+            }
+        }
+
+        return response()->json(['message' => 'Paiement enregistré avec succès.', 'payment' => $payment->load(['company', 'subscription'])], 201);
+    }
+
+    /**
+     * Liste et gestion des factures d'abonnement.
+     */
+    public function invoicesList(Request $request)
+    {
+        $this->authorizeSuperAdmin($request);
+
+        $query = \App\Models\SubscriptionInvoice::with(['company', 'subscription.plan', 'payment']);
+
+        if ($request->has('status') && !empty($request->status)) {
+            $query->where('status', $request->status);
+        }
+        if ($request->has('company_id') && !empty($request->company_id)) {
+            $query->where('company_id', $request->company_id);
+        }
+
+        return response()->json($query->orderByDesc('issue_date')->paginate(20));
+    }
+
+    /**
+     * Générer une facture pour un abonnement.
+     */
+    public function generateInvoice(Request $request)
+    {
+        $this->authorizeSuperAdmin($request);
+
+        $validated = $request->validate([
+            'company_id'      => 'required|exists:companies,id',
+            'subscription_id' => 'nullable|exists:company_subscriptions,id',
+            'payment_id'      => 'nullable|exists:subscription_payments,id',
+            'billing_period'  => 'required|string',
+            'subtotal'        => 'required|numeric|min:0',
+            'tax_amount'      => 'nullable|numeric|min:0',
+            'total_amount'    => 'required|numeric|min:0',
+            'status'          => 'required|in:draft,issued,paid,partially_paid,overdue,cancelled',
+            'issue_date'      => 'required|date',
+            'due_date'        => 'required|date|after_or_equal:issue_date',
+        ]);
+
+        $nextNum = \App\Models\SubscriptionInvoice::count() + 1;
+        $invNum = 'INV-' . date('Y') . '-' . str_pad($nextNum, 4, '0', STR_PAD_LEFT);
+
+        $validated['uuid'] = (string) \Illuminate\Support\Str::uuid();
+        $validated['invoice_number'] = $invNum;
+
+        $invoice = \App\Models\SubscriptionInvoice::create($validated);
+
+        return response()->json(['message' => 'Facture générée avec succès.', 'invoice' => $invoice->load(['company', 'subscription'])], 201);
+    }
+
+    /**
      * Helper pour valider le statut Super Admin du demandeur.
      */
     protected function authorizeSuperAdmin(Request $request)

@@ -152,6 +152,44 @@ export const PointDeVente = () => {
       : true;
     return matchesCategory && matchesSearch && p.status === 'active';
   });
+  // Partie 9 & 10 : Protection de stock au POS & Remise à 0 si dépassement
+  const handleAddToCart = (product) => {
+    const availableStock = parseFloat(product.quantity !== undefined ? product.quantity : (product.stock !== undefined ? product.stock : 0));
+    const cartItem = cart.find(item => item.product.id === product.id);
+    const currentQty = cartItem ? cartItem.quantity : 0;
+    const requestedQty = currentQty + 1;
+
+    if (requestedQty > availableStock) {
+      if (cartItem) {
+        removeItem(product.id);
+      }
+      setError(`⚠️ Stock insuffisant : "${product.name}" (stock disponible : ${availableStock}). La quantité a été remise à 0.`);
+      return;
+    }
+
+    addItem(product);
+  };
+
+  const handleUpdateQty = (productId, newQty) => {
+    const parsedQty = parseFloat(newQty || '0');
+    if (parsedQty <= 0) {
+      removeItem(productId);
+      return;
+    }
+
+    const item = cart.find(i => i.product.id === productId);
+    if (!item) return;
+
+    const availableStock = parseFloat(item.product.quantity !== undefined ? item.product.quantity : (item.product.stock !== undefined ? item.product.stock : 0));
+
+    if (parsedQty > availableStock) {
+      removeItem(productId);
+      setError(`⚠️ Stock insuffisant : "${item.product.name}" (stock disponible : ${availableStock}). La quantité a été remise à 0.`);
+      return;
+    }
+
+    updateQuantity(productId, parsedQty);
+  };
 
   const totals = getTotals();
 
@@ -159,8 +197,6 @@ export const PointDeVente = () => {
   const cashChange = paymentMethod === 'cash' && amountReceived 
     ? parseFloat(amountReceived) - totals.total 
     : 0;
-
-
 
   const handleCheckoutSubmit = async (e) => {
     e.preventDefault();
@@ -333,30 +369,60 @@ export const PointDeVente = () => {
               </div>
             ) : (
               <div className="pos-products-grid">
-                {filteredProducts.map(p => (
-                  <div key={p.id} onClick={() => addItem(p)} className="pos-product-card">
-                    <div className="pos-prod-img-box">
-                      {p.image_path ? (
-                        <img 
-                          src={getImageUrl(p.image_path)} 
-                          alt={p.name} 
-                          className="pos-prod-img"
-                        />
-                      ) : (
-                        <div className="pos-prod-img-placeholder">
-                          <i className="fa-solid fa-box"></i>
-                        </div>
-                      )}
-                      <span className="pos-prod-price-badge">
-                        {new Intl.NumberFormat('fr-FR').format(p.selling_price)} XOF
-                      </span>
+                {filteredProducts.map(p => {
+                  const stockVal = parseFloat(p.quantity !== undefined ? p.quantity : (p.stock !== undefined ? p.stock : 0));
+                  const alertVal = parseFloat(p.alert_quantity || 5);
+                  const isOut = stockVal <= 0;
+                  const isLow = !isOut && stockVal <= alertVal;
+
+                  return (
+                    <div key={p.id} onClick={() => handleAddToCart(p)} className="pos-product-card" style={{ position: 'relative' }}>
+                      {/* Badge de Stock Disponible (Partie 9) */}
+                      <div style={{
+                        position: 'absolute',
+                        top: '8px',
+                        left: '8px',
+                        zIndex: 3,
+                        padding: '3px 8px',
+                        borderRadius: '12px',
+                        fontSize: '11px',
+                        fontWeight: 'bold',
+                        backgroundColor: isOut ? '#ef4444' : (isLow ? '#f59e0b' : '#10b981'),
+                        color: '#ffffff',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                      }}>
+                        {isOut ? (
+                          <><i className="fa-solid fa-ban me-1"></i> Rupture (0)</>
+                        ) : isLow ? (
+                          <><i className="fa-solid fa-triangle-exclamation me-1"></i> Faible: {stockVal}</>
+                        ) : (
+                          <><i className="fa-solid fa-boxes-stacked me-1"></i> Stock: {stockVal}</>
+                        )}
+                      </div>
+
+                      <div className="pos-prod-img-box">
+                        {p.image_path ? (
+                          <img 
+                            src={getImageUrl(p.image_path)} 
+                            alt={p.name} 
+                            className="pos-prod-img"
+                          />
+                        ) : (
+                          <div className="pos-prod-img-placeholder">
+                            <i className="fa-solid fa-box"></i>
+                          </div>
+                        )}
+                        <span className="pos-prod-price-badge">
+                          {new Intl.NumberFormat('fr-FR').format(p.selling_price)} XOF
+                        </span>
+                      </div>
+                      <div className="pos-prod-info">
+                        <div className="pos-prod-name">{p.name}</div>
+                        <div className="pos-prod-sku">{p.sku}</div>
+                      </div>
                     </div>
-                    <div className="pos-prod-info">
-                      <div className="pos-prod-name">{p.name}</div>
-                      <div className="pos-prod-sku">{p.sku}</div>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -364,14 +430,14 @@ export const PointDeVente = () => {
           {/* COLONNE DROITE: PANIER / TOTAL */}
           <div className="pos-right-panel">
             <div className="pos-cart-header">
-              <h3>🛒 Panier</h3>
+              <h3><i className="fa-solid fa-cart-shopping me-2 text-primary"></i> Panier</h3>
               <button onClick={clearCart} className="btn-clear-cart">Vider</button>
             </div>
 
             <div className="pos-cart-list">
               {cart.length === 0 ? (
                 <div className="pos-empty-cart">
-                  <span className="cart-empty-icon">🛒</span>
+                  <span className="cart-empty-icon"><i className="fa-solid fa-basket-shopping text-muted"></i></span>
                   <p>Panier vide. Cliquez sur un produit pour l'ajouter.</p>
                 </div>
               ) : (
@@ -416,16 +482,16 @@ export const PointDeVente = () => {
                     </div>
 
                     <div className="pos-item-controls">
-                      {/* Quantité */}
+                      {/* Quantité avec protection de stock */}
                       <div className="qty-picker">
-                        <button onClick={() => updateQuantity(item.product.id, item.quantity - 1)} className="qty-btn">-</button>
+                        <button onClick={() => handleUpdateQty(item.product.id, item.quantity - 1)} className="qty-btn">-</button>
                         <input 
                           type="number" 
                           className="qty-val" 
                           value={item.quantity} 
-                          onChange={(e) => updateQuantity(item.product.id, e.target.value)}
+                          onChange={(e) => handleUpdateQty(item.product.id, e.target.value)}
                         />
-                        <button onClick={() => updateQuantity(item.product.id, item.quantity + 1)} className="qty-btn">+</button>
+                        <button onClick={() => handleUpdateQty(item.product.id, item.quantity + 1)} className="qty-btn">+</button>
                       </div>
 
                       {/* Remise par ligne */}
@@ -438,7 +504,7 @@ export const PointDeVente = () => {
                       />
 
                       {/* Supprimer */}
-                      <button onClick={() => removeItem(item.product.id)} className="btn-remove-item">🗑️</button>
+                      <button onClick={() => removeItem(item.product.id)} className="btn-remove-item" title="Supprimer du panier"><i className="fa-solid fa-trash text-danger"></i></button>
                     </div>
                   </div>
                 ))
@@ -479,7 +545,7 @@ export const PointDeVente = () => {
                 className="btn-checkout"
                 disabled={cart.length === 0}
               >
-                💵 Valider et Payer
+                <i className="fa-solid fa-credit-card me-2"></i> Valider et Payer
               </button>
             </div>
           </div>
@@ -490,7 +556,7 @@ export const PointDeVente = () => {
       {showPayModal && (
         <div className="modal-overlay">
           <div className="modal-card card" style={{ maxWidth: '440px' }}>
-            <h3>💵 Enregistrer le Paiement</h3>
+            <h3><i className="fa-solid fa-cash-register me-2 text-primary"></i> Enregistrer le Paiement</h3>
             
             <form onSubmit={handleCheckoutSubmit}>
               <div className="form-group">

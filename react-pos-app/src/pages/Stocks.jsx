@@ -16,9 +16,61 @@ export const Stocks = () => {
   const [selectedStockItem, setSelectedStockItem] = useState(null);
   const [showExportModal, setShowExportModal] = useState(false);
 
-  // Formulaire d'ajustement
+  // Subtabs et Filtres
+  const [activeTab, setActiveTab] = useState('stocks'); // 'stocks' | 'movements'
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'low' | 'out' | 'normal'
+  
+  // Modale d'ajustement à 3 modes (Partie 14)
+  const [adjustType, setAdjustType] = useState('addition'); // 'addition' | 'withdrawal' | 'correction'
+  const [reasonCode, setReasonCode] = useState('entry_error');
+  const [comment, setComment] = useState('');
   const [adjustQty, setAdjustQty] = useState('');
-  const [description, setDescription] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  // Formulaire d'ajustement
+  const triggerAdjust = (stockItem) => {
+    setSelectedStockItem(stockItem);
+    setAdjustType('addition');
+    setReasonCode('entry_error');
+    setComment('');
+    setAdjustQty('');
+    setShowAdjustModal(true);
+  };
+
+  const handleAdjustSubmit = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+    setSubmitting(true);
+
+    if (reasonCode === 'other' && !comment.trim()) {
+      setError('Le champ commentaire est obligatoire pour le motif "Autre".');
+      setSubmitting(false);
+      return;
+    }
+
+    try {
+      const branchId = selectedStockItem.branch_id || user?.branch_id || 1;
+      await axios.post('/v1/stock/adjust', {
+        branch_id: branchId,
+        product_id: selectedStockItem.product_id || selectedStockItem.id,
+        type: adjustType,
+        quantity: parseFloat(adjustQty || '0'),
+        reason_code: reasonCode,
+        comment: comment.trim() || null
+      });
+
+      setSuccess('Ajustement de stock enregistré avec succès.');
+      setShowAdjustModal(false);
+      setSelectedStockItem(null);
+      loadData();
+    } catch (err) {
+      setError(err.response?.data?.error || err.response?.data?.message || 'Erreur lors de l\'ajustement du stock.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   // États génériques
   const [loading, setLoading] = useState(false);
@@ -71,35 +123,6 @@ export const Stocks = () => {
     loadData();
   }, [token]);
 
-  const triggerAdjust = (stockItem) => {
-    setSelectedStockItem(stockItem);
-    setAdjustQty('');
-    setDescription('');
-    setShowAdjustModal(true);
-  };
-
-  const handleAdjustSubmit = async (e) => {
-    e.preventDefault();
-    setError(null);
-    setSuccess(null);
-
-    try {
-      const res = await axios.post('/v1/stock/adjust', {
-        branch_id: selectedStockItem.branch_id,
-        product_id: selectedStockItem.product_id,
-        quantity: parseFloat(adjustQty),
-        description
-      });
-
-      setSuccess('Ajustement de stock enregistré.');
-      setShowAdjustModal(false);
-      setSelectedStockItem(null);
-      loadData();
-    } catch (err) {
-      setError(err.response?.data?.error || 'Erreur lors de l\'ajustement du stock.');
-    }
-  };
-
   if (!token) {
     return (
       <div className="stocks-container">
@@ -141,50 +164,140 @@ export const Stocks = () => {
         {error && <div className="error-banner"><i className="fa-solid fa-circle-exclamation me-1"></i> {error}</div>}
         {success && <div className="success-banner"><i className="fa-solid fa-circle-check me-1"></i> {success}</div>}
 
-        {/* Modal d'ajustement */}
+        {/* Modal d'ajustement à 3 modes (Partie 14) */}
         {showAdjustModal && selectedStockItem && (
           <div className="modal-overlay">
-            <div className="modal-card card">
-              <h3><i className="fa-solid fa-screwdriver-wrench me-2 text-warning"></i> Ajuster le stock physique</h3>
-              <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px' }}>
-                Article : <strong>{selectedStockItem.product?.name}</strong> <br />
-                Stock actuel : <strong>{selectedStockItem.quantity} unités</strong> dans <strong>{selectedStockItem.branch?.name}</strong>
-              </p>
+            <div className="modal-card card" style={{ maxWidth: '520px' }}>
+              <h3><i className="fa-solid fa-screwdriver-wrench me-2 text-warning"></i> Ajustement de Stock Physique</h3>
+              <div style={{ padding: '12px', backgroundColor: '#0f172a', borderRadius: '8px', marginBottom: '16px', border: '1px solid #1e293b' }}>
+                <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#38bdf8' }}>{selectedStockItem.product?.name}</div>
+                <div style={{ fontSize: '12px', color: '#94a3b8' }}>
+                  Boutique: {selectedStockItem.branch?.name} • Stock système actuel: <strong style={{ color: '#f59e0b' }}>{selectedStockItem.quantity} unités</strong>
+                </div>
+              </div>
 
               <form onSubmit={handleAdjustSubmit}>
-                <div className="form-group">
-                  <label className="form-label">Quantité à ajuster (Saisir négatif pour perte/casse) *</label>
+                {/* Sélecteur du Mode d'Ajustement */}
+                <div className="form-group" style={{ marginBottom: '16px' }}>
+                  <label className="form-label">Type d'opération *</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+                    <button 
+                      type="button" 
+                      className={`btn btn-sm ${adjustType === 'addition' ? 'btn-success' : 'btn-outline-secondary'}`}
+                      onClick={() => setAdjustType('addition')}
+                    >
+                      ➕ Ajout (+)
+                    </button>
+                    <button 
+                      type="button" 
+                      className={`btn btn-sm ${adjustType === 'withdrawal' ? 'btn-danger' : 'btn-outline-secondary'}`}
+                      onClick={() => setAdjustType('withdrawal')}
+                    >
+                      ➖ Retrait (-)
+                    </button>
+                    <button 
+                      type="button" 
+                      className={`btn btn-sm ${adjustType === 'correction' ? 'btn-warning' : 'btn-outline-secondary'}`}
+                      onClick={() => setAdjustType('correction')}
+                    >
+                      📋 Correction
+                    </button>
+                  </div>
+                </div>
+
+                <div className="form-group" style={{ marginBottom: '16px' }}>
+                  <label className="form-label">
+                    {adjustType === 'addition' && 'Quantité à ajouter (+)'}
+                    {adjustType === 'withdrawal' && 'Quantité à retirer (-)'}
+                    {adjustType === 'correction' && 'Quantité physique réellement comptée en rayon'}
+                    *
+                  </label>
                   <input 
                     type="number" 
                     className="form-control" 
-                    placeholder="Ex: -5 pour retirer 5 unités, ou 10 pour ajouter"
+                    placeholder={adjustType === 'correction' ? 'Ex: 17' : 'Ex: 5'}
                     value={adjustQty}
                     onChange={(e) => setAdjustQty(e.target.value)}
                     required
                     step="0.01"
+                    min="0"
                   />
+                  {adjustType === 'correction' && adjustQty !== '' && (
+                    <div style={{ marginTop: '8px', fontSize: '13px', fontWeight: 'bold', color: (parseFloat(adjustQty) - parseFloat(selectedStockItem.quantity)) >= 0 ? '#10b981' : '#ef4444' }}>
+                      Écart calculé : {(parseFloat(adjustQty) - parseFloat(selectedStockItem.quantity)) > 0 ? '+' : ''}
+                      {(parseFloat(adjustQty) - parseFloat(selectedStockItem.quantity))} unités
+                    </div>
+                  )}
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">Motif / Description *</label>
-                  <input 
-                    type="text" 
-                    className="form-control" 
-                    placeholder="Ex: Perte humidité, Casse de chantier, Inventaire correctif"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
+                <div className="form-group" style={{ marginBottom: '16px' }}>
+                  <label className="form-label">Motif de l'ajustement *</label>
+                  <select 
+                    className="form-control"
+                    value={reasonCode}
+                    onChange={(e) => setReasonCode(e.target.value)}
                     required
+                  >
+                    <option value="entry_error">Erreur de saisie</option>
+                    <option value="counting_error">Erreur de comptage / inventaire</option>
+                    <option value="loss">Perte</option>
+                    <option value="breakage">Casse / Endommagé</option>
+                    <option value="theft">Vol / Disparition</option>
+                    <option value="deteriorated">Produit détérioré / Périmé</option>
+                    <option value="other">Autre (préciser dans les remarques)</option>
+                  </select>
+                </div>
+
+                <div className="form-group" style={{ marginBottom: '20px' }}>
+                  <label className="form-label">Commentaire / Remarques {reasonCode === 'other' ? '*' : '(optionnel)'}</label>
+                  <textarea 
+                    className="form-control" 
+                    rows={2}
+                    placeholder="Précisez la raison détaillée de cet ajustement..."
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    required={reasonCode === 'other'}
                   />
                 </div>
 
-                <div className="modal-actions">
-                  <button type="button" onClick={() => setShowAdjustModal(false)} className="btn btn-cancel">Annuler</button>
-                  <button type="submit" className="btn btn-primary">Valider l'ajustement</button>
+                <div className="modal-actions" style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                  <button type="button" onClick={() => setShowAdjustModal(false)} className="btn btn-secondary">Annuler</button>
+                  <button type="submit" disabled={submitting} className="btn btn-primary">
+                    {submitting ? 'Validation...' : 'Valider l\'ajustement'}
+                  </button>
                 </div>
               </form>
             </div>
           </div>
         )}
+
+        {/* CARTES KPI (Partie 13) */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+          <div className="card" style={{ padding: '16px', borderLeft: '4px solid #3b82f6' }}>
+            <div style={{ fontSize: '12px', color: '#64748b' }}>Articles en Stock</div>
+            <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#38bdf8' }}>{currentStocks.length}</div>
+          </div>
+          <div className="card" style={{ padding: '16px', borderLeft: '4px solid #f59e0b' }}>
+            <div style={{ fontSize: '12px', color: '#64748b' }}>Stock Faible</div>
+            <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#f59e0b' }}>
+              {currentStocks.filter(s => parseFloat(s.quantity) > 0 && parseFloat(s.quantity) <= parseFloat(s.product?.alert_quantity || 10)).length}
+            </div>
+          </div>
+          <div className="card" style={{ padding: '16px', borderLeft: '4px solid #ef4444' }}>
+            <div style={{ fontSize: '12px', color: '#64748b' }}>Ruptures de Stock</div>
+            <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#ef4444' }}>
+              {currentStocks.filter(s => parseFloat(s.quantity) <= 0).length}
+            </div>
+          </div>
+          <div className="card" style={{ padding: '16px', borderLeft: '4px solid #10b981' }}>
+            <div style={{ fontSize: '12px', color: '#64748b' }}>Valeur Estimée (FCFA)</div>
+            <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#10b981' }}>
+              {new Intl.NumberFormat('fr-FR').format(
+                currentStocks.reduce((sum, item) => sum + (parseFloat(item.quantity || 0) * parseFloat(item.product?.cost_price || item.product?.selling_price || 0)), 0)
+              )}
+            </div>
+          </div>
+        </div>
 
         <div className="stocks-sections-grid">
           {/* Section A: Stock par article */}

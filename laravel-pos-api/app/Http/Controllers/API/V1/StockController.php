@@ -62,7 +62,7 @@ class StockController extends Controller
     }
 
     /**
-     * Effectue un ajustement manuel de stock (pertes, casse, inventaire correctif).
+     * Effectue un ajustement de stock à 3 modes (Ajout, Retrait, Correction d'inventaire).
      */
     public function adjust(Request $request)
     {
@@ -71,15 +71,21 @@ class StockController extends Controller
         }
 
         $validated = $request->validate([
-            'branch_id' => 'required|exists:branches,id',
-            'product_id' => 'required|exists:products,id',
-            'quantity' => 'required|numeric', // négatif ou positif
-            'description' => 'required|string|max:255',
+            'branch_id'   => 'required|exists:branches,id',
+            'product_id'  => 'required|exists:products,id',
+            'type'        => 'required|in:addition,withdrawal,correction',
+            'quantity'    => 'required|numeric|min:0', // Quantité ajoutée, retirée, ou nouvelle quantité comptée
+            'reason_code' => 'required|in:counting_error,loss,breakage,theft,deteriorated,entry_error,other',
+            'comment'     => 'nullable|string|max:500',
         ]);
 
-        $companyId = app(\App\Services\TenantManager::class)->getCompanyId();
+        if ($validated['reason_code'] === 'other' && empty($validated['comment'])) {
+            return response()->json(['error' => 'Le champ commentaire est obligatoire pour le motif "autre".'], 422);
+        }
 
-        $result = DB::transaction(function () use ($validated, $companyId) {
+        $companyId = app(\App\Services\TenantManager::class)->getCompanyId() ?: ($request->user() ? $request->user()->company_id : 1);
+
+        $result = DB::transaction(function () use ($validated, $companyId, $request) {
             $branchProduct = BranchProduct::where('branch_id', $validated['branch_id'])
                 ->where('product_id', $validated['product_id'])
                 ->lockForUpdate()
@@ -93,52 +99,97 @@ class StockController extends Controller
                 ]);
             }
 
-            // Vérifier que le stock résultant ne devienne pas négatif
-            if ($branchProduct->quantity + $validated['quantity'] < 0) {
-                throw new \Exception("Ajustement impossible : le stock de cette boutique ne peut pas devenir négatif.");
+            $prevQty = (float) $branchProduct->quantity;
+            $qtyChange = 0.00;
+            $newQty = 0.00;
+            $type = $validated['type'];
+
+            if ($type === 'addition') {
+                $qtyChange = (float) $validated['quantity'];
+                $newQty = $prevQty + $qtyChange;
+            } elseif ($type === 'withdrawal') {
+                $qtyChange = -1 * abs((float) $validated['quantity']);
+                $newQty = $prevQty + $qtyChange;
+                if ($newQty < 0) {
+                    throw new \Exception("Retrait impossible : le stock disponible est insuffisant ({$prevQty}).");
+                }
+            } elseif ($type === 'correction') {
+                $newQty = (float) $validated['quantity'];
+                $qtyChange = $newQty - $prevQty;
             }
 
-            // Mettre à jour le stock
-            $branchProduct->increment('quantity', $validated['quantity']);
+            // Mettre à jour le stock dans la table pivot
+            $branchProduct->quantity = $newQty;
+            $branchProduct->save();
 
-            // Enregistrer le mouvement
-            $movement = StockMovement::create([
-                'company_id' => $companyId,
-                'branch_id' => $validated['branch_id'],
-                'product_id' => $validated['product_id'],
-                'quantity' => $validated['quantity'],
-                'type' => 'adjustment',
-                'description' => $validated['description'],
+            // Générer un UUID
+            $uuid = (string) \Illuminate\Support\Str::uuid();
+
+            // Créer l'enregistrement d'ajustement détaillé
+            $adjustment = \App\Models\StockAdjustment::create([
+                'uuid'              => $uuid,
+                'company_id'         => $companyId,
+                'branch_id'          => $validated['branch_id'],
+                'product_id'         => $validated['product_id'],
+                'user_id'            => $request->user()->id,
+                'type'               => $type,
+                'previous_quantity' => $prevQty,
+                'quantity_change'   => $qtyChange,
+                'new_quantity'       => $newQty,
+                'reason_code'        => $validated['reason_code'],
+                'comment'            => $validated['comment'] ?? null,
+                'reference'          => 'ADJ-' . strtoupper(substr($uuid, 0, 8)),
             ]);
 
-            return $branchProduct->load(['product', 'branch']);
+            // Consigner le mouvement de stock général
+            StockMovement::create([
+                'company_id'  => $companyId,
+                'branch_id'   => $validated['branch_id'],
+                'product_id'  => $validated['product_id'],
+                'quantity'    => $qtyChange,
+                'type'        => $type === 'correction' ? 'inventory_correction' : ($type === 'addition' ? 'adjustment_add' : 'adjustment_remove'),
+                'description' => "[$type] Motif: {$validated['reason_code']} | Remarque: " . ($validated['comment'] ?? 'Aucun'),
+            ]);
+
+            // Enregistrer dans audit_logs
+            try {
+                \App\Models\AuditLog::create([
+                    'company_id'  => $companyId,
+                    'user_id'     => $request->user()->id,
+                    'event'       => "stock_adjustment_$type",
+                    'description' => "Ajustement de stock ($type) sur le produit #{$validated['product_id']}. Écart: {$qtyChange}, Nouveau stock: {$newQty}",
+                    'ip_address'  => $request->ip(),
+                ]);
+            } catch (\Throwable $e) {}
+
+            return [
+                'branch_product' => $branchProduct->load(['product', 'branch']),
+                'adjustment'     => $adjustment
+            ];
         });
 
         try {
-            $pName = $result->product ? $result->product->name : "Produit #{$validated['product_id']}";
+            $bp = $result['branch_product'];
+            $pName = $bp->product ? $bp->product->name : "Produit #{$validated['product_id']}";
             event(new StockAdjusted(
                 $companyId ?: $request->user()->company_id,
                 $validated['branch_id'],
                 $validated['product_id'],
                 $pName,
-                $validated['quantity'],
-                $validated['description'],
+                $result['adjustment']->quantity_change,
+                $validated['comment'] ?? $validated['reason_code'],
                 $request->user()
             ));
 
-            // Détection stock faible après ajustement
-            $bp = BranchProduct::where('branch_id', $validated['branch_id'])
-                ->where('product_id', $validated['product_id'])->first();
-            $prod = Product::find($validated['product_id']);
-            if ($bp && $prod && $prod->alert_quantity !== null) {
-                if (floatval($bp->quantity) <= floatval($prod->alert_quantity)) {
+            if ($bp && $bp->product && $bp->product->alert_quantity !== null) {
+                if (floatval($bp->quantity) <= floatval($bp->product->alert_quantity)) {
                     event(new StockLow(
                         $companyId ?: $request->user()->company_id,
                         $validated['branch_id'],
-                        $prod->id,
-                        $prod->name,
+                        $bp->product->id,
+                        $bp->product->name,
                         floatval($bp->quantity),
-                        floatval($prod->alert_quantity)
+                        floatval($bp->product->alert_quantity)
                     ));
                 }
             }
@@ -147,8 +198,9 @@ class StockController extends Controller
         }
 
         return response()->json([
-            'message' => 'Ajustement de stock enregistré avec succès.',
-            'stock' => $result
+            'message'    => 'Ajustement de stock enregistré avec succès.',
+            'adjustment' => $result['adjustment'],
+            'stock'      => $result['branch_product']
         ], 200);
     }
 }

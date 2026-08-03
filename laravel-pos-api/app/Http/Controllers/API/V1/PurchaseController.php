@@ -55,7 +55,7 @@ class PurchaseController extends Controller
 
         $validated = $request->validate([
             'branch_id' => 'required|exists:branches,id',
-            'supplier_id' => 'required|exists:suppliers,id',
+            'supplier_id' => 'nullable|exists:suppliers,id',
             'status' => 'required|in:draft,ordered,received,cancelled,pending',
             'payment_status' => 'required|in:unpaid,partially_paid,partial,paid',
             'amount_paid' => 'nullable|numeric|min:0',
@@ -75,7 +75,7 @@ class PurchaseController extends Controller
             $validated['status'] = 'ordered';
         }
 
-        $companyId = app(\App\Services\TenantManager::class)->getCompanyId();
+        $companyId = app(\App\Services\TenantManager::class)->getCompanyId() ?: ($request->user() ? $request->user()->company_id : 1);
 
         // Récupération des réglages de TVA de l'entreprise
         $company = \App\Models\Company::find($companyId);
@@ -151,12 +151,13 @@ class PurchaseController extends Controller
             }
 
             // 4. Mettre à jour le solde courant de dette du fournisseur
-            // La dette augmente du total et diminue de ce que nous avons déjà payé
             if ($validated['status'] === 'received') {
                 $debtIncrease = $totalAmount - $amountPaid;
-                if ($debtIncrease > 0) {
-                    $supplier = Supplier::findOrFail($validated['supplier_id']);
-                    $supplier->increment('debt_balance', $debtIncrease);
+                if ($debtIncrease > 0 && !empty($validated['supplier_id'])) {
+                    $supplier = Supplier::find($validated['supplier_id']);
+                    if ($supplier) {
+                        $supplier->increment('debt_balance', $debtIncrease);
+                    }
                 }
             }
 
@@ -278,7 +279,7 @@ class PurchaseController extends Controller
      */
     private function updateStockAndPamp($branchId, $productId, $quantity, $costPrice, $purchaseId)
     {
-        $companyId = app(\App\Services\TenantManager::class)->getCompanyId();
+        $companyId = app(\App\Services\TenantManager::class)->getCompanyId() ?: 1;
 
         // 1. Recalculer le PAMP global du produit
         $product = Product::findOrFail($productId);
