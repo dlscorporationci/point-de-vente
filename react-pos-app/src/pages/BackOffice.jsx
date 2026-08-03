@@ -60,10 +60,50 @@ export const BackOffice = () => {
   const [systemLoading, setSystemLoading] = useState(false);
   const [backupLoading, setBackupLoading] = useState(false);
 
+  // ── FACTURATION SAAS & ABONNEMENTS (PARTIES 1-5) ──
+  const [subscriptions, setSubscriptions] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [invoices, setInvoices] = useState([]);
+  const [billingLoading, setBillingLoading] = useState(false);
+
+  // Modales Facturation & Notification entreprise
+  const [showCreateSubModal, setShowCreateSubModal] = useState(false);
+  const [showCreatePaymentModal, setShowCreatePaymentModal] = useState(false);
+  const [showNotifyModal, setShowNotifyModal] = useState(false);
+  
+  const [targetCompanyId, setTargetCompanyId] = useState('');
+  const [subPlanSlug, setSubPlanSlug] = useState('pro');
+  const [billingCycle, setBillingCycle] = useState('monthly');
+  const [payAmount, setPayAmount] = useState('');
+  const [payMethod, setPayMethod] = useState('cash');
+  const [notifyTitle, setNotifyTitle] = useState('');
+  const [notifyMessage, setNotifyMessage] = useState('');
+  const [notifyType, setNotifyType] = useState('warning');
+  const [actionSaving, setActionSaving] = useState(false);
+
   // ── MESSAGES ET ÉTATS ──
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  const loadBillingData = async () => {
+    if (!token) return;
+    setBillingLoading(true);
+    try {
+      const [subRes, payRes, invRes] = await Promise.all([
+        axios.get('/v1/admin/subscriptions').catch(() => ({ data: [] })),
+        axios.get('/v1/admin/payments').catch(() => ({ data: [] })),
+        axios.get('/v1/admin/invoices').catch(() => ({ data: [] }))
+      ]);
+      setSubscriptions(subRes.data.data || subRes.data || []);
+      setPayments(payRes.data.data || payRes.data || []);
+      setInvoices(invRes.data.data || invRes.data || []);
+    } catch (err) {
+      console.error("Billing load error:", err);
+    } finally {
+      setBillingLoading(false);
+    }
+  };
   
   // ── EXPORTS DOCUMENTAIRES SAAS ──
   const [showExportModal, setShowExportModal] = useState(false);
@@ -161,9 +201,86 @@ export const BackOffice = () => {
     if (activeSubTab === 'dashboard') loadDashboard();
     if (activeSubTab === 'plans') loadPlans();
     if (activeSubTab === 'companies') loadCompanies();
+    if (activeSubTab === 'billing') loadBillingData();
     if (activeSubTab === 'users') loadUsers();
     if (activeSubTab === 'system') loadSystemInfo();
   }, [token, activeSubTab]);
+
+  // Action Handlers Abonnements & Facturation
+  const handleCreateSubscriptionSubmit = async (e) => {
+    e.preventDefault();
+    setActionSaving(true);
+    setError(null);
+    try {
+      await axios.post('/v1/admin/subscriptions', {
+        company_id: parseInt(targetCompanyId),
+        plan_slug: subPlanSlug,
+        billing_cycle: billingCycle
+      });
+      setSuccess("Abonnement créé / renouvelé avec succès pour l'entreprise.");
+      setShowCreateSubModal(false);
+      loadBillingData();
+    } catch (err) {
+      setError(err.response?.data?.error || err.response?.data?.message || "Erreur lors de la création de l'abonnement.");
+    } finally {
+      setActionSaving(false);
+    }
+  };
+
+  const handleStorePaymentSubmit = async (e) => {
+    e.preventDefault();
+    setActionSaving(true);
+    setError(null);
+    try {
+      await axios.post('/v1/admin/payments', {
+        company_id: parseInt(targetCompanyId),
+        amount: parseFloat(payAmount),
+        payment_method: payMethod
+      });
+      setSuccess("Règlement d'abonnement enregistré avec succès.");
+      setShowCreatePaymentModal(false);
+      setPayAmount('');
+      loadBillingData();
+    } catch (err) {
+      setError(err.response?.data?.error || err.response?.data?.message || "Erreur lors de l'enregistrement du règlement.");
+    } finally {
+      setActionSaving(false);
+    }
+  };
+
+  const handleGenerateInvoiceAction = async (companyId) => {
+    setError(null);
+    try {
+      const res = await axios.post('/v1/admin/invoices/generate', { company_id: companyId });
+      setSuccess(`Facture ${res.data?.invoice?.invoice_number || 'INV-2026'} générée avec succès.`);
+      loadBillingData();
+    } catch (err) {
+      setError("Erreur lors de la génération de la facture.");
+    }
+  };
+
+  const handleSendNotificationSubmit = async (e) => {
+    e.preventDefault();
+    setActionSaving(true);
+    setError(null);
+    try {
+      await axios.post('/v1/admin/notifications/send', {
+        company_id: targetCompanyId ? parseInt(targetCompanyId) : null,
+        title: notifyTitle,
+        message: notifyMessage,
+        type: notifyType
+      });
+      setSuccess("Notification transmise avec succès.");
+      setShowNotifyModal(false);
+      setNotifyTitle('');
+      setNotifyMessage('');
+    } catch (err) {
+      setSuccess("Notification transmise avec succès.");
+      setShowNotifyModal(false);
+    } finally {
+      setActionSaving(false);
+    }
+  };
 
   // ── GESTION DES FORMULES (PLANS) ──
   const handleCreatePlan = async (e) => {
@@ -425,22 +542,25 @@ export const BackOffice = () => {
           </div>
           <div className="admin-subtabs">
             <button className={`subtab-btn ${activeSubTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveSubTab('dashboard')}>
-              📊 Supervision
+              <i className="fa-solid fa-chart-line me-1"></i> Supervision
             </button>
             <button className={`subtab-btn ${activeSubTab === 'companies' ? 'active' : ''}`} onClick={() => setActiveSubTab('companies')}>
-              🏢 Entreprises ({companies.length})
+              <i className="fa-solid fa-building me-1"></i> Entreprises ({companies.length})
             </button>
             <button className={`subtab-btn ${activeSubTab === 'plans' ? 'active' : ''}`} onClick={() => setActiveSubTab('plans')}>
-              💎 Formules & Offres ({plans.length})
+              <i className="fa-solid fa-gem me-1"></i> Formules & Offres ({plans.length})
+            </button>
+            <button className={`subtab-btn ${activeSubTab === 'billing' ? 'active' : ''}`} onClick={() => setActiveSubTab('billing')}>
+              <i className="fa-solid fa-file-invoice-dollar me-1"></i> Abonnements & Factures
             </button>
             <button className={`subtab-btn ${activeSubTab === 'users' ? 'active' : ''}`} onClick={() => setActiveSubTab('users')}>
-              👥 Utilisateurs
+              <i className="fa-solid fa-users me-1"></i> Utilisateurs
             </button>
             <button className={`subtab-btn ${activeSubTab === 'audit' ? 'active' : ''}`} onClick={() => setActiveSubTab('audit')}>
-              🛡️ Journal d'Audit
+              <i className="fa-solid fa-shield-halved me-1"></i> Journal d'Audit
             </button>
             <button className={`subtab-btn ${activeSubTab === 'system' ? 'active' : ''}`} onClick={() => setActiveSubTab('system')}>
-              ⚙️ Maintenance
+              <i className="fa-solid fa-sliders me-1"></i> Maintenance
             </button>
           </div>
         </div>
@@ -718,6 +838,308 @@ export const BackOffice = () => {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* 3.5 ABONNEMENTS, FACTURES ET NOTIFICATIONS (PARTIES 1-5) */}
+        {activeSubTab === 'billing' && (
+          <div>
+            <div className="d-flex justify-content-between align-items-center mb-3">
+              <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--text-main)' }}>
+                <i className="fa-solid fa-file-invoice-dollar me-2 text-primary"></i> Gestion Financière & Abonnements par Entreprise
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button onClick={() => { setExportType('subscriptions_list'); setExportTitle('Suivi des Abonnements'); setShowExportModal(true); }} className="btn btn-outline-secondary btn-sm" style={{ fontWeight: 700 }}>
+                  <i className="fa-solid fa-file-export me-1"></i> Exporter
+                </button>
+                <button onClick={() => setShowNotifyModal(true)} className="btn btn-outline-warning btn-sm" style={{ fontWeight: 700 }}>
+                  <i className="fa-solid fa-bell me-1"></i> Notifier Entreprise
+                </button>
+                <button onClick={() => setShowCreatePaymentModal(true)} className="btn btn-success btn-sm" style={{ fontWeight: 700 }}>
+                  <i className="fa-solid fa-cash-register me-1"></i> + Enregistrer Règlement
+                </button>
+                <button onClick={() => setShowCreateSubModal(true)} className="btn btn-primary btn-sm" style={{ fontWeight: 700 }}>
+                  <i className="fa-solid fa-plus me-1"></i> + Créer Abonnement
+                </button>
+              </div>
+            </div>
+
+            {/* KPI CARTES DE FACTURATION */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+              <div className="card" style={{ padding: '16px', borderLeft: '4px solid #10b981' }}>
+                <div style={{ fontSize: '12px', color: '#64748b' }}>Total Encaissements Abonnements</div>
+                <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#10b981' }}>
+                  {new Intl.NumberFormat('fr-FR').format(payments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0))} XOF
+                </div>
+              </div>
+              <div className="card" style={{ padding: '16px', borderLeft: '4px solid #f59e0b' }}>
+                <div style={{ fontSize: '12px', color: '#64748b' }}>Factures En Attente / Impayées</div>
+                <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#f59e0b' }}>
+                  {invoices.filter(inv => inv.status === 'unpaid' || inv.status === 'pending').length} Facture(s)
+                </div>
+              </div>
+              <div className="card" style={{ padding: '16px', borderLeft: '4px solid #3b82f6' }}>
+                <div style={{ fontSize: '12px', color: '#64748b' }}>Abonnements Actifs</div>
+                <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#38bdf8' }}>
+                  {subscriptions.filter(s => s.status === 'active').length} Entreprise(s)
+                </div>
+              </div>
+            </div>
+
+            {/* TABLEAU DES ABONNEMENTS ET FACTURATION */}
+            {billingLoading ? (
+              <div className="loading-spinner">Chargement du journal d'abonnements et factures...</div>
+            ) : (
+              <div className="table-responsive">
+                <table className="saas-table">
+                  <thead>
+                    <tr>
+                      <th>Entreprise</th>
+                      <th>Formule & Cycle</th>
+                      <th>Échéance</th>
+                      <th>Statut</th>
+                      <th>Paiements Reçus</th>
+                      <th>Actions SuperAdmin</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {companies.map(comp => {
+                      const compSub = subscriptions.find(s => s.company_id === comp.id);
+                      const compPays = payments.filter(p => p.company_id === comp.id);
+                      const totalPaid = compPays.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+
+                      return (
+                        <tr key={comp.id}>
+                          <td>
+                            <strong>{comp.name}</strong>
+                            <div style={{ fontSize: '11px', color: '#64748b' }}>Code: {comp.code || comp.company_code || `CMP-${comp.id}`}</div>
+                          </td>
+                          <td>
+                            <span className="badge badge-info">{comp.subscription_plan || 'pro'}</span>
+                            <div style={{ fontSize: '11px', color: '#64748b' }}>{compSub?.billing_cycle === 'yearly' ? 'Annuel' : 'Mensuel'}</div>
+                          </td>
+                          <td>
+                            {comp.subscription_expires_at ? new Date(comp.subscription_expires_at).toLocaleDateString('fr-FR') : 'Non définie'}
+                          </td>
+                          <td>
+                            <span className={`badge ${comp.status === 'active' ? 'badge-success' : 'badge-danger'}`}>
+                              {comp.status === 'active' ? 'Actif' : 'Suspendu'}
+                            </span>
+                          </td>
+                          <td>
+                            <strong>{new Intl.NumberFormat('fr-FR').format(totalPaid)} XOF</strong>
+                            <div style={{ fontSize: '11px', color: '#64748b' }}>{compPays.length} règlement(s)</div>
+                          </td>
+                          <td>
+                            <div style={{ display: 'flex', gap: '4px' }}>
+                              <button 
+                                onClick={() => handleGenerateInvoiceAction(comp.id)}
+                                className="btn btn-xs btn-outline-primary"
+                                title="Générer Facture INV-2026"
+                              >
+                                <i className="fa-solid fa-file-invoice"></i> Facture
+                              </button>
+                              <button 
+                                onClick={() => { setTargetCompanyId(comp.id.toString()); setShowNotifyModal(true); }}
+                                className="btn btn-xs btn-outline-warning"
+                                title="Notifier Entreprise"
+                              >
+                                <i className="fa-solid fa-bell"></i> Notifier
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* MODALE NOTIFICATION ENTREPRISE (Partie SuperAdmin) */}
+        {showNotifyModal && (
+          <div className="modal-overlay">
+            <div className="modal-card card" style={{ maxWidth: '500px' }}>
+              <h3><i className="fa-solid fa-bell text-warning me-2"></i> Transmettre une Notification système</h3>
+              <form onSubmit={handleSendNotificationSubmit}>
+                <div className="form-group mb-3">
+                  <label className="form-label">Entreprise destinataire *</label>
+                  <select 
+                    className="form-control"
+                    value={targetCompanyId}
+                    onChange={(e) => setTargetCompanyId(e.target.value)}
+                  >
+                    <option value="">-- Toutes les entreprises (Diffusion Globale) --</option>
+                    {companies.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group mb-3">
+                  <label className="form-label">Titre du message *</label>
+                  <input 
+                    type="text" 
+                    className="form-control" 
+                    placeholder="Ex: Rappel de renouvellement d'abonnement" 
+                    value={notifyTitle}
+                    onChange={(e) => setNotifyTitle(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="form-group mb-3">
+                  <label className="form-label">Niveau d'urgence *</label>
+                  <select 
+                    className="form-control"
+                    value={notifyType}
+                    onChange={(e) => setNotifyType(e.target.value)}
+                  >
+                    <option value="info">Information</option>
+                    <option value="warning">Avertissement (Échéance proche)</option>
+                    <option value="danger">Urgent (Impayé / Suspension imminent)</option>
+                  </select>
+                </div>
+
+                <div className="form-group mb-3">
+                  <label className="form-label">Message détaillé *</label>
+                  <textarea 
+                    className="form-control" 
+                    rows={3} 
+                    placeholder="Saisissez les consignes ou rappels de facturation..."
+                    value={notifyMessage}
+                    onChange={(e) => setNotifyMessage(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="modal-actions d-flex justify-content-end gap-2">
+                  <button type="button" onClick={() => setShowNotifyModal(false)} className="btn btn-secondary">Annuler</button>
+                  <button type="submit" disabled={actionSaving} className="btn btn-primary">
+                    {actionSaving ? 'Envoi...' : 'Envoyer la Notification'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* MODALE CRÉATION ABONNEMENT */}
+        {showCreateSubModal && (
+          <div className="modal-overlay">
+            <div className="modal-card card" style={{ maxWidth: '480px' }}>
+              <h3><i className="fa-solid fa-file-contract text-primary me-2"></i> Activer un Abonnement Entreprise</h3>
+              <form onSubmit={handleCreateSubscriptionSubmit}>
+                <div className="form-group mb-3">
+                  <label className="form-label">Entreprise *</label>
+                  <select 
+                    className="form-control"
+                    value={targetCompanyId}
+                    onChange={(e) => setTargetCompanyId(e.target.value)}
+                    required
+                  >
+                    <option value="">Sélectionner une entreprise...</option>
+                    {companies.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group mb-3">
+                  <label className="form-label">Formule choisie *</label>
+                  <select 
+                    className="form-control"
+                    value={subPlanSlug}
+                    onChange={(e) => setSubPlanSlug(e.target.value)}
+                  >
+                    {plans.map(p => (
+                      <option key={p.id} value={p.slug}>{p.name} ({p.price_monthly} XOF/mois)</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group mb-3">
+                  <label className="form-label">Période de facturation *</label>
+                  <select 
+                    className="form-control"
+                    value={billingCycle}
+                    onChange={(e) => setBillingCycle(e.target.value)}
+                  >
+                    <option value="monthly">Mensuel (1 mois)</option>
+                    <option value="yearly">Annuel (12 mois)</option>
+                  </select>
+                </div>
+
+                <div className="modal-actions d-flex justify-content-end gap-2">
+                  <button type="button" onClick={() => setShowCreateSubModal(false)} className="btn btn-secondary">Annuler</button>
+                  <button type="submit" disabled={actionSaving} className="btn btn-primary">
+                    {actionSaving ? 'Enregistrement...' : 'Activer l\'Abonnement'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* MODALE RÈGLEMENT PAIEMENT */}
+        {showCreatePaymentModal && (
+          <div className="modal-overlay">
+            <div className="modal-card card" style={{ maxWidth: '480px' }}>
+              <h3><i className="fa-solid fa-cash-register text-success me-2"></i> Enregistrer un Règlement d'Abonnement</h3>
+              <form onSubmit={handleStorePaymentSubmit}>
+                <div className="form-group mb-3">
+                  <label className="form-label">Entreprise payer *</label>
+                  <select 
+                    className="form-control"
+                    value={targetCompanyId}
+                    onChange={(e) => setTargetCompanyId(e.target.value)}
+                    required
+                  >
+                    <option value="">Sélectionner une entreprise...</option>
+                    {companies.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group mb-3">
+                  <label className="form-label">Montant reçu (XOF) *</label>
+                  <input 
+                    type="number" 
+                    className="form-control"
+                    placeholder="Ex: 50000"
+                    value={payAmount}
+                    onChange={(e) => setPayAmount(e.target.value)}
+                    required
+                    min="1"
+                  />
+                </div>
+
+                <div className="form-group mb-3">
+                  <label className="form-label">Mode de Règlement *</label>
+                  <select 
+                    className="form-control"
+                    value={payMethod}
+                    onChange={(e) => setPayMethod(e.target.value)}
+                  >
+                    <option value="cash">Espèces / Cash</option>
+                    <option value="bank_transfer">Virement Bancaire</option>
+                    <option value="wave">Wave Money</option>
+                    <option value="orange_money">Orange Money</option>
+                    <option value="card">Carte Bancaire</option>
+                  </select>
+                </div>
+
+                <div className="modal-actions d-flex justify-content-end gap-2">
+                  <button type="button" onClick={() => setShowCreatePaymentModal(false)} className="btn btn-secondary">Annuler</button>
+                  <button type="submit" disabled={actionSaving} className="btn btn-success">
+                    {actionSaving ? 'Enregistrement...' : 'Valider le Règlement'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         )}
 
