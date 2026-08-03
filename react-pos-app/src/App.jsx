@@ -295,7 +295,7 @@ function MainContent() {
             <div className="d-none d-md-flex" style={{ alignItems: 'center', gap: '8px', maxWidth: '100%', overflow: 'hidden' }}>
               {/* Icône + label de la page active */}
               {(() => {
-                const currentLink = navLinks.find(l => l.tab === activeTab);
+                const currentLink = navLinksMap[activeTab];
                 const today = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
                 return currentLink ? (
                   <div style={{
