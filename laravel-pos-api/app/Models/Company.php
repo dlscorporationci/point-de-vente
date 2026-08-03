@@ -15,6 +15,7 @@ class Company extends Model
         'timezone',
         'currency',
         'tax_settings',
+        'pos_settings',
         'status',
         'subscription_plan',
         'subscription_expires_at',
@@ -23,6 +24,7 @@ class Company extends Model
 
     protected $casts = [
         'tax_settings' => 'array',
+        'pos_settings' => 'array',
         'subscription_expires_at' => 'datetime',
     ];
 

@@ -123,10 +123,12 @@ class AuthController extends Controller
                 'permissions' => $user->role ? $user->role->permissions->pluck('slug') : [],
                 'company_id' => $user->company_id,
                 'company' => $company ? [
-                    'id' => $company->id,
-                    'name' => $company->name,
-                    'code' => $company->code,
+                    'id'           => $company->id,
+                    'name'         => $company->name,
+                    'code'         => $company->code,
+                    'logo_path'    => $company->logo_path,
                     'tax_settings' => $company->tax_settings ?? ['tax_rate' => 18, 'enable_tax' => true],
+                    'pos_settings' => $company->pos_settings ?? [],
                 ] : null,
                 'branch' => $user->branch ? [
                     'id' => $user->branch->id,
@@ -307,10 +309,13 @@ class AuthController extends Controller
             'permissions' => $user->role ? $user->role->permissions->pluck('slug') : [],
             'company_id' => $user->company_id,
             'company' => $company ? [
-                'id' => $company->id,
-                'name' => $company->name,
-                'tax_settings' => $company->tax_settings ?? ['tax_rate' => 18, 'enable_tax' => true],
-                'subscription_plan' => $company->subscription_plan ?: 'pro',
+                'id'                      => $company->id,
+                'name'                    => $company->name,
+                'code'                    => $company->code,
+                'logo_path'               => $company->logo_path,
+                'tax_settings'            => $company->tax_settings ?? ['tax_rate' => 18, 'enable_tax' => true],
+                'pos_settings'            => $company->pos_settings ?? [],
+                'subscription_plan'       => $company->subscription_plan ?: 'pro',
                 'subscription_expires_at' => $company->subscription_expires_at,
             ] : null,
             'branch' => $user->branch ? [
@@ -371,36 +376,61 @@ class AuthController extends Controller
         $company = Company::findOrFail($user->company_id);
 
         $request->validate([
-            'tax_rate'   => 'nullable|numeric|min:0|max:100',
-            'enable_tax' => 'nullable|boolean',
-            'name'       => 'nullable|string|max:255',
+            'name'         => 'nullable|string|max:255',
+            'tax_rate'     => 'nullable|numeric|min:0|max:100',
+            'enable_tax'   => 'nullable|boolean',
+            'logo'         => 'nullable|image|mimes:jpeg,png,jpg,svg,webp|max:4096',
+            'logo_url'     => 'nullable|string',
+            'pos_settings' => 'nullable',
         ]);
-
-        $currentSettings = $company->tax_settings ?? ['tax_rate' => 18, 'enable_tax' => true];
-
-        if ($request->has('tax_rate')) {
-            $currentSettings['tax_rate'] = floatval($request->tax_rate);
-        }
-        if ($request->has('enable_tax')) {
-            $currentSettings['enable_tax'] = (bool) $request->enable_tax;
-        }
-
-        $company->tax_settings = $currentSettings;
 
         if ($request->filled('name')) {
             $company->name = $request->name;
         }
 
+        // 1. Réglages TVA
+        $currentTaxSettings = $company->tax_settings ?? ['tax_rate' => 18, 'enable_tax' => true];
+        if ($request->has('tax_rate')) {
+            $currentTaxSettings['tax_rate'] = floatval($request->tax_rate);
+        }
+        if ($request->has('enable_tax')) {
+            $currentTaxSettings['enable_tax'] = (bool) $request->enable_tax;
+        }
+        $company->tax_settings = $currentTaxSettings;
+
+        // 2. Logo de l'entreprise
+        if ($request->hasFile('logo')) {
+            $file = $request->file('logo');
+            $filename = 'company_' . $company->id . '_' . time() . '.' . $file->getClientOriginalExtension();
+            $path = $file->storeAs('logos', $filename, 'public');
+            $company->logo_path = '/storage/' . $path;
+        } elseif ($request->filled('logo_url')) {
+            $company->logo_path = $request->logo_url;
+        }
+
+        // 3. Paramètres Caisse, Reçu & Factures
+        if ($request->has('pos_settings')) {
+            $existingPos = $company->pos_settings ?? [];
+            $rawPos = $request->pos_settings;
+            $newPos = is_array($rawPos) ? $rawPos : json_decode($rawPos, true);
+            if (is_array($newPos)) {
+                $company->pos_settings = array_merge($existingPos, $newPos);
+            }
+        }
+
         $company->save();
 
-        $this->logAuthEvent($user, 'company_tax_settings_updated', $request);
+        $this->logAuthEvent($user, 'company_settings_updated', $request);
 
         return response()->json([
-            'message' => 'Paramètres de TVA de l\'entreprise mis à jour avec succès.',
+            'message' => 'Paramètres de l\'entreprise enregistrés avec succès.',
             'company' => [
-                'id' => $company->id,
-                'name' => $company->name,
+                'id'           => $company->id,
+                'name'         => $company->name,
+                'code'         => $company->code,
+                'logo_path'    => $company->logo_path,
                 'tax_settings' => $company->tax_settings,
+                'pos_settings' => $company->pos_settings,
             ]
         ]);
     }

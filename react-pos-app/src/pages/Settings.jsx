@@ -23,17 +23,30 @@ export const Settings = () => {
   const [timezone, setTimezone]             = useState('Africa/Dakar');
   const [language, setLanguage]             = useState('fr');
   const [companyLogo, setCompanyLogo]       = useState(null);
+  const [logoPreview, setLogoPreview]       = useState(null);
 
   // ─── États TVA ────────────────────────────────────────────────────────────
   const [taxRate, setTaxRate]         = useState(18);
   const [enableTax, setEnableTax]     = useState(true);
   const [taxLoading, setTaxLoading]   = useState(false);
 
-  // ─── États POS ────────────────────────────────────────────────────────────
+  // ─── États POS, Ticket & Caisse ───────────────────────────────────────────
   const [posName, setPosName]               = useState('Caisse Principale 1');
   const [printerModel, setPrinterModel]     = useState('Epson TM-T20III');
   const [printerWidth, setPrinterWidth]     = useState('80');
   const [scannerInterface, setScannerInterface] = useState('USB-HID');
+
+  const [receiptHeader, setReceiptHeader]   = useState('Bienvenue dans notre boutique !');
+  const [receiptFooter, setReceiptFooter]   = useState('Merci pour votre confiance. Les marchandises vendues ne sont ni reprises ni échangées.');
+  const [receiptRccmIfu, setReceiptRccmIfu] = useState('RCCM: CI-ABJ-2026-B-12345 • IFU: 02026123456');
+  const [showLogoOnReceipt, setShowLogoOnReceipt] = useState(true);
+  const [showCustomerInfo, setShowCustomerInfo]   = useState(true);
+  const [autoPrintReceipt, setAutoPrintReceipt]   = useState(false);
+
+  const [requireInitialCash, setRequireInitialCash] = useState(true);
+  const [requireManagerPinForOpen, setRequireManagerPinForOpen] = useState(false);
+  const [requireManagerPinForDiscrepancy, setRequireManagerPinForDiscrepancy] = useState(true);
+  const [hideTheoreticalCashBeforeClose, setHideTheoreticalCashBeforeClose] = useState(false);
 
   // ─── États Profil ─────────────────────────────────────────────────────────
   const [userName, setUserName]             = useState('');
@@ -92,10 +105,31 @@ export const Settings = () => {
         setCompanyAddress(comp.address || '');
         setCurrency(comp.currency || 'XOF');
         setTimezone(comp.timezone || 'Africa/Dakar');
-        // Charger les réglages TVA depuis tax_settings
+        if (comp.logo_path) {
+          setLogoPreview(comp.logo_path);
+        }
+        // Charger les réglages TVA
         if (comp.tax_settings) {
           setTaxRate(comp.tax_settings.tax_rate ?? 18);
           setEnableTax(comp.tax_settings.enable_tax ?? true);
+        }
+        // Charger les réglages POS & Factures / Caisse
+        if (comp.pos_settings) {
+          const pos = comp.pos_settings;
+          if (pos.pos_name) setPosName(pos.pos_name);
+          if (pos.printer_model) setPrinterModel(pos.printer_model);
+          if (pos.receipt_paper_width) setPrinterWidth(pos.receipt_paper_width);
+          if (pos.scanner_interface) setScannerInterface(pos.scanner_interface);
+          if (pos.receipt_header) setReceiptHeader(pos.receipt_header);
+          if (pos.receipt_footer) setReceiptFooter(pos.receipt_footer);
+          if (pos.receipt_rccm_ifu) setReceiptRccmIfu(pos.receipt_rccm_ifu);
+          if (pos.show_logo_on_receipt !== undefined) setShowLogoOnReceipt(pos.show_logo_on_receipt);
+          if (pos.show_customer_info !== undefined) setShowCustomerInfo(pos.show_customer_info);
+          if (pos.auto_print_receipt !== undefined) setAutoPrintReceipt(pos.auto_print_receipt);
+          if (pos.require_initial_cash !== undefined) setRequireInitialCash(pos.require_initial_cash);
+          if (pos.require_manager_pin_for_open !== undefined) setRequireManagerPinForOpen(pos.require_manager_pin_for_open);
+          if (pos.require_manager_pin_for_discrepancy !== undefined) setRequireManagerPinForDiscrepancy(pos.require_manager_pin_for_discrepancy);
+          if (pos.hide_theoretical_cash_before_close !== undefined) setHideTheoreticalCashBeforeClose(pos.hide_theoretical_cash_before_close);
         }
       }
       if (user) {
@@ -152,14 +186,19 @@ export const Settings = () => {
     try {
       const formData = new FormData();
       formData.append('name', companyName);
-      if (companyLogo) formData.append('logo', companyLogo);
-      await axios.post(`/v1/admin/companies/${companyId || 1}`, formData, {
+      if (companyLogo) {
+        formData.append('logo', companyLogo);
+      }
+      const res = await axios.post(`/v1/company-settings`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      setSuccess("✅ Paramètres de l'entreprise enregistrés.");
+      setSuccess("✅ Informations de l'entreprise et logo enregistrés avec succès.");
+      if (res.data.company && res.data.company.logo_path) {
+        setLogoPreview(res.data.company.logo_path);
+      }
       setCompanyLogo(null);
     } catch (err) {
-      setError("Erreur lors de l'enregistrement des paramètres.");
+      setError(err.response?.data?.error || "Erreur lors de l'enregistrement des paramètres de l'entreprise.");
     } finally {
       setLoading(false);
     }
@@ -170,7 +209,7 @@ export const Settings = () => {
     e.preventDefault();
     setSuccess(null); setError(null); setTaxLoading(true);
     try {
-      await axios.put('/v1/company-settings', { tax_rate: taxRate, enable_tax: enableTax });
+      await axios.post('/v1/company-settings', { tax_rate: taxRate, enable_tax: enableTax });
       setSuccess(`✅ TVA mise à jour : ${enableTax ? taxRate + '%' : 'désactivée'}.`);
     } catch (err) {
       setError(err.response?.data?.error || "Erreur de sauvegarde des paramètres TVA.");
@@ -180,9 +219,37 @@ export const Settings = () => {
   };
 
   // ─── POS ──────────────────────────────────────────────────────────────────
-  const handleSavePOS = (e) => {
+  const handleSavePOS = async (e) => {
     e.preventDefault();
-    setSuccess("✅ Paramètres du terminal de caisse POS mis à jour.");
+    setSuccess(null); setError(null); setLoading(true);
+    try {
+      const posPayload = {
+        pos_name: posName,
+        printer_model: printerModel,
+        receipt_paper_width: printerWidth,
+        scanner_interface: scannerInterface,
+        receipt_header: receiptHeader,
+        receipt_footer: receiptFooter,
+        receipt_rccm_ifu: receiptRccmIfu,
+        show_logo_on_receipt: showLogoOnReceipt,
+        show_customer_info: showCustomerInfo,
+        auto_print_receipt: autoPrintReceipt,
+        require_initial_cash: requireInitialCash,
+        require_manager_pin_for_open: requireManagerPinForOpen,
+        require_manager_pin_for_discrepancy: requireManagerPinForDiscrepancy,
+        hide_theoretical_cash_before_close: hideTheoreticalCashBeforeClose,
+      };
+
+      await axios.post('/v1/company-settings', {
+        pos_settings: posPayload
+      });
+
+      setSuccess("✅ Règles de gestion caisse et personnalisation ticket enregistrées avec succès pour votre entreprise !");
+    } catch (err) {
+      setError(err.response?.data?.error || "Erreur de sauvegarde des paramètres du terminal POS.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   // ─── Profil ───────────────────────────────────────────────────────────────
@@ -428,7 +495,20 @@ export const Settings = () => {
                 </div>
                 <div className="form-group">
                   <label className="form-label">Logo officiel de l'entreprise</label>
-                  <input type="file" className="form-control" accept="image/*" onChange={(e) => setCompanyLogo(e.target.files[0])} />
+                  {logoPreview && (
+                    <div className="mb-2 p-2 rounded border d-flex align-items-center gap-3" style={{ background: 'var(--bg-input)', borderColor: 'var(--border-color)' }}>
+                      <img src={logoPreview} alt="Logo Entreprise" style={{ maxHeight: '55px', maxWidth: '160px', borderRadius: '6px', objectFit: 'contain' }} />
+                      <div>
+                        <span className="text-success small fw-bold"><i className="fa-solid fa-circle-check me-1"></i> Logo Actif</span>
+                        <div className="text-muted style-xs">Sera affiché sur l'en-tête de l'application et les tickets de caisse.</div>
+                      </div>
+                    </div>
+                  )}
+                  <input type="file" className="form-control" accept="image/*" onChange={(e) => {
+                    const file = e.target.files[0];
+                    setCompanyLogo(file);
+                    if (file) setLogoPreview(URL.createObjectURL(file));
+                  }} />
                 </div>
                 <div className="row">
                   <div className="col-md-4 form-group">
@@ -760,7 +840,9 @@ export const Settings = () => {
             {/* ══════════════ ONGLET TERMINAL POS ══════════════ */}
             {activeTab === 'pos' && (
               <form onSubmit={handleSavePOS}>
-                <h3>🔌 Périphériques et Terminal POS</h3>
+                <h3>🔌 Terminal POS &amp; Périphériques</h3>
+                <p className="text-muted small mb-4">Configurez les périphériques physiques connectés à ce terminal de caisse.</p>
+
                 <div className="row mt-3">
                   <div className="col-md-6 form-group">
                     <label className="form-label">Nom du Point de Vente (Caisse)</label>
@@ -772,15 +854,18 @@ export const Settings = () => {
                       <option value="Epson TM-T20III">Epson TM-T20III (Thermique USB)</option>
                       <option value="Star Micronics TSP143">Star Micronics TSP143 (Réseau)</option>
                       <option value="Generic 80mm">Imprimante 80mm Générique</option>
+                      <option value="Generic 58mm">Imprimante 58mm Générique</option>
+                      <option value="PDF/A4">Impression Standard A4 / PDF</option>
                     </select>
                   </div>
                 </div>
                 <div className="row">
                   <div className="col-md-6 form-group">
-                    <label className="form-label">Largeur du ticket (thermique)</label>
+                    <label className="form-label">Format / Largeur d'impression</label>
                     <select className="form-control" value={printerWidth} onChange={(e) => setPrinterWidth(e.target.value)}>
-                      <option value="80">Large (80mm) - Recommandé</option>
+                      <option value="80">Large (80mm) - Recommandé POS</option>
                       <option value="58">Compact (58mm)</option>
+                      <option value="A4">Format Facture A4</option>
                     </select>
                   </div>
                   <div className="col-md-6 form-group">
@@ -791,9 +876,159 @@ export const Settings = () => {
                     </select>
                   </div>
                 </div>
+
+                <div className="panel-divider my-4" style={{ borderTop: '1px solid var(--border-color)' }} />
+
+                {/* SECTION PERSONNALISATION TICKETS & FACTURES */}
+                <h3>🧾 Personnalisation des Tickets &amp; Factures</h3>
+                <p className="text-muted small mb-3">Définissez les messages et informations légales figurant sur vos reçus imprimés.</p>
+
+                <div className="row">
+                  <div className="col-md-6 form-group">
+                    <label className="form-label">Message d'En-tête de Ticket</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="Ex: Bienvenue chez Quincaillerie Pro"
+                      value={receiptHeader}
+                      onChange={(e) => setReceiptHeader(e.target.value)}
+                    />
+                  </div>
+                  <div className="col-md-6 form-group">
+                    <label className="form-label">Mentions Légales (N° IFU / RCCM)</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="Ex: RCCM: CI-ABJ-2026-B-12345 • IFU: 02026123456"
+                      value={receiptRccmIfu}
+                      onChange={(e) => setReceiptRccmIfu(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Message de Pied de Page (Bas de ticket / Conditions de retour)</label>
+                  <textarea
+                    className="form-control"
+                    rows="2"
+                    placeholder="Ex: Merci de votre visite ! Les marchandises vendues ne sont ni reprises ni échangées."
+                    value={receiptFooter}
+                    onChange={(e) => setReceiptFooter(e.target.value)}
+                  ></textarea>
+                </div>
+
+                <div className="row mt-3">
+                  <div className="col-md-4 form-group">
+                    <div className="form-check form-switch pt-2">
+                      <input
+                        className="form-check-input"
+                        type="checkbox"
+                        id="showLogoCheck"
+                        checked={showLogoOnReceipt}
+                        onChange={(e) => setShowLogoOnReceipt(e.target.checked)}
+                      />
+                      <label className="form-check-label fw-bold" htmlFor="showLogoCheck">
+                        Afficher le logo entreprise sur le ticket
+                      </label>
+                    </div>
+                  </div>
+                  <div className="col-md-4 form-group">
+                    <div className="form-check form-switch pt-2">
+                      <input
+                        className="form-check-input"
+                        type="checkbox"
+                        id="showCustomerCheck"
+                        checked={showCustomerInfo}
+                        onChange={(e) => setShowCustomerInfo(e.target.checked)}
+                      />
+                      <label className="form-check-label fw-bold" htmlFor="showCustomerCheck">
+                        Afficher les infos client sur le reçu
+                      </label>
+                    </div>
+                  </div>
+                  <div className="col-md-4 form-group">
+                    <div className="form-check form-switch pt-2">
+                      <input
+                        className="form-check-input"
+                        type="checkbox"
+                        id="autoPrintCheck"
+                        checked={autoPrintReceipt}
+                        onChange={(e) => setAutoPrintReceipt(e.target.checked)}
+                      />
+                      <label className="form-check-label fw-bold" htmlFor="autoPrintCheck">
+                        Impression automatique après vente
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="panel-divider my-4" style={{ borderTop: '1px solid var(--border-color)' }} />
+
+                {/* SECTION RÈGLES DE GESTION DE CAISSE & AUTORISATIONS */}
+                <h3>🔒 Règles d'Ouverture &amp; Autorisations Caisse</h3>
+                <p className="text-muted small mb-3">Définissez les contraintes de sécurité et d'habilitation pour les caissiers de votre entreprise.</p>
+
+                <div className="p-3 rounded border mb-3" style={{ background: 'var(--bg-input)', borderColor: 'var(--border-color)' }}>
+                  <div className="form-check form-switch mb-3">
+                    <input
+                      className="form-check-input"
+                      type="checkbox"
+                      id="reqCashCheck"
+                      checked={requireInitialCash}
+                      onChange={(e) => setRequireInitialCash(e.target.checked)}
+                    />
+                    <label className="form-check-label fw-bold" htmlFor="reqCashCheck">
+                      Fond de caisse initial obligatoire à l'ouverture
+                    </label>
+                    <div className="text-muted small ms-1">Exige que le caissier saisisse le montant du fond de caisse au démarrage de la session.</div>
+                  </div>
+
+                  <div className="form-check form-switch mb-3">
+                    <input
+                      className="form-check-input"
+                      type="checkbox"
+                      id="reqPinOpenCheck"
+                      checked={requireManagerPinForOpen}
+                      onChange={(e) => setRequireManagerPinForOpen(e.target.checked)}
+                    />
+                    <label className="form-check-label fw-bold" htmlFor="reqPinOpenCheck">
+                      Validation par PIN Gérant obligatoire pour ouvrir la caisse
+                    </label>
+                    <div className="text-muted small ms-1">Un gérant doit saisir son code PIN de sécurité pour autoriser l'ouverture de chaque session de caisse.</div>
+                  </div>
+
+                  <div className="form-check form-switch mb-3">
+                    <input
+                      className="form-check-input"
+                      type="checkbox"
+                      id="reqPinDiscCheck"
+                      checked={requireManagerPinForDiscrepancy}
+                      onChange={(e) => setRequireManagerPinForDiscrepancy(e.target.checked)}
+                    />
+                    <label className="form-check-label fw-bold" htmlFor="reqPinDiscCheck">
+                      Validation par PIN Gérant obligatoire en cas d'écart de clôture
+                    </label>
+                    <div className="text-muted small ms-1">Empêche le caissier de valider une clôture avec un écart financier sans l'approbation explicite du responsable.</div>
+                  </div>
+
+                  <div className="form-check form-switch">
+                    <input
+                      className="form-check-input"
+                      type="checkbox"
+                      id="hideTheoCheck"
+                      checked={hideTheoreticalCashBeforeClose}
+                      onChange={(e) => setHideTheoreticalCashBeforeClose(e.target.checked)}
+                    />
+                    <label className="form-check-label fw-bold" htmlFor="hideTheoCheck">
+                      Masquer le montant théorique attendu avant le comptage final
+                    </label>
+                    <div className="text-muted small ms-1">Force le caissier à faire un comptage physique à l'aveugle avant d'afficher les écarts.</div>
+                  </div>
+                </div>
+
                 <div className="mt-4 text-end">
-                  <button type="submit" className="btn btn-primary">
-                    <i className="fa-solid fa-circle-check me-1"></i> Enregistrer la configuration POS
+                  <button type="submit" className="btn btn-primary" disabled={loading}>
+                    <i className="fa-solid fa-circle-check me-1"></i> {loading ? 'Enregistrement...' : 'Enregistrer la configuration & règles POS'}
                   </button>
                 </div>
               </form>
