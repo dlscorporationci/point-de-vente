@@ -25,8 +25,14 @@ class DocumentController extends Controller
     {
         $user      = $request->user();
         $companyId = $user->company_id;
+        $userRole  = is_object($user->role) ? ($user->role->slug ?? '') : (string)$user->role;
+        $isSuperAdmin = ($user->email === 'superadmin@dls.com') || in_array($userRole, ['super-admin', 'superadmin']) || !$companyId;
 
-        $query = GeneratedDocument::where('company_id', $companyId)->with(['user', 'branch']);
+        $query = GeneratedDocument::withoutGlobalScopes()->with(['company', 'user', 'branch']);
+
+        if (!$isSuperAdmin && $companyId) {
+            $query->where('company_id', $companyId);
+        }
 
         if ($request->filled('document_type')) {
             $query->where('document_type', $request->document_type);
@@ -45,7 +51,7 @@ class DocumentController extends Controller
             });
         }
 
-        $documents = $query->orderBy('id', 'desc')->paginate($request->input('per_page', 20));
+        $documents = $query->orderBy('id', 'desc')->paginate($request->input('per_page', 50));
 
         return response()->json([
             'success'   => true,

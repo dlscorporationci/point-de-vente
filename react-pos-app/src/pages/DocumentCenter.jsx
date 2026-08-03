@@ -26,7 +26,9 @@ export const DocumentCenter = () => {
           format: formatFilter,
         }
       });
-      setDocuments(res.data.documents?.data || []);
+      const rawDocs = res.data.documents;
+      const list = Array.isArray(rawDocs) ? rawDocs : (rawDocs?.data || res.data.data || []);
+      setDocuments(list);
       setContracts(res.data.contracts || {});
     } catch (err) {
       console.error("Fetch Documents Error:", err);
