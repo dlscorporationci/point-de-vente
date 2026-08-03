@@ -31,7 +31,13 @@ class NotificationController extends Controller
             $query->where('company_id', $user->company_id);
         }
 
-        // 2. Filtrage par boutique & utilisateur destinataire
+        // 2. Filtrage par boutique & utilisateur destinataire (exclut les messages émis par soi-même pour des tiers)
+        $query->where(function ($q) use ($user) {
+            $q->whereNull('actor_id')
+              ->orWhere('actor_id', '!=', $user->id)
+              ->orWhere('user_id', $user->id);
+        });
+
         $query->where(function ($q) use ($user, $accessibleBranchIds, $isSuperAdmin) {
             $q->where('user_id', $user->id);
 
@@ -106,6 +112,12 @@ class NotificationController extends Controller
         if (!$isSuperAdmin) {
             $query->where('company_id', $user->company_id);
         }
+
+        $query->where(function ($q) use ($user) {
+            $q->whereNull('actor_id')
+              ->orWhere('actor_id', '!=', $user->id)
+              ->orWhere('user_id', $user->id);
+        });
 
         $query->where(function ($q) use ($user, $accessibleBranchIds, $isSuperAdmin) {
             $q->where('user_id', $user->id);
