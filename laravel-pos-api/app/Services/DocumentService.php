@@ -141,6 +141,31 @@ class DocumentService
                     ['key' => 'result',     'label' => 'Résultat',       'align' => 'center'],
                 ],
             ],
+            'purchases_list' => [
+                'type'     => 'purchases_list',
+                'title'    => 'HISTORIQUE DES ACHATS & APPROVISIONNEMENTS',
+                'subtitle' => 'Commandes fournisseurs, livraisons de stock et montants engagés',
+                'columns'  => [
+                    ['key' => 'reference',   'label' => 'N° Bon / Ref',    'align' => 'left'],
+                    ['key' => 'supplier',    'label' => 'Fournisseur',     'align' => 'left'],
+                    ['key' => 'date',        'label' => 'Date Commande',   'align' => 'left'],
+                    ['key' => 'total_amount','label' => 'Montant (FCFA)',  'align' => 'right'],
+                    ['key' => 'status',      'label' => 'Statut Livraison','align' => 'center'],
+                ],
+            ],
+            'transfers_list' => [
+                'type'     => 'transfers_list',
+                'title'    => 'HISTORIQUE DES TRANSFERTS DE STOCK INTER-BOUTIQUES',
+                'subtitle' => 'Mouvements d\'expéditions et réceptions d\'articles entre succursales',
+                'columns'  => [
+                    ['key' => 'reference',    'label' => 'N° Transfert',    'align' => 'left'],
+                    ['key' => 'from_branch',  'label' => 'Boutique Source', 'align' => 'left'],
+                    ['key' => 'to_branch',    'label' => 'Boutique Cible',  'align' => 'left'],
+                    ['key' => 'items_count',  'label' => 'Articles',        'align' => 'center'],
+                    ['key' => 'date',         'label' => 'Date Expédition', 'align' => 'left'],
+                    ['key' => 'status',       'label' => 'Statut',          'align' => 'center'],
+                ],
+            ],
         ];
     }
 
@@ -376,6 +401,51 @@ class DocumentService
                     ];
                 }
                 $totals = ['Nombre d\'événements enregistrés' => count($logs)];
+                break;
+
+            case 'purchases_list':
+                $query = Purchase::where('company_id', $company->id)->with('supplier');
+                if ($branch) {
+                    $query->where('branch_id', $branch->id);
+                }
+                $purchases = $query->orderBy('id', 'desc')->get();
+                $sumPurchases = 0;
+                foreach ($purchases as $pur) {
+                    $amt = floatval($pur->total_amount || 0);
+                    $sumPurchases += $amt;
+                    $rows[] = [
+                        'reference'    => $pur->purchase_number ?: ('ACHAT #' . $pur->id),
+                        'supplier'     => $pur->supplier ? $pur->supplier->name : 'Fournisseur Général',
+                        'date'         => $pur->created_at ? $pur->created_at->format('d/m/Y') : '',
+                        'total_amount' => number_format($amt, 0, ',', ' '),
+                        'status'       => strtoupper($pur->status ?: 'COMPLÉTÉ'),
+                    ];
+                }
+                $totals = [
+                    'Nombre de commandes' => count($purchases),
+                    'Montant total des achats' => $sumPurchases,
+                ];
+                break;
+
+            case 'transfers_list':
+                $query = StockTransfer::where('company_id', $company->id)->with(['fromBranch', 'toBranch']);
+                if ($branch) {
+                    $query->where(function($q) use ($branch) {
+                        $q->where('from_branch_id', $branch->id)->orWhere('to_branch_id', $branch->id);
+                    });
+                }
+                $transfers = $query->orderBy('id', 'desc')->get();
+                foreach ($transfers as $tr) {
+                    $rows[] = [
+                        'reference'   => $tr->transfer_number ?: ('TRF #' . $tr->id),
+                        'from_branch' => $tr->fromBranch ? $tr->fromBranch->name : 'Source',
+                        'to_branch'   => $tr->toBranch ? $tr->toBranch->name : 'Destination',
+                        'items_count' => is_array($tr->items) ? count($tr->items) : 1,
+                        'date'        => $tr->created_at ? $tr->created_at->format('d/m/Y H:i') : '',
+                        'status'      => strtoupper($tr->status ?: 'EXPÉDIÉ'),
+                    ];
+                }
+                $totals = ['Nombre de transferts inter-boutiques' => count($transfers)];
                 break;
 
             default:

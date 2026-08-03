@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
 import { db } from '../services/db';
+import { ExportModal } from '../components/ExportModal';
 
 export const Transfers = () => {
   const { user, token, activeBranch } = useApp();
@@ -16,6 +17,7 @@ export const Transfers = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [selectedTransfer, setSelectedTransfer] = useState(null);
   const [confirmAction, setConfirmAction] = useState(''); // 'ship' or 'receive'
+  const [showExportModal, setShowExportModal] = useState(false);
 
   // Formulaire de transfert
   const [fromBranchId, setFromBranchId] = useState('');
@@ -145,6 +147,12 @@ export const Transfers = () => {
           <span className="alert-icon"><i className="fa-solid fa-lock text-muted"></i></span>
           <h3>Accès Réservé</h3>
           <p>Vous devez vous connecter à une session pour gérer les transferts inter-boutiques.</p>
+          <ExportModal
+            isOpen={showExportModal}
+            onClose={() => setShowExportModal(false)}
+            documentType="transfers_list"
+            documentTitle="Historique des Transferts de Stock Inter-Boutiques"
+          />
         </div>
       </div>
     );
@@ -164,9 +172,14 @@ export const Transfers = () => {
             <p className="transfers-subtitle">Transférez vos stocks en toute sécurité entre vos points de vente</p>
           </div>
           
-          <button onClick={() => setShowForm(true)} className="btn btn-primary">
-            <i className="fa-solid fa-plus me-1"></i> Demander un Transfert
-          </button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button onClick={() => setShowExportModal(true)} className="btn btn-outline-secondary" style={{ fontWeight: 700 }}>
+              <i className="fa-solid fa-file-export me-1"></i> Exporter
+            </button>
+            <button onClick={() => setShowForm(true)} className="btn btn-primary">
+              <i className="fa-solid fa-plus me-1"></i> Demander un Transfert
+            </button>
+          </div>
         </div>
 
         {error && <div className="error-banner"><i className="fa-solid fa-circle-exclamation me-1"></i> {error}</div>}

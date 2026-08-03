@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext';
 import { db } from '../services/db';
 import { CatalogTemplatesModal } from '../components/CatalogTemplatesModal';
 import { MassProductDeleteModal } from '../components/MassProductDeleteModal';
+import { ExportModal } from '../components/ExportModal';
 
 export const getImageUrl = (imagePath) => {
   if (!imagePath) return null;
@@ -42,6 +43,7 @@ export const Catalog = () => {
   // États de recherche et filtres
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [showExportModal, setShowExportModal] = useState(false);
   
   // États d'ouverture de formulaires
   const [showProductForm, setShowProductForm] = useState(false);
@@ -430,6 +432,12 @@ export const Catalog = () => {
           <span className="alert-icon"><i className="fa-solid fa-lock text-muted"></i></span>
           <h3>Accès Réservé</h3>
           <p>Vous devez vous connecter à une session pour gérer le catalogue de produits.</p>
+          <ExportModal
+            isOpen={showExportModal}
+            onClose={() => setShowExportModal(false)}
+            documentType="products_list"
+            documentTitle="Catalogue des Produits"
+          />
         </div>
       </div>
     );
@@ -452,6 +460,9 @@ export const Catalog = () => {
           
           {hasCreatePermission && (
             <div className="action-buttons-group d-flex flex-wrap gap-2">
+              <button onClick={() => setShowExportModal(true)} className="btn btn-outline-secondary" style={{ fontWeight: 700 }}>
+                <i className="fa-solid fa-file-export me-1"></i> Exporter Catalogue
+              </button>
               <button onClick={() => setShowTemplatesModal(true)} className="btn btn-outline-primary" style={{ fontWeight: 700 }}>
                 <i className="fa-solid fa-boxes-packing me-1"></i> Packs de Catalogue
               </button>

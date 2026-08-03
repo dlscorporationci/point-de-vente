@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
 import { db } from '../services/db';
+import { ExportModal } from '../components/ExportModal';
 
 export const Suppliers = () => {
   const { user, token } = useApp();
@@ -11,6 +12,7 @@ export const Suppliers = () => {
   
   // États de recherche
   const [search, setSearch] = useState('');
+  const [showExportModal, setShowExportModal] = useState(false);
   
   // États d'ouverture et d'édition de formulaires
   const [showForm, setShowForm] = useState(false);
@@ -137,6 +139,12 @@ export const Suppliers = () => {
           <span className="alert-icon">🔒</span>
           <h3>Accès Réservé</h3>
           <p>Vous devez vous connecter à une session pour gérer le référentiel des fournisseurs.</p>
+          <ExportModal
+            isOpen={showExportModal}
+            onClose={() => setShowExportModal(false)}
+            documentType="suppliers_list"
+            documentTitle="Liste des Fournisseurs"
+          />
         </div>
       </div>
     );
@@ -157,11 +165,16 @@ export const Suppliers = () => {
             <p className="suppliers-subtitle">Comptes courants & Coordonnées d'achats</p>
           </div>
           
-          {hasCreatePermission && (
-            <button onClick={() => openForm(null)} className="btn btn-primary">
-              <i className="fa-solid fa-plus me-1"></i> Nouveau Fournisseur
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button onClick={() => setShowExportModal(true)} className="btn btn-outline-secondary" style={{ fontWeight: 700 }}>
+              <i className="fa-solid fa-file-export me-1"></i> Exporter
             </button>
-          )}
+            {hasCreatePermission && (
+              <button onClick={() => openForm(null)} className="btn btn-primary">
+                <i className="fa-solid fa-plus me-1"></i> Nouveau Fournisseur
+              </button>
+            )}
+          </div>
         </div>
 
         {error && <div className="error-banner"><i className="fa-solid fa-circle-exclamation me-1"></i> {error}</div>}

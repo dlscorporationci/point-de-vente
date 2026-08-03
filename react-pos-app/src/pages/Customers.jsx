@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
 import { db } from '../services/db';
+import { ExportModal } from '../components/ExportModal';
 
 export const Customers = () => {
   const { token, user } = useApp();
   const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [showExportModal, setShowExportModal] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
@@ -160,9 +162,14 @@ export const Customers = () => {
             <h2 className="section-title"><i className="fa-solid fa-users me-2 text-primary"></i> Gestion des Clients</h2>
             <p className="customers-subtitle">Pilotez votre portefeuille client, le crédit compte courant et les points de fidélité.</p>
           </div>
-          <button onClick={openAddModal} className="btn btn-primary">
-            <i className="fa-solid fa-user-plus me-1"></i> Nouveau Client
-          </button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button onClick={() => setShowExportModal(true)} className="btn btn-outline-secondary" style={{ fontWeight: 700 }}>
+              <i className="fa-solid fa-file-export me-1"></i> Exporter
+            </button>
+            <button onClick={openAddModal} className="btn btn-primary">
+              <i className="fa-solid fa-user-plus me-1"></i> Nouveau Client
+            </button>
+          </div>
         </div>
 
         {error && <div className="error-banner"><i className="fa-solid fa-circle-exclamation me-1"></i> {error}</div>}
@@ -455,6 +462,13 @@ export const Customers = () => {
           </div>
         </div>
       )}
+
+      <ExportModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        documentType="customers_list"
+        documentTitle="Liste des Clients & Crédits"
+      />
 
       <style>{`
         .customers-container {

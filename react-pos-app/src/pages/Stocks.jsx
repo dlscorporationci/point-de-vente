@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
 import { db } from '../services/db';
+import { ExportModal } from '../components/ExportModal';
 
 export const Stocks = () => {
   const { user, token } = useApp();
@@ -13,6 +14,7 @@ export const Stocks = () => {
   // États d'ouverture de formulaire
   const [showAdjustModal, setShowAdjustModal] = useState(false);
   const [selectedStockItem, setSelectedStockItem] = useState(null);
+  const [showExportModal, setShowExportModal] = useState(false);
 
   // Formulaire d'ajustement
   const [adjustQty, setAdjustQty] = useState('');
@@ -105,6 +107,12 @@ export const Stocks = () => {
           <span className="alert-icon"><i className="fa-solid fa-lock text-muted"></i></span>
           <h3>Accès Réservé</h3>
           <p>Vous devez vous connecter à une session pour gérer les stocks et inventaires.</p>
+          <ExportModal
+            isOpen={showExportModal}
+            onClose={() => setShowExportModal(false)}
+            documentType="stock_status"
+            documentTitle="État Global des Stocks & Inventaires"
+          />
         </div>
       </div>
     );
@@ -118,10 +126,15 @@ export const Stocks = () => {
       <div className="decorator-sphere sphere-2"></div>
 
       <div className="stocks-layout card">
-        <div className="stocks-header">
+        <div className="stocks-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h2><i className="fa-solid fa-layer-group me-2 text-success"></i> Niveaux de Stocks & Outil d'Inventaire</h2>
             <p className="stocks-subtitle">Ajustez manuellement les stocks de votre boutique centrale et consultez l'historique</p>
+          </div>
+          <div>
+            <button onClick={() => setShowExportModal(true)} className="btn btn-outline-secondary" style={{ fontWeight: 700 }}>
+              <i className="fa-solid fa-file-export me-1"></i> Exporter État du Stock
+            </button>
           </div>
         </div>
 
