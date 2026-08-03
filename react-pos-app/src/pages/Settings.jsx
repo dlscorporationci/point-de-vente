@@ -246,7 +246,8 @@ export const Settings = () => {
 
       setSuccess("✅ Règles de gestion caisse et personnalisation ticket enregistrées avec succès pour votre entreprise !");
     } catch (err) {
-      setError(err.response?.data?.error || "Erreur de sauvegarde des paramètres du terminal POS.");
+      console.error("Save POS Settings Error:", err);
+      setError(err.response?.data?.error || err.response?.data?.message || err.message || "Erreur de sauvegarde des paramètres du terminal POS.");
     } finally {
       setLoading(false);
     }

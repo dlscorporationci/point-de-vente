@@ -79,7 +79,7 @@ Route::prefix('v1')->middleware('tenant')->group(function () {
         // Accès réservé aux admins et super-admin
         // -----------------------------------------------------------------------
         Route::middleware('role:admin,super-admin')->group(function () {
-            Route::put('/company-settings', [AuthController::class, 'updateCompanySettings']);
+            Route::match(['post', 'put'], '/company-settings', [AuthController::class, 'updateCompanySettings']);
         });
 
         // -----------------------------------------------------------------------
