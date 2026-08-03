@@ -134,10 +134,22 @@ function MainContent() {
     return () => { document.body.style.overflow = '' }
   }, [menuOpen])
 
-  // Bloquer l'accès à toute l'application en cas de maintenance (Sauf pour le Super-Admin)
-  if (maintenanceInfo && !isSuperAdmin) {
-    return <MaintenanceScreen maintenanceInfo={maintenanceInfo} />;
-  }
+  // État des accordéons de la navigation latérale (ouvert/fermé)
+  const [openNavGroups, setOpenNavGroups] = useState({
+    sales_catalog: true,
+    stock_logistics: false,
+    administration: false,
+    system_support: false
+  });
+
+  const [currentTime, setCurrentTime] = useState(() => new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }));
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }))
+    }, 10000)
+    return () => clearInterval(timer)
+  }, []);
 
   const renderContent = () => {
     // Si l'utilisateur n'est pas connecté
@@ -254,14 +266,6 @@ function MainContent() {
     }
   ];
 
-  // État des accordéons de la navigation latérale (ouvert/fermé)
-  const [openNavGroups, setOpenNavGroups] = useState({
-    sales_catalog: true,
-    stock_logistics: false,
-    administration: false,
-    system_support: false
-  });
-
   // Déplier automatiquement le groupe contenant l'onglet actif
   useEffect(() => {
     navGroups.forEach(grp => {
@@ -275,14 +279,10 @@ function MainContent() {
     setOpenNavGroups(prev => ({ ...prev, [groupId]: !prev[groupId] }));
   };
 
-  const [currentTime, setCurrentTime] = useState(() => new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }))
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }))
-    }, 10000)
-    return () => clearInterval(timer)
-  }, [])
+  // Bloquer l'accès à toute l'application en cas de maintenance (Sauf pour le Super-Admin)
+  if (maintenanceInfo && !isSuperAdmin) {
+    return <MaintenanceScreen maintenanceInfo={maintenanceInfo} />;
+  }
 
   const isAuthenticated = !!(user && (user.id || user.email || user.name));
   const isAppHeaderVisible = isAuthenticated && activeTab !== 'home' && activeTab !== 'auth' && activeTab !== 'register';
