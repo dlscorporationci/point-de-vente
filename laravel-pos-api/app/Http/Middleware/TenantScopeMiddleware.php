@@ -30,7 +30,24 @@ class TenantScopeMiddleware
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user('sanctum') ?: auth('sanctum')->user();
-        if ($user && (($user->role && $user->role->slug === 'super-admin') || $user->email === 'superadmin@dls.com')) {
+        $isSuperAdmin = $user && (($user->role && $user->role->slug === 'super-admin') || $user->email === 'superadmin@dls.com');
+
+        // Vérification de sécurité pour le mode de maintenance applicatif
+        if (!$request->is('*/maintenance*') && !$isSuperAdmin) {
+            $maintService = app(\App\Services\MaintenanceService::class);
+            $activeMaint  = $maintService->isMaintenanceActive($user ? $user->company_id : null);
+            if ($activeMaint) {
+                return response()->json([
+                    'error'            => 'L\'application est actuellement en cours de maintenance.',
+                    'maintenance'      => true,
+                    'message'          => $activeMaint->message ?: 'L\'application est temporairement en maintenance.',
+                    'started_at'       => $activeMaint->started_at,
+                    'estimated_end_at' => $activeMaint->estimated_end_at,
+                ], 503);
+            }
+        }
+
+        if ($isSuperAdmin) {
             // Le super-admin n'est pas bloqué par le tenant, mais on initialise
             // quand même le TenantManager pour les opérations CRUD qui ont besoin du company_id.
             $saCompanyId = $user->company_id ?: $request->header('X-Company-ID');

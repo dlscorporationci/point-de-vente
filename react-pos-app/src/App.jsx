@@ -29,6 +29,10 @@ import { AnimatedBubbles } from './components/AnimatedBubbles'
 import logo from './assets/logo.jpg'
 import { BranchSelectionPage } from './pages/BranchSelectionPage'
 import { Dashboard } from './pages/Dashboard'
+import { DocumentCenter } from './pages/DocumentCenter'
+import { CommunicationCenter } from './pages/CommunicationCenter'
+import { MaintenanceCenter } from './pages/MaintenanceCenter'
+import { MaintenanceScreen } from './components/MaintenanceScreen'
 
 function MainContent() {
   const { user, token, activeBranch, assignedBranches } = useApp()
@@ -121,6 +125,9 @@ function MainContent() {
       case 'pos':           return <PointDeVente />
       case 'audit':         return <AuditLogs />
       case 'reports':       return <Reports />
+      case 'documents':     return <DocumentCenter />
+      case 'communication': return <CommunicationCenter />
+      case 'maintenance':   return <MaintenanceCenter />
       case 'settings':      return <Settings />
       case 'branches':      return <Branches />
       case 'users-mgmt':    return <UsersManagement />
@@ -149,6 +156,9 @@ function MainContent() {
     'users-mgmt':  { icon: 'fa-users-gear',      label: 'Personnel & Rôles', show: !!(user && !isSuperAdmin && (role === 'admin' || role === 'gerant')) },
     settings:      { icon: 'fa-sliders',         label: 'Paramètres',    show: !!(user && !isSuperAdmin && isAdminOrGerant) },
     reports:       { icon: 'fa-chart-line',      label: 'Rapports',      show: !!(user && !isSuperAdmin && isAdminOrGerant) },
+    documents:     { icon: 'fa-folder-open',     label: 'Centre Documents', show: !!user },
+    communication: { icon: 'fa-paper-plane',     label: 'Communication SA', show: !!(user && isSuperAdmin) },
+    maintenance:   { icon: 'fa-screwdriver-wrench', label: 'Mode Maintenance', show: !!(user && (isSuperAdmin || isAdminOrGerant)) },
     audit:         { icon: 'fa-shield-halved',   label: 'Audit & Logs',  show: !!user },
     'sync-center': { icon: 'fa-arrows-rotate',   label: 'Centre Sync',   show: !!user },
     notifications: { icon: 'fa-bell',            label: 'Notifications', show: !!user },
@@ -184,14 +194,14 @@ function MainContent() {
       title: '⚙️ Administration',
       icon: 'fa-user-gear',
       collapsible: true,
-      items: ['branches', 'users-mgmt', 'settings', 'reports', 'audit']
+      items: ['branches', 'users-mgmt', 'settings', 'reports', 'documents', 'maintenance', 'audit']
     },
     {
       id: 'system_support',
       title: '🔄 Système & Support',
       icon: 'fa-circle-info',
       collapsible: true,
-      items: ['sync-center', 'notifications', 'auth', 'register', 'userguide']
+      items: ['sync-center', 'communication', 'notifications', 'auth', 'register', 'userguide']
     }
   ];
 
