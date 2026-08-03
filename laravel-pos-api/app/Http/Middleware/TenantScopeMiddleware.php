@@ -37,8 +37,10 @@ class TenantScopeMiddleware
             !empty($user->is_superadmin)
         );
 
+        $isPublicAuth = $request->is('*/auth/*') || $request->is('*/maintenance/status') || $request->is('*/tenant-test');
+
         // Vérification de sécurité pour le mode de maintenance applicatif
-        if (!$request->is('*/maintenance*') && !$isSuperAdmin) {
+        if (!$request->is('*/maintenance*') && !$isPublicAuth && !$isSuperAdmin) {
             $maintService = app(\App\Services\MaintenanceService::class);
             $activeMaint  = $maintService->isMaintenanceActive($user ? $user->company_id : null);
             if ($activeMaint) {
