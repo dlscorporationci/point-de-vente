@@ -55,7 +55,7 @@ export const Branches = () => {
       setShowForm(false);
       loadBranches();
     } catch (err) {
-      setError(err.response?.data?.error || 'Erreur lors de la sauvegarde.');
+      setError(err.response?.data?.error || err.response?.data?.message || 'Erreur lors de la sauvegarde de la boutique.');
     } finally {
       setSaving(false);
     }
