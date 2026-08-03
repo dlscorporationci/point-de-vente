@@ -158,7 +158,7 @@ function MainContent() {
     reports:       { icon: 'fa-chart-line',      label: 'Rapports',      show: !!(user && !isSuperAdmin && isAdminOrGerant) },
     documents:     { icon: 'fa-folder-open',     label: 'Centre Documents', show: !!user },
     communication: { icon: 'fa-paper-plane',     label: 'Communication SA', show: !!(user && isSuperAdmin) },
-    maintenance:   { icon: 'fa-screwdriver-wrench', label: 'Mode Maintenance', show: !!(user && (isSuperAdmin || isAdminOrGerant)) },
+    maintenance:   { icon: 'fa-screwdriver-wrench', label: 'Console Maintenance', show: !!(user && isSuperAdmin) },
     audit:         { icon: 'fa-shield-halved',   label: 'Audit & Logs',  show: !!user },
     'sync-center': { icon: 'fa-arrows-rotate',   label: 'Centre Sync',   show: !!user },
     notifications: { icon: 'fa-bell',            label: 'Notifications', show: !!user },

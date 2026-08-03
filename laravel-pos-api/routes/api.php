@@ -221,14 +221,6 @@ Route::prefix('v1')->middleware('tenant')->group(function () {
             Route::post('/admin/backups/{filename}/restore',  [\App\Http\Controllers\API\V1\SuperAdminController::class, 'restoreBackup']);
             Route::delete('/admin/backups/{filename}',        [\App\Http\Controllers\API\V1\SuperAdminController::class, 'deleteBackup']);
             // -----------------------------------------------------------------------
-            // Module Documentaire & System Central d'Exportations
-            // -----------------------------------------------------------------------
-            Route::get('/documents',               [\App\Http\Controllers\API\V1\DocumentController::class, 'index']);
-            Route::post('/documents/export',       [\App\Http\Controllers\API\V1\DocumentController::class, 'export']);
-            Route::get('/documents/{id}/download', [\App\Http\Controllers\API\V1\DocumentController::class, 'download']);
-            Route::delete('/documents/{id}',      [\App\Http\Controllers\API\V1\DocumentController::class, 'destroy']);
-
-            // -----------------------------------------------------------------------
             // Centre de Communication SuperAdmin
             // -----------------------------------------------------------------------
             Route::get('/communications',      [\App\Http\Controllers\API\V1\CommunicationController::class, 'index']);
@@ -241,6 +233,14 @@ Route::prefix('v1')->middleware('tenant')->group(function () {
             Route::get('/maintenance',        [\App\Http\Controllers\API\V1\MaintenanceController::class, 'index']);
             Route::post('/maintenance/toggle', [\App\Http\Controllers\API\V1\MaintenanceController::class, 'toggle']);
         });
+
+        // -----------------------------------------------------------------------
+        // Module Documentaire & Système Central d'Exportations (Tous Utilisateurs Authentifiés)
+        // -----------------------------------------------------------------------
+        Route::get('/documents',               [\App\Http\Controllers\API\V1\DocumentController::class, 'index']);
+        Route::post('/documents/export',       [\App\Http\Controllers\API\V1\DocumentController::class, 'export']);
+        Route::get('/documents/{id}/download', [\App\Http\Controllers\API\V1\DocumentController::class, 'download']);
+        Route::delete('/documents/{id}',      [\App\Http\Controllers\API\V1\DocumentController::class, 'destroy']);
 
         // Lister les rôles disponibles (pour les formulaires de création d'utilisateurs)
         Route::get('/roles', function (Request $request) {
