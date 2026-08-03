@@ -11,6 +11,7 @@ class CatalogTemplateCategory extends Model
         'name',
         'parent_id',
         'icon',
+        'image_url',
     ];
 
     public function template()

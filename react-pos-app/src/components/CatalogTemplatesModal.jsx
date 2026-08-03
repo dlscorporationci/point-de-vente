@@ -161,7 +161,7 @@ export const CatalogTemplatesModal = ({ isOpen, onClose, onSuccess }) => {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px', maxHeight: '320px', overflowY: 'auto', paddingRight: '4px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px', maxHeight: '420px', overflowY: 'auto', paddingRight: '4px' }}>
                   {templateDetails.categories?.map(cat => {
                     const catProducts = templateDetails.products?.filter(p => p.category_name === cat.name) || [];
                     const isChecked = selectedCategories.includes(cat.id);
@@ -171,19 +171,43 @@ export const CatalogTemplatesModal = ({ isOpen, onClose, onSuccess }) => {
                         onClick={() => toggleCategory(cat.id)} 
                         style={{ 
                           padding: '14px', 
-                          borderRadius: '10px', 
+                          borderRadius: '12px', 
                           border: isChecked ? '2px solid var(--color-primary)' : '1px solid var(--border-color)', 
-                          background: isChecked ? 'rgba(59, 130, 246, 0.05)' : 'var(--bg-input)',
+                          background: isChecked ? 'rgba(59, 130, 246, 0.06)' : 'var(--bg-input)',
                           cursor: 'pointer',
                           display: 'flex',
-                          alignItems: 'flex-start',
-                          gap: '12px'
+                          flexDirection: 'column',
+                          gap: '10px'
                         }}
                       >
-                        <input type="checkbox" checked={isChecked} onChange={() => {}} style={{ marginTop: '3px' }} />
-                        <div>
-                          <strong style={{ fontSize: '14px', display: 'block' }}>{cat.name}</strong>
-                          <span className="text-muted small">{catProducts.length} articles disponibles</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <input type="checkbox" checked={isChecked} onChange={() => {}} style={{ width: '18px', height: '18px', cursor: 'pointer' }} />
+                          {cat.image_url ? (
+                            <img 
+                              src={cat.image_url} 
+                              alt={cat.name} 
+                              style={{ width: '42px', height: '42px', borderRadius: '8px', objectFit: 'cover', border: '1px solid var(--border-color)' }}
+                            />
+                          ) : (
+                            <div style={{ width: '42px', height: '42px', borderRadius: '8px', background: 'var(--color-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <i className={`fa-solid ${cat.icon || 'fa-folder'}`}></i>
+                            </div>
+                          )}
+                          <div style={{ flex: 1 }}>
+                            <strong style={{ fontSize: '14px', display: 'block', color: 'var(--text-main)' }}>{cat.name}</strong>
+                            <span className="text-muted small">{catProducts.length} articles avec visuels & prix</span>
+                          </div>
+                        </div>
+
+                        {/* Aperçu rapide des 3 premiers produits avec image */}
+                        <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', pt: 1 }}>
+                          {catProducts.slice(0, 3).map(p => (
+                            <div key={p.id} style={{ fontSize: '10px', background: '#fff', padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--border-color)', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              {p.image_url && <img src={p.image_url} style={{ width: '16px', height: '16px', borderRadius: '3px', objectFit: 'cover' }} alt="" />}
+                              <span>{p.name}</span>
+                              <strong style={{ color: 'var(--color-primary)' }}>{Number(p.selling_price).toLocaleString()} F</strong>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     );

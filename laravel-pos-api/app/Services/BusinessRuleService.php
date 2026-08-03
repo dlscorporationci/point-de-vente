@@ -95,11 +95,15 @@ class BusinessRuleService
     /**
      * Évaluer la valeur d'une règle selon la hiérarchie : Boutique -> Entreprise -> Système.
      */
-    public function getRule(string $ruleKey, int $companyId, ?int $branchId = null)
+    public function getRule(string $ruleKey, ?int $companyId = null, ?int $branchId = null)
     {
         $defaults = self::getDefaultRules();
         $defaultVal = $defaults[$ruleKey]['value'] ?? null;
         $valueType = $defaults[$ruleKey]['type'] ?? 'boolean';
+
+        if (!$companyId) {
+            return $defaultVal;
+        }
 
         // 1. Chercher surcharge au niveau boutique
         if ($branchId) {

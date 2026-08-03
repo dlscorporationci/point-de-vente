@@ -4,12 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-use App\Traits\BelongsToCompany;
+use App\Traits\BelongsToTenant;
 use App\Traits\Auditable;
 
 class AccessZone extends Model
 {
-    use BelongsToCompany, Auditable;
+    use BelongsToTenant, Auditable;
 
     protected $fillable = [
         'company_id',

@@ -106,7 +106,8 @@ class CatalogTemplateController extends Controller
                         'name'       => $cat->name,
                     ],
                     [
-                        'icon' => $cat->icon ?? 'fa-folder',
+                        'icon'       => $cat->icon ?? 'fa-folder',
+                        'image_path' => $cat->image_url,
                     ]
                 );
                 $categoryMapping[$cat->name] = $category->id;
@@ -132,6 +133,7 @@ class CatalogTemplateController extends Controller
                     'cost_price'     => $tmplProd->cost_price,
                     'tax_rate'       => $tmplProd->tax_rate,
                     'alert_quantity' => $tmplProd->alert_quantity,
+                    'image_path'     => $tmplProd->image_url,
                     'status'         => 'active',
                 ]);
 

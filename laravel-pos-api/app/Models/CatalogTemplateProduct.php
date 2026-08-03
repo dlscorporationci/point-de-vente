@@ -18,6 +18,7 @@ class CatalogTemplateProduct extends Model
         'cost_price',
         'tax_rate',
         'alert_quantity',
+        'image_url',
     ];
 
     public function template()

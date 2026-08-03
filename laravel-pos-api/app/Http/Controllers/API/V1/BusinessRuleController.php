@@ -27,7 +27,7 @@ class BusinessRuleController extends Controller
     {
         $currentUser = $request->user();
         $tenantManager = app(TenantManager::class);
-        $companyId = $tenantManager->getCompanyId() ?: $currentUser->company_id;
+        $companyId = $tenantManager->getCompanyId() ?: ($currentUser ? $currentUser->company_id : null);
         $branchId = $request->query('branch_id');
 
         $defaultRules = BusinessRuleService::getDefaultRules();
@@ -72,7 +72,7 @@ class BusinessRuleController extends Controller
     {
         $currentUser = $request->user();
         $tenantManager = app(TenantManager::class);
-        $companyId = $tenantManager->getCompanyId() ?: $currentUser->company_id;
+        $companyId = $tenantManager->getCompanyId() ?: ($currentUser ? $currentUser->company_id : null);
 
         $request->validate([
             'rules'              => 'required|array',
