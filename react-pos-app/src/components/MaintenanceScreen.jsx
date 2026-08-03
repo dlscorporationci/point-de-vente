@@ -13,7 +13,7 @@ const formatDateSafe = (dateStr) => {
   }
 };
 
-export const MaintenanceScreen = ({ maintenanceInfo: propMaintInfo }) => {
+export const MaintenanceScreen = ({ maintenanceInfo: propMaintInfo, onAdminLogin }) => {
   const [maintInfo, setMaintInfo] = useState(propMaintInfo || null);
 
   useEffect(() => {
@@ -121,6 +121,27 @@ export const MaintenanceScreen = ({ maintenanceInfo: propMaintInfo }) => {
             <strong>Offline-First :</strong> Vos ventes locales en cours sont conservées en sécurité dans votre navigateur et seront synchronisées dès la réouverture.
           </span>
         </div>
+
+        {onAdminLogin && (
+          <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #334155' }}>
+            <button
+              onClick={onAdminLogin}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#94a3b8',
+                fontSize: '12px',
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <i className="fa-solid fa-lock" style={{ fontSize: '12px', color: '#f59e0b' }}></i> Espace Connexion Administrateur SaaS
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

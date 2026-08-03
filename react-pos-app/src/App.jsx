@@ -279,9 +279,9 @@ function MainContent() {
     setOpenNavGroups(prev => ({ ...prev, [groupId]: !prev[groupId] }));
   };
 
-  // Bloquer l'accès à toute l'application en cas de maintenance (Sauf pour le Super-Admin)
-  if (maintenanceInfo && !isSuperAdmin) {
-    return <MaintenanceScreen maintenanceInfo={maintenanceInfo} />;
+  // Bloquer l'accès à toute l'application en cas de maintenance (Sauf pour le Super-Admin ou pendant la connexion Admin)
+  if (maintenanceInfo && !isSuperAdmin && activeTab !== 'auth') {
+    return <MaintenanceScreen maintenanceInfo={maintenanceInfo} onAdminLogin={() => setActiveTab('auth')} />;
   }
 
   const isAuthenticated = !!(user && (user.id || user.email || user.name));
