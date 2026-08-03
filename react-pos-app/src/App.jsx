@@ -34,14 +34,26 @@ import { CommunicationCenter } from './pages/CommunicationCenter'
 import { MaintenanceCenter } from './pages/MaintenanceCenter'
 import { MaintenanceScreen } from './components/MaintenanceScreen'
 
+const getRoleSlug = (r) => {
+  if (!r) return '';
+  if (typeof r === 'string') return r;
+  if (typeof r === 'object') return r.slug || r.name || '';
+  return String(r);
+};
+
 function MainContent() {
   const { user, token, activeBranch, assignedBranches, maintenanceInfo } = useApp()
+  
+  const role = getRoleSlug(user?.role);
+  const isSuperAdmin = role === 'super-admin' || role === 'Super Admin' || role === 'superadmin' || user?.email === 'superadmin@dls.com' || !!user?.is_superadmin;
+  const isAdminOrGerant = role === 'admin' || role === 'gerant' || isSuperAdmin;
+  const isAdmin = role === 'admin' || isSuperAdmin;
+
   const [activeTab, setActiveTab] = useState(() => {
-    if (!user) return 'home'
-    const role = user.role?.slug || user.role?.name || user.role
-    if (role === 'super-admin') return 'backoffice'
-    return 'dashboard'
-  })
+    if (!user) return 'home';
+    if (isSuperAdmin) return 'backoffice';
+    return 'dashboard';
+  });
   const [menuOpen, setMenuOpen] = useState(false)
   const drawerRef = useRef(null)
   const [tabHistory, setTabHistory] = useState([])
@@ -83,12 +95,6 @@ function MainContent() {
     document.body.style.overflow = menuOpen ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
   }, [menuOpen])
-
-  // Note : Tous les utilisateurs connectés conservent l'accès aux modules opérationnels (POS, Catalogue, Stocks, etc.)
-  const role = typeof user?.role === 'string' ? user.role : (user?.role?.slug || user?.role?.name || user?.role || '')
-  const isSuperAdmin = role === 'super-admin' || role === 'Super Admin' || role === 'superadmin' || user?.email === 'superadmin@dls.com' || !!user?.is_superadmin
-  const isAdminOrGerant = role === 'admin' || role === 'gerant' || isSuperAdmin
-  const isAdmin = role === 'admin' || isSuperAdmin
 
   // Bloquer l'accès à toute l'application en cas de maintenance (Sauf pour le Super-Admin)
   if (maintenanceInfo && !isSuperAdmin) {

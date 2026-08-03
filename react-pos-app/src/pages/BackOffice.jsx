@@ -70,7 +70,8 @@ export const BackOffice = () => {
   const [exportType, setExportType] = useState('saas_metrics');
   const [exportTitle, setExportTitle] = useState('Supervision SaaS');
 
-  const isSuperAdmin = user?.role === 'super-admin' || user?.role?.slug === 'super-admin' || user?.role?.name === 'super-admin' || user?.email === 'superadmin@dls.com';
+  const userRole = typeof user?.role === 'string' ? user.role : (user?.role?.slug || user?.role?.name || '');
+  const isSuperAdmin = userRole === 'super-admin' || userRole === 'Super Admin' || userRole === 'superadmin' || user?.email === 'superadmin@dls.com' || !!user?.is_superadmin;
 
   // 1. Charger le Dashboard SaaS
   const loadDashboard = async () => {
