@@ -41,6 +41,36 @@ const getRoleSlug = (r) => {
   return String(r);
 };
 
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error("React ErrorBoundary a intercepté une erreur :", error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: '30px', background: '#fee2e2', color: '#991b1b', fontFamily: 'sans-serif', margin: '20px', borderRadius: '12px', border: '1px solid #f87171' }}>
+          <h2 style={{ margin: '0 0 10px' }}>⚠️ Erreur d'affichage applicative (React Error)</h2>
+          <p><strong>Détails :</strong> {this.state.error?.toString()}</p>
+          <pre style={{ background: '#ffffff', padding: '15px', borderRadius: '8px', overflowX: 'auto', fontSize: '12px', color: '#1e293b' }}>
+            {this.state.error?.stack}
+          </pre>
+          <button onClick={() => window.location.reload()} style={{ padding: '10px 20px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', marginTop: '10px', fontWeight: 'bold' }}>
+            Recharger la page
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 function MainContent() {
   const { user, token, activeBranch, assignedBranches, maintenanceInfo } = useApp()
   
@@ -49,11 +79,19 @@ function MainContent() {
   const isAdminOrGerant = role === 'admin' || role === 'gerant' || isSuperAdmin;
   const isAdmin = role === 'admin' || isSuperAdmin;
 
-  const [activeTab, setActiveTab] = useState(() => {
+  const [activeTab, setActiveTabState] = useState(() => {
     if (!user) return 'home';
+    const savedTab = sessionStorage.getItem('apex_active_tab');
+    if (savedTab) return savedTab;
     if (isSuperAdmin) return 'backoffice';
     return 'dashboard';
   });
+
+  const setActiveTab = (tab) => {
+    sessionStorage.setItem('apex_active_tab', tab);
+    setActiveTabState(tab);
+  };
+
   const [menuOpen, setMenuOpen] = useState(false)
   const drawerRef = useRef(null)
   const [tabHistory, setTabHistory] = useState([])
@@ -251,6 +289,47 @@ function MainContent() {
 
   return (
     <>
+      {/* ── BANNIÈRE SUPER-ADMIN LORSQUE LE MODE MAINTENANCE EST ACTIF ── */}
+      {isSuperAdmin && maintenanceInfo && (
+        <div style={{
+          position: 'fixed',
+          top: isAppHeaderVisible ? '64px' : 0,
+          left: 0, right: 0,
+          backgroundColor: '#b45309',
+          color: '#ffffff',
+          padding: '8px 16px',
+          textAlign: 'center',
+          fontSize: '13px',
+          fontWeight: 700,
+          zIndex: 1001,
+          boxShadow: '0 2px 10px rgba(0,0,0,0.3)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '10px'
+        }}>
+          <i className="fa-solid fa-triangle-exclamation"></i>
+          <span>
+            <strong>MODE MAINTENANCE EN COURS :</strong> Les utilisateurs normaux sont actuellement redirigés vers l'écran de maintenance. Vous conservez l'accès exclusif d'administration.
+          </span>
+          <button 
+            onClick={() => setActiveTab('maintenance')} 
+            style={{
+              padding: '2px 10px',
+              backgroundColor: '#ffffff',
+              color: '#b45309',
+              border: 'none',
+              borderRadius: '4px',
+              fontWeight: 800,
+              fontSize: '11px',
+              cursor: 'pointer'
+            }}
+          >
+            Gérer
+          </button>
+        </div>
+      )}
+
       {/* ── NAVBAR (EN-TÊTE PRINCIPAL) - Masqué sur la page d'accueil / connexion ou si non connecté ── */}
       {isAppHeaderVisible && (
         <header className="app-main-navbar" style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '64px', minHeight: '64px', maxHeight: '64px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', flexWrap: 'nowrap', overflow: 'visible', zIndex: 1000 }}>
@@ -798,10 +877,12 @@ function MainContent() {
 
 function App() {
   return (
-    <AppProvider>
-      <ThemeSelector />
-      <MainContent />
-    </AppProvider>
+    <ErrorBoundary>
+      <AppProvider>
+        <ThemeSelector />
+        <MainContent />
+      </AppProvider>
+    </ErrorBoundary>
   )
 }
 

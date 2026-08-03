@@ -1,5 +1,5 @@
-const CACHE_NAME = 'apexpos-cache-v3';
-const DYNAMIC_CACHE = 'apexpos-dynamic-v3';
+const CACHE_NAME = 'apexpos-cache-v4';
+const DYNAMIC_CACHE = 'apexpos-dynamic-v4';
 
 // Static assets to cache immediately upon installation
 const STATIC_ASSETS = [
@@ -30,7 +30,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch Event — Cache-First with Network Fallback & index.html SPA Fallback
+// Fetch Event — Network-First for HTML/JS navigation to guarantee latest builds
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   const url = new URL(request.url);
@@ -56,6 +56,24 @@ self.addEventListener('fetch', (event) => {
         .catch(() => {
           return caches.match(request);
         })
+    );
+    return;
+  }
+
+  // Navigation HTML & JS Bundle: Network First to avoid stale cache white screens
+  if (request.mode === 'navigate' || url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) {
+    event.respondWith(
+      fetch(request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(request, responseClone);
+            });
+          }
+          return networkResponse;
+        })
+        .catch(() => caches.match(request))
     );
     return;
   }
