@@ -30,7 +30,12 @@ class TenantScopeMiddleware
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user('sanctum') ?: auth('sanctum')->user();
-        $isSuperAdmin = $user && (($user->role && $user->role->slug === 'super-admin') || $user->email === 'superadmin@dls.com');
+        $isSuperAdmin = $user && (
+            ($user->role && in_array($user->role->slug, ['super-admin', 'superadmin'])) ||
+            ($user->role && in_array($user->role->name, ['super-admin', 'Super Admin', 'Super-Admin'])) ||
+            $user->email === 'superadmin@dls.com' ||
+            !empty($user->is_superadmin)
+        );
 
         // Vérification de sécurité pour le mode de maintenance applicatif
         if (!$request->is('*/maintenance*') && !$isSuperAdmin) {

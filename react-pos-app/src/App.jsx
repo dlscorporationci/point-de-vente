@@ -85,8 +85,8 @@ function MainContent() {
   }, [menuOpen])
 
   // Note : Tous les utilisateurs connectés conservent l'accès aux modules opérationnels (POS, Catalogue, Stocks, etc.)
-  const role = user?.role?.slug || user?.role?.name || user?.role
-  const isSuperAdmin = role === 'super-admin' || user?.email === 'superadmin@dls.com'
+  const role = typeof user?.role === 'string' ? user.role : (user?.role?.slug || user?.role?.name || user?.role || '')
+  const isSuperAdmin = role === 'super-admin' || role === 'Super Admin' || role === 'superadmin' || user?.email === 'superadmin@dls.com' || !!user?.is_superadmin
   const isAdminOrGerant = role === 'admin' || role === 'gerant' || isSuperAdmin
   const isAdmin = role === 'admin' || isSuperAdmin
 
