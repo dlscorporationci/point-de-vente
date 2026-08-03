@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useApp } from '../context/AppContext';
 
 export const MaintenanceCenter = () => {
-  const { user } = useApp();
+  const { user, checkMaintenanceStatus } = useApp();
   const [modes, setModes] = useState([]);
   const [activeGlobal, setActiveGlobal] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -51,6 +51,9 @@ export const MaintenanceCenter = () => {
 
       setSuccess(res.data.message);
       fetchMaintenance();
+      if (checkMaintenanceStatus) {
+        checkMaintenanceStatus();
+      }
     } catch (err) {
       console.error("Toggle Maintenance Error:", err);
       setError(err.response?.data?.error || "Erreur lors de la modification du mode maintenance.");
