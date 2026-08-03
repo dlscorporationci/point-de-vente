@@ -227,12 +227,14 @@ Route::prefix('v1')->middleware('tenant')->group(function () {
             Route::post('/communications/send', [\App\Http\Controllers\API\V1\CommunicationController::class, 'send']);
 
             // -----------------------------------------------------------------------
-            // Mode Maintenance Applicatif Global / Ciblé
+            // Mode Maintenance Applicatif (Console SuperAdmin)
             // -----------------------------------------------------------------------
-            Route::get('/maintenance/status', [\App\Http\Controllers\API\V1\MaintenanceController::class, 'status']);
             Route::get('/maintenance',        [\App\Http\Controllers\API\V1\MaintenanceController::class, 'index']);
             Route::post('/maintenance/toggle', [\App\Http\Controllers\API\V1\MaintenanceController::class, 'toggle']);
         });
+
+        // Statut public de maintenance applicative
+        Route::get('/maintenance/status', [\App\Http\Controllers\API\V1\MaintenanceController::class, 'status']);
 
         // -----------------------------------------------------------------------
         // Module Documentaire & Système Central d'Exportations (Tous Utilisateurs Authentifiés)

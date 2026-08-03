@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-export const MaintenanceScreen = () => {
-  const [maintInfo, setMaintInfo] = useState(null);
+export const MaintenanceScreen = ({ maintenanceInfo: propMaintInfo }) => {
+  const [maintInfo, setMaintInfo] = useState(propMaintInfo || null);
 
   useEffect(() => {
+    if (propMaintInfo) {
+      setMaintInfo(propMaintInfo);
+      return;
+    }
     const checkStatus = async () => {
       try {
         const res = await axios.get('/v1/maintenance/status');
@@ -16,7 +20,7 @@ export const MaintenanceScreen = () => {
       }
     };
     checkStatus();
-  }, []);
+  }, [propMaintInfo]);
 
   return (
     <div style={{

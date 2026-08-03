@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext';
 import { PasswordInput } from '../components/PasswordInput';
 import { CountUp } from '../components/CountUp';
 import { AuditLogs } from './AuditLogs';
+import { ExportModal } from '../components/ExportModal';
 
 export const BackOffice = () => {
   const { token, user } = useApp();
@@ -63,6 +64,11 @@ export const BackOffice = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [loading, setLoading] = useState(false);
+  
+  // ── EXPORTS DOCUMENTAIRES SAAS ──
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportType, setExportType] = useState('saas_metrics');
+  const [exportTitle, setExportTitle] = useState('Supervision SaaS');
 
   const isSuperAdmin = user?.role === 'super-admin' || user?.role?.slug === 'super-admin' || user?.role?.name === 'super-admin' || user?.email === 'superadmin@dls.com';
 
@@ -444,6 +450,11 @@ export const BackOffice = () => {
               <div className="loading-spinner">Calcul des indicateurs SaaS en cours...</div>
             ) : (
               <>
+                <div className="d-flex justify-content-end mb-3">
+                  <button onClick={() => { setExportType('saas_metrics'); setExportTitle('Supervision & Bilan SaaS'); setShowExportModal(true); }} className="btn btn-outline-secondary btn-sm" style={{ fontWeight: 700 }}>
+                    <i className="fa-solid fa-file-export me-1"></i> Exporter Bilan Supervision
+                  </button>
+                </div>
                 <div className="admin-metrics-grid animate-fade-in">
                   <div className="metric-box">
                     <span className="metric-title">Entreprises Enregistrées</span>
@@ -537,9 +548,14 @@ export const BackOffice = () => {
                   </select>
                 </div>
               </div>
-              <button onClick={() => { resetCompanyForm(); setShowCreateCompanyModal(true); }} className="btn btn-primary" style={{ height: '42px', whiteSpace: 'nowrap' }}>
-                <i className="fa-solid fa-plus me-1"></i> Créer Entreprise
-              </button>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button onClick={() => { setExportType('companies_list'); setExportTitle('Répertoire des Entreprises'); setShowExportModal(true); }} className="btn btn-outline-secondary" style={{ height: '42px', whiteSpace: 'nowrap', fontWeight: 700 }}>
+                  <i className="fa-solid fa-file-export me-1"></i> Exporter Entreprises
+                </button>
+                <button onClick={() => { resetCompanyForm(); setShowCreateCompanyModal(true); }} className="btn btn-primary" style={{ height: '42px', whiteSpace: 'nowrap' }}>
+                  <i className="fa-solid fa-plus me-1"></i> Créer Entreprise
+                </button>
+              </div>
             </div>
 
             {companiesLoading ? (
@@ -703,6 +719,11 @@ export const BackOffice = () => {
         {/* 4. GESTION DES UTILISATEURS */}
         {activeSubTab === 'users' && (
           <div>
+            <div className="d-flex justify-content-end mb-3">
+              <button onClick={() => { setExportType('users_list'); setExportTitle('Répertoire des Utilisateurs'); setShowExportModal(true); }} className="btn btn-outline-secondary" style={{ fontWeight: 700 }}>
+                <i className="fa-solid fa-file-export me-1"></i> Exporter Utilisateurs
+              </button>
+            </div>
             {usersLoading ? (
               <div className="loading-spinner">Chargement des utilisateurs de la plateforme...</div>
             ) : (
@@ -1205,6 +1226,13 @@ export const BackOffice = () => {
 
         .flex-1 { flex: 1; }
       `}</style>
+      {/* MODAL UNIVERSEL D'EXPORTATION SAAS */}
+      <ExportModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        documentType={exportType}
+        documentTitle={exportTitle}
+      />
     </div>
   );
 };

@@ -166,6 +166,41 @@ class DocumentService
                     ['key' => 'status',       'label' => 'Statut',          'align' => 'center'],
                 ],
             ],
+            'companies_list' => [
+                'type'     => 'companies_list',
+                'title'    => 'REPERTOIRE DES ENTREPRISES ET TENANTS SAAS',
+                'subtitle' => 'Liste officielle des entreprises clientes, formules d\'abonnement et boutiques',
+                'columns'  => [
+                    ['key' => 'code',         'label' => 'Code POS',      'align' => 'left'],
+                    ['key' => 'name',         'label' => 'Entreprise',    'align' => 'left'],
+                    ['key' => 'plan',         'label' => 'Formule',       'align' => 'center'],
+                    ['key' => 'branches_cnt', 'label' => 'Boutiques',     'align' => 'center'],
+                    ['key' => 'users_cnt',    'label' => 'Comptes',       'align' => 'center'],
+                    ['key' => 'status',       'label' => 'Statut',        'align' => 'center'],
+                ],
+            ],
+            'users_list' => [
+                'type'     => 'users_list',
+                'title'    => 'REPERTOIRE DES UTILISATEURS DU SYSTEME SAAS',
+                'subtitle' => 'Comptes opérateurs, gérants et administrateurs référencés sur la plateforme',
+                'columns'  => [
+                    ['key' => 'name',    'label' => 'Nom Utilisateur', 'align' => 'left'],
+                    ['key' => 'email',   'label' => 'Adresse E-mail',  'align' => 'left'],
+                    ['key' => 'company', 'label' => 'Entreprise',      'align' => 'left'],
+                    ['key' => 'role',    'label' => 'Rôle Applicatif', 'align' => 'center'],
+                    ['key' => 'status',  'label' => 'Statut Compte',   'align' => 'center'],
+                ],
+            ],
+            'saas_metrics' => [
+                'type'     => 'saas_metrics',
+                'title'    => 'SUPERVISION ET INDICATEURS CLES SAAS',
+                'subtitle' => 'Bilan des souscriptions, volumes de transactions et santé du parc d\'entreprises',
+                'columns'  => [
+                    ['key' => 'metric_name',  'label' => 'Indicateur de Supervision', 'align' => 'left'],
+                    ['key' => 'metric_val',   'label' => 'Valeur Quantifiée',        'align' => 'right'],
+                    ['key' => 'description',  'label' => 'Détails & Portée',         'align' => 'left'],
+                ],
+            ],
         ];
     }
 
@@ -446,6 +481,54 @@ class DocumentService
                     ];
                 }
                 $totals = ['Nombre de transferts inter-boutiques' => count($transfers)];
+                break;
+
+            case 'companies_list':
+                $companies = Company::withCount(['branches', 'users'])->get();
+                foreach ($companies as $c) {
+                    $rows[] = [
+                        'code'         => $c->company_code ?: ('COMP-' . $c->id),
+                        'name'         => $c->name,
+                        'plan'         => strtoupper($c->subscription_plan ?: 'Starter'),
+                        'branches_cnt' => $c->branches_count,
+                        'users_cnt'    => $c->users_count,
+                        'status'       => strtoupper($c->status ?: 'ACTIVE'),
+                    ];
+                }
+                $totals = ['Nombre total d\'entreprises enregistrées' => count($companies)];
+                break;
+
+            case 'users_list':
+                $users = User::with(['company', 'role'])->get();
+                foreach ($users as $u) {
+                    $rows[] = [
+                        'name'    => $u->name,
+                        'email'   => $u->email,
+                        'company' => $u->company ? $u->company->name : 'Plateforme SaaS',
+                        'role'    => strtoupper($u->role ? ($u->role->name ?: $u->role->slug) : 'Utilisateur'),
+                        'status'  => strtoupper($u->status ?: 'ACTIVE'),
+                    ];
+                }
+                $totals = ['Nombre total d\'utilisateurs répertoriés' => count($users)];
+                break;
+
+            case 'saas_metrics':
+                $totalCompanies = Company::count();
+                $activeCompanies = Company::where('status', 'active')->count();
+                $totalUsers = User::count();
+                $totalSales = \App\Models\Sale::count();
+                $totalRevenue = \App\Models\Sale::sum('total');
+
+                $rows = [
+                    ['metric_name' => 'Entreprises Enregistrées', 'metric_val' => $totalCompanies, 'description' => 'Nombre total d\'organisations sur la plateforme'],
+                    ['metric_name' => 'Entreprises Actives',      'metric_val' => $activeCompanies, 'description' => 'Entreprises avec compte actif et valide'],
+                    ['metric_name' => 'Comptes Utilisateurs',     'metric_val' => $totalUsers, 'description' => 'Utilisateurs globaux (Admins, Gérants, Caissiers)'],
+                    ['metric_name' => 'Volume de Ventes (TTC)',   'metric_val' => number_format($totalRevenue, 0, ',', ' ') . ' FCFA', 'description' => 'Montant cumule de l\'ensemble des transactions'],
+                    ['metric_name' => 'Nombre de Transactions',   'metric_val' => $totalSales, 'description' => 'Nombre total de tickets de caisse edites'],
+                ];
+                $totals = [
+                    'Supervision globale plateforme' => 'Rapport généré le ' . date('d/m/Y H:i')
+                ];
                 break;
 
             default:

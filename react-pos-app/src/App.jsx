@@ -35,7 +35,7 @@ import { MaintenanceCenter } from './pages/MaintenanceCenter'
 import { MaintenanceScreen } from './components/MaintenanceScreen'
 
 function MainContent() {
-  const { user, token, activeBranch, assignedBranches } = useApp()
+  const { user, token, activeBranch, assignedBranches, maintenanceInfo } = useApp()
   const [activeTab, setActiveTab] = useState(() => {
     if (!user) return 'home'
     const role = user.role?.slug || user.role?.name || user.role
@@ -89,6 +89,11 @@ function MainContent() {
   const isSuperAdmin = role === 'super-admin' || user?.email === 'superadmin@dls.com'
   const isAdminOrGerant = role === 'admin' || role === 'gerant' || isSuperAdmin
   const isAdmin = role === 'admin' || isSuperAdmin
+
+  // Bloquer l'accès à toute l'application en cas de maintenance (Sauf pour le Super-Admin)
+  if (maintenanceInfo && !isSuperAdmin) {
+    return <MaintenanceScreen maintenanceInfo={maintenanceInfo} />;
+  }
 
   const renderContent = () => {
     // Si l'utilisateur n'est pas connecté

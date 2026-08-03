@@ -71,6 +71,9 @@ export const AppProvider = ({ children }) => {
   const [pendingSalesCount, setPendingSalesCount] = useState(() => offlineStorage.getPendingSales().length);
   const [isSyncing, setIsSyncing] = useState(false);
 
+  // 5. Gestion du Mode Maintenance Applicatif Global
+  const [maintenanceInfo, setMaintenanceInfo] = useState(null);
+
   const refreshPendingSalesCount = useCallback(() => {
     setPendingSalesCount(offlineStorage.getPendingSales().length);
   }, []);
@@ -177,7 +180,7 @@ export const AppProvider = ({ children }) => {
     }
   }, [token]);
 
-  // Intercepteur Axios global : Rafraîchir instantanément les notifications après toute action (POST, PUT, DELETE)
+  // Intercepteur Axios global : Détection maintenance (503) et rafraîchissement des notifications
   useEffect(() => {
     const interceptor = axios.interceptors.response.use(
       (response) => {
@@ -190,10 +193,40 @@ export const AppProvider = ({ children }) => {
         }
         return response;
       },
-      (error) => Promise.reject(error)
+      (error) => {
+        if (error.response && error.response.status === 503) {
+          const data = error.response.data || {};
+          setMaintenanceInfo({
+            message: data.message || 'L\'application est actuellement en cours de maintenance.',
+            started_at: data.started_at,
+            estimated_end_at: data.estimated_end_at
+          });
+        }
+        return Promise.reject(error);
+      }
     );
     return () => axios.interceptors.response.eject(interceptor);
   }, []);
+
+  // Polling automatique de l'état de maintenance applicative (toutes les 15s)
+  const checkMaintenanceStatus = useCallback(async () => {
+    try {
+      const res = await axios.get('/v1/maintenance/status');
+      if (res.data && res.data.in_maintenance) {
+        setMaintenanceInfo(res.data.maintenance || { message: 'L\'application est en maintenance.' });
+      } else {
+        setMaintenanceInfo(null);
+      }
+    } catch {
+      // Ignorer si déconnecté
+    }
+  }, []);
+
+  useEffect(() => {
+    checkMaintenanceStatus();
+    const interval = setInterval(checkMaintenanceStatus, 15000);
+    return () => clearInterval(interval);
+  }, [checkMaintenanceStatus]);
 
   // Synchroniser l'utilisateur dans le stockage local
   useEffect(() => {
@@ -441,7 +474,9 @@ export const AppProvider = ({ children }) => {
       pendingSalesCount,
       isSyncing,
       syncOfflineSales,
-      refreshPendingSalesCount
+      refreshPendingSalesCount,
+      maintenanceInfo,
+      checkMaintenanceStatus
     }}>
       {children}
     </AppContext.Provider>
