@@ -13,6 +13,8 @@ export const NotificationBell = ({ onNavigate }) => {
   const dropdownRef = useRef(null);
   const audioRef = useRef(null);
 
+  const [latestNotice, setLatestNotice] = useState(null);
+
   // Charger le nombre de notifications non lues
   const fetchUnreadCount = useCallback(async () => {
     if (!token) return;
@@ -25,6 +27,19 @@ export const NotificationBell = ({ onNavigate }) => {
         playAlertSound();
       }
       setUnreadCount(count);
+
+      // Charger la dernière notification non lue pour affichage immédiat en bannière
+      if (count > 0) {
+        const notifRes = await axios.get('/v1/notifications?unread_only=true&limit=1');
+        const list = notifRes.data.notifications || notifRes.data.data || (Array.isArray(notifRes.data) ? notifRes.data : []);
+        if (list.length > 0) {
+          setLatestNotice(list[0]);
+        } else {
+          setLatestNotice(null);
+        }
+      } else {
+        setLatestNotice(null);
+      }
     } catch {
       /* Silencieux */
     }
@@ -309,6 +324,58 @@ export const NotificationBell = ({ onNavigate }) => {
                 Fermer
               </button>
             </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* BANNIÈRE RECTANGULAIRE FIXE DE NOTIFICATION OFFICIELLE SUR L'ÉCRAN DE L'UTILISATEUR */}
+      {latestNotice && ReactDOM.createPortal(
+        <div style={{
+          position: 'fixed',
+          top: '64px',
+          left: 0,
+          right: 0,
+          zIndex: 998,
+          backgroundColor: latestNotice.priority === 'critical' ? '#dc2626' : (latestNotice.priority === 'warning' ? '#d97706' : '#2563eb'),
+          color: '#ffffff',
+          padding: '10px 20px',
+          fontSize: '13px',
+          fontWeight: 600,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+          display: 'flex',
+          alignItems: 'center',
+          justify: 'space-between',
+          gap: '16px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ fontSize: '18px' }}>
+              <i className={latestNotice.priority === 'critical' ? "fa-solid fa-bell-exclamation" : "fa-solid fa-bullhorn"}></i>
+            </span>
+            <div>
+              <strong>{latestNotice.title} : </strong>
+              <span>{latestNotice.message}</span>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+            <button 
+              onClick={(e) => {
+                handleMarkAsRead(latestNotice.id, e);
+                setLatestNotice(null);
+              }}
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                color: '#ffffff',
+                border: '1px solid rgba(255, 255, 255, 0.4)',
+                padding: '4px 12px',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: 'bold',
+                cursor: 'pointer'
+              }}
+            >
+              <i className="fa-solid fa-check me-1"></i> Compris (Marquer lu)
+            </button>
           </div>
         </div>,
         document.body
