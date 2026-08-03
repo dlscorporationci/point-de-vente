@@ -6,10 +6,12 @@ import { PasswordInput } from '../components/PasswordInput';
 export const UsersManagement = () => {
   const { token, user } = useApp();
 
-  const isAdmin = user?.role === 'admin' || user?.role?.slug === 'admin';
+  const userRole = user?.role?.slug || user?.role?.name || user?.role || '';
+  const canManageStaff = userRole === 'admin' || userRole === 'super-admin' || user?.permissions?.includes('users.create') || user?.permissions?.includes('staff.create') || user?.email === 'superadmin@dls.com';
 
   const [users, setUsers]             = useState([]);
   const [roles, setRoles]             = useState([]);
+  const [accessZones, setAccessZones] = useState([]);
   const [branches, setBranches]       = useState([]);
   const [loading, setLoading]         = useState(false);
   const [error, setError]             = useState(null);
@@ -19,24 +21,27 @@ export const UsersManagement = () => {
   const [saving, setSaving]           = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRole, setFilterRole]   = useState('');
+  
   const [userForm, setUserForm]       = useState({
-    name: '', email: '', password: '', pin_code: '', role_id: '', branch_id: '', status: 'active'
+    name: '', email: '', password: '', pin_code: '', role_id: '', branch_id: '', access_zone_id: '', status: 'active'
   });
 
   const load = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     try {
-      const [usersRes, rolesRes, branchesRes] = await Promise.all([
+      const [usersRes, rolesRes, branchesRes, zonesRes] = await Promise.all([
         axios.get('/v1/users'),
-        axios.get('/v1/roles'),
+        axios.get('/v1/custom-roles'),
         axios.get('/v1/branches'),
+        axios.get('/v1/access-zones'),
       ]);
       setUsers(usersRes.data || []);
       setRoles(rolesRes.data || []);
       setBranches(branchesRes.data || []);
+      setAccessZones(zonesRes.data || []);
     } catch {
-      setError('Impossible de charger les données.');
+      setError('Impossible de charger la liste du personnel.');
     } finally {
       setLoading(false);
     }
@@ -47,31 +52,54 @@ export const UsersManagement = () => {
   const openForm = (u = null) => {
     setEditingUser(u);
     setUserForm(u
-      ? { name: u.name, email: u.email, password: '', pin_code: '', role_id: u.role?.id || '', branch_id: u.branch?.id || '', status: u.status }
-      : { name: '', email: '', password: '', pin_code: '', role_id: '', branch_id: '', status: 'active' });
+      ? {
+          name: u.name,
+          email: u.email,
+          password: '',
+          pin_code: '',
+          role_id: u.role?.id || u.role_id || '',
+          branch_id: u.branch?.id || u.branch_id || '',
+          access_zone_id: u.access_zone_id || '',
+          status: u.status || 'active'
+        }
+      : {
+          name: '',
+          email: '',
+          password: '',
+          pin_code: '',
+          role_id: roles[0]?.id || '',
+          branch_id: branches[0]?.id || '',
+          access_zone_id: '',
+          status: 'active'
+        }
+    );
     setShowForm(true);
-    setError(null); setSuccess(null);
+    setError(null);
+    setSuccess(null);
   };
 
   const handleSave = async (e) => {
     e.preventDefault();
-    setSaving(true); setError(null);
+    setSaving(true);
+    setError(null);
     try {
       const payload = { ...userForm };
       if (!payload.password) delete payload.password;
       if (!payload.pin_code) delete payload.pin_code;
       if (!payload.branch_id) delete payload.branch_id;
+      if (!payload.access_zone_id) delete payload.access_zone_id;
+
       if (editingUser) {
         await axios.put(`/v1/users/${editingUser.id}`, payload);
-        setSuccess('✅ Utilisateur mis à jour avec succès.');
+        setSuccess('✅ Informations du membre du personnel mises à jour avec succès.');
       } else {
         await axios.post('/v1/users', payload);
-        setSuccess('✅ Utilisateur créé avec succès.');
+        setSuccess('✅ Nouveau membre du personnel enregistré avec succès.');
       }
       setShowForm(false);
       load();
     } catch (err) {
-      setError(err.response?.data?.error || err.response?.data?.message || 'Erreur lors de la sauvegarde.');
+      setError(err.response?.data?.error || err.response?.data?.message || 'Erreur lors de l\'enregistrement du personnel.');
     } finally {
       setSaving(false);
     }
@@ -80,6 +108,7 @@ export const UsersManagement = () => {
   const handleToggleStatus = async (u) => {
     try {
       await axios.post(`/v1/users/${u.id}/toggle-status`);
+      setSuccess(`Statut de ${u.name} mis à jour.`);
       load();
     } catch (err) {
       setError(err.response?.data?.error || 'Erreur de modification du statut.');
@@ -87,9 +116,9 @@ export const UsersManagement = () => {
   };
 
   const handleResetPin = async (u) => {
-    const pin = window.prompt(`Saisir le nouveau code PIN pour ${u.name} :`);
+    const pin = window.prompt(`Saisir le nouveau code PIN (4 chiffres) pour ${u.name} :`);
     if (!pin || pin.length < 4 || !/^\d+$/.test(pin)) {
-      alert('Code PIN invalide (au moins 4 chiffres requis).'); return;
+      alert('Code PIN invalide (4 chiffres requis).'); return;
     }
     try {
       await axios.post(`/v1/users/${u.id}/reset-pin`, { pin_code: pin });
@@ -99,19 +128,13 @@ export const UsersManagement = () => {
     }
   };
 
-  // Filtrage local
   const filteredUsers = users.filter(u => {
     const matchSearch = !searchQuery ||
       u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       u.email.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchRole = !filterRole || (u.role?.slug || u.role?.name || '') === filterRole;
+    const matchRole = !filterRole || String(u.role?.id || u.role_id) === filterRole;
     return matchSearch && matchRole;
   });
-
-  const roleColors = {
-    admin: '#1E3A8A', gerant: '#0D9488', caissier: '#7C3AED', comptable: '#B45309', default: '#64748B'
-  };
-  const getRoleColor = (slug) => roleColors[slug] || roleColors.default;
 
   if (!token) {
     return (
@@ -120,21 +143,21 @@ export const UsersManagement = () => {
           <div className="empty-state text-center">
             <span style={{ fontSize: '48px' }}>🔒</span>
             <h3>Accès Réservé</h3>
-            <p>Connectez-vous pour gérer les utilisateurs.</p>
+            <p>Connectez-vous pour accéder à la gestion du personnel.</p>
           </div>
         </div>
       </div>
     );
   }
 
-  if (!isAdmin) {
+  if (!canManageStaff) {
     return (
       <div className="customers-container">
         <div className="customers-layout card">
           <div className="empty-state text-center">
             <span style={{ fontSize: '48px' }}>🚫</span>
             <h3>Accès non autorisé</h3>
-            <p>Seuls les administrateurs peuvent gérer les utilisateurs.</p>
+            <p>Seuls les administrateurs et responsables habilités peuvent gérer le personnel.</p>
           </div>
         </div>
       </div>
@@ -143,201 +166,202 @@ export const UsersManagement = () => {
 
   return (
     <div className="customers-container">
-      <div className="decorator-sphere sphere-1"></div>
-      <div className="decorator-sphere sphere-2"></div>
-
       <div className="customers-layout card">
-        {/* ── EN-TÊTE ── */}
-        <div className="customers-header">
+        
+        {/* En-tête */}
+        <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap" style={{ gap: '16px' }}>
           <div>
-            <h2 className="section-title">
-              <i className="fa-solid fa-users-gear me-2 text-primary"></i> Gestion du Personnel
-            </h2>
-            <p className="customers-subtitle">
-              Gérez le personnel de votre entreprise, leurs rôles et leurs accès.
-            </p>
+            <h2 className="m-0" style={{ fontWeight: 800 }}>👥 Gestion du Personnel</h2>
+            <p className="text-muted small m-0">Créez et gérez les comptes des opérateurs, caissiers, gérants et responsables.</p>
           </div>
-          <button className="btn btn-primary" onClick={() => openForm()}>
-            <i className="fa-solid fa-user-plus me-1"></i> Nouvel Utilisateur
+          <button onClick={() => openForm(null)} className="btn btn-primary" style={{ fontWeight: 700 }}>
+            <i className="fa-solid fa-user-plus me-1"></i> Créer un Membre du Personnel
           </button>
         </div>
 
-        {error   && <div className="error-banner"><i className="fa-solid fa-circle-exclamation me-1"></i> {error}</div>}
-        {success && <div className="success-banner"><i className="fa-solid fa-circle-check me-1"></i> {success}</div>}
+        {error && <div className="error-banner mb-3"><i className="fa-solid fa-circle-exclamation me-1"></i> {error}</div>}
+        {success && <div className="success-banner mb-3"><i className="fa-solid fa-circle-check me-1"></i> {success}</div>}
 
-        {/* ── FORMULAIRE ── */}
-        {showForm && (
-          <div className="inline-form-card" style={{ marginBottom: '20px' }}>
-            <h4 style={{ marginBottom: '16px', fontWeight: 700 }}>
-              {editingUser ? "✏️ Modifier l'utilisateur" : '➕ Nouvel utilisateur'}
-            </h4>
-            <form onSubmit={handleSave}>
-              <div className="row">
-                <div className="col-md-6 form-group">
-                  <label className="form-label">Nom complet *</label>
-                  <input type="text" className="form-control" required
-                    placeholder="Ex: Jean Dupont"
-                    value={userForm.name}
-                    onChange={e => setUserForm({ ...userForm, name: e.target.value })} />
-                </div>
-                <div className="col-md-6 form-group">
-                  <label className="form-label">Adresse E-mail *</label>
-                  <input type="email" className="form-control" required
-                    placeholder="jean@exemple.com"
-                    value={userForm.email}
-                    onChange={e => setUserForm({ ...userForm, email: e.target.value })} />
-                </div>
-              </div>
-              <div className="row">
-                <div className="col-md-4 form-group">
-                  <label className="form-label">Mot de passe {editingUser ? '(vide = inchangé)' : '*'}</label>
-                  <PasswordInput required={!editingUser}
-                    placeholder="Min. 8 caractères"
-                    value={userForm.password}
-                    onChange={e => setUserForm({ ...userForm, password: e.target.value })} />
-                </div>
-                <div className="col-md-4 form-group">
-                  <label className="form-label">Code PIN {editingUser ? '(vide = inchangé)' : '*'}</label>
-                  <input type="text" className="form-control" maxLength="6" required={!editingUser}
-                    placeholder="Ex: 1234"
-                    value={userForm.pin_code}
-                    onChange={e => setUserForm({ ...userForm, pin_code: e.target.value.replace(/\D/g, '') })} />
-                </div>
-                <div className="col-md-4 form-group">
-                  <label className="form-label">Statut</label>
-                  <select className="form-control" value={userForm.status}
-                    onChange={e => setUserForm({ ...userForm, status: e.target.value })}>
-                    <option value="active">Actif</option>
-                    <option value="inactive">Inactif</option>
-                  </select>
-                </div>
-              </div>
-              <div className="row">
-                <div className="col-md-6 form-group">
-                  <label className="form-label">Rôle *</label>
-                  <select className="form-control" required value={userForm.role_id}
-                    onChange={e => setUserForm({ ...userForm, role_id: e.target.value })}>
-                    <option value="">— Sélectionner un rôle —</option>
-                    {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-                  </select>
-                </div>
-                <div className="col-md-6 form-group">
-                  <label className="form-label">Boutique rattachée</label>
-                  <select className="form-control" value={userForm.branch_id}
-                    onChange={e => setUserForm({ ...userForm, branch_id: e.target.value })}>
-                    <option value="">— Toutes les boutiques —</option>
-                    {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '12px' }}>
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowForm(false)}>Annuler</button>
-                <button type="submit" className="btn btn-primary btn-sm" disabled={saving}>
-                  {saving ? 'Enregistrement...' : 'Enregistrer'}
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-
-        {/* ── BARRE DE RECHERCHE ET FILTRE ── */}
-        <div className="search-bar" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: '200px', position: 'relative' }}>
-            <i className="fa-solid fa-magnifying-glass search-icon"></i>
+        {/* Barre de filtres */}
+        <div className="filters-bar mb-4" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: '220px' }}>
             <input
               type="text"
-              className="form-control search-input"
+              className="form-control"
               placeholder="Rechercher par nom ou e-mail..."
               value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <select className="form-control" value={filterRole}
-            onChange={e => setFilterRole(e.target.value)}
-            style={{ minWidth: '200px' }}>
-            <option value="">— Tous les rôles —</option>
-            {roles.map(r => <option key={r.id} value={r.slug || r.name}>{r.name}</option>)}
-          </select>
+          <div style={{ minWidth: '180px' }}>
+            <select className="form-control" value={filterRole} onChange={(e) => setFilterRole(e.target.value)}>
+              <option value="">Tous les rôles</option>
+              {roles.map(r => (
+                <option key={r.id} value={r.id}>{r.name}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        {/* ── LISTE DES UTILISATEURS ── */}
+        {/* Tableau du personnel */}
         {loading ? (
-          <div className="loading-spinner" style={{ textAlign: 'center', padding: '40px' }}>
-            Chargement des utilisateurs...
-          </div>
+          <div className="loading-spinner">Chargement des comptes du personnel...</div>
         ) : filteredUsers.length === 0 ? (
-          <div className="empty-state">
-            <span className="empty-icon"><i className="fa-solid fa-users-slash text-muted"></i></span>
-            <h4>{searchQuery || filterRole ? 'Aucun résultat' : 'Aucun utilisateur enregistré'}</h4>
-            <p>
-              {searchQuery || filterRole
-                ? 'Essayez de modifier vos critères de recherche.'
-                : 'Créez le premier utilisateur en cliquant sur "+ Nouvel Utilisateur".'}
-            </p>
+          <div className="empty-state text-center my-4">
+            <span style={{ fontSize: '40px' }}>👤</span>
+            <h4>Aucun membre du personnel trouvé</h4>
           </div>
         ) : (
-          <div className="management-table mt-3">
-            <table className="table">
+          <div className="table-responsive">
+            <table className="saas-table">
               <thead>
                 <tr>
-                  <th>Nom</th>
-                  <th>E-mail</th>
+                  <th>Membre du Personnel</th>
+                  <th>Identifiant / E-mail</th>
                   <th>Rôle</th>
-                  <th>Boutique</th>
+                  <th>Boutique Affectée</th>
+                  <th>Zone d'Accès</th>
                   <th>Statut</th>
-                  <th>Actions</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredUsers.map(u => (
-                  <tr key={u.id}>
+                  <tr key={u.id} className="hover-row">
+                    <td><strong>{u.name}</strong></td>
+                    <td>{u.email}</td>
                     <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div className="user-avatar-mini">{u.name.charAt(0).toUpperCase()}</div>
-                        <strong>{u.name}</strong>
-                      </div>
-                    </td>
-                    <td style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{u.email}</td>
-                    <td>
-                      <span style={{
-                        background: `${getRoleColor(u.role?.slug)}22`,
-                        color: getRoleColor(u.role?.slug),
-                        border: `1px solid ${getRoleColor(u.role?.slug)}55`,
-                        padding: '2px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 700
-                      }}>
-                        {u.role?.name || '—'}
+                      <span className="badge bg-primary" style={{ fontSize: '11px', padding: '4px 10px' }}>
+                        {u.role?.name || 'Opérateur'}
                       </span>
                     </td>
-                    <td>{u.branch?.name || <span className="text-muted">—</span>}</td>
+                    <td>{u.branch?.name || 'Toutes les boutiques'}</td>
                     <td>
-                      <span className={`status-badge ${u.status === 'active' ? 'status-active' : 'status-inactive'}`}>
-                        {u.status === 'active' ? 'Actif' : 'Inactif'}
-                      </span>
+                      {accessZones.find(z => z.id === u.access_zone_id)?.name || <span className="text-muted small">Zone Globale</span>}
                     </td>
                     <td>
-                      <div style={{ display: 'flex', gap: '6px' }}>
-                        <button className="btn btn-xs btn-secondary" onClick={() => openForm(u)} title="Modifier">
-                          <i className="fa-solid fa-pen"></i>
+                      {u.status === 'active' ? (
+                        <span className="badge badge-success">Actif</span>
+                      ) : (
+                        <span className="badge badge-error">Bloqué</span>
+                      )}
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <button onClick={() => openForm(u)} className="btn btn-secondary btn-sm me-1">
+                        <i className="fa-solid fa-pen"></i>
+                      </button>
+                      <button onClick={() => handleResetPin(u)} className="btn btn-outline-primary btn-sm me-1" title="Réinitialiser PIN">
+                        <i className="fa-solid fa-key"></i>
+                      </button>
+                      {u.id !== user.id && (
+                        <button onClick={() => handleToggleStatus(u)} className={`btn btn-sm ${u.status === 'active' ? 'btn-danger' : 'btn-success'}`}>
+                          {u.status === 'active' ? 'Bloquer' : 'Débloquer'}
                         </button>
-                        <button className="btn btn-xs btn-info" onClick={() => handleResetPin(u)} title="Réinitialiser le PIN">
-                          <i className="fa-solid fa-key"></i>
-                        </button>
-                        <button className={`btn btn-xs ${u.status === 'active' ? 'btn-warning' : 'btn-success'}`}
-                          onClick={() => handleToggleStatus(u)} title="Activer/Désactiver">
-                          <i className={`fa-solid ${u.status === 'active' ? 'fa-user-slash' : 'fa-user-check'}`}></i>
-                        </button>
-                      </div>
+                      )}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            <div style={{ padding: '10px 16px', color: 'var(--text-muted)', fontSize: '13px', borderTop: '1px solid var(--border-color)' }}>
-              {filteredUsers.length} utilisateur{filteredUsers.length !== 1 ? 's' : ''} affiché{filteredUsers.length !== 1 ? 's' : ''}
-              {(searchQuery || filterRole) && ` sur ${users.length} au total`}
+          </div>
+        )}
+
+        {/* Modal de création / modification */}
+        {showForm && (
+          <div className="modal-overlay" onClick={() => setShowForm(false)}>
+            <div className="modal-card card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px', textAlign: 'left' }}>
+              <h3>{editingUser ? `Modifier ${editingUser.name}` : 'Créer un nouveau membre du personnel'}</h3>
+              <form onSubmit={handleSave} style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div className="form-group">
+                  <label className="form-label">Nom complet *</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    required
+                    placeholder="Ex: Kouassi Jean"
+                    value={userForm.name}
+                    onChange={(e) => setUserForm({ ...userForm, name: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Adresse E-mail / Identifiant *</label>
+                  <input
+                    type="email"
+                    className="form-control"
+                    required
+                    placeholder="ex: kouassi@entreprise.com"
+                    value={userForm.email}
+                    onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
+                  />
+                </div>
+
+                <div className="row">
+                  <div className="col-md-6 form-group">
+                    <label className="form-label">{editingUser ? 'Nouveau mot de passe (optionnel)' : 'Mot de passe *'}</label>
+                    <PasswordInput
+                      required={!editingUser}
+                      placeholder="Min 6 caractères"
+                      value={userForm.password}
+                      onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
+                    />
+                  </div>
+                  <div className="col-md-6 form-group">
+                    <label className="form-label">{editingUser ? 'Nouveau PIN (optionnel)' : 'Code PIN (4 chiffres) *'}</label>
+                    <input
+                      type="password"
+                      maxLength="4"
+                      className="form-control"
+                      required={!editingUser}
+                      placeholder="Ex: 1234"
+                      value={userForm.pin_code}
+                      onChange={(e) => setUserForm({ ...userForm, pin_code: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="row">
+                  <div className="col-md-6 form-group">
+                    <label className="form-label">Rôle attribué *</label>
+                    <select className="form-control" required value={userForm.role_id} onChange={(e) => setUserForm({ ...userForm, role_id: e.target.value })}>
+                      <option value="">Sélectionner un rôle</option>
+                      {roles.map(r => (
+                        <option key={r.id} value={r.id}>{r.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-md-6 form-group">
+                    <label className="form-label">Boutique Affectée</label>
+                    <select className="form-control" value={userForm.branch_id} onChange={(e) => setUserForm({ ...userForm, branch_id: e.target.value })}>
+                      <option value="">Toutes les boutiques</option>
+                      {branches.map(b => (
+                        <option key={b.id} value={b.id}>{b.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Zone d'Accès restreinte (Optionnel)</label>
+                  <select className="form-control" value={userForm.access_zone_id} onChange={(e) => setUserForm({ ...userForm, access_zone_id: e.target.value })}>
+                    <option value="">Aucune zone restreinte (Accès complet au rôle)</option>
+                    {accessZones.map(z => (
+                      <option key={z.id} value={z.id}>{z.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="modal-actions d-flex justify-content-end gap-2 mt-3">
+                  <button type="button" onClick={() => setShowForm(false)} className="btn btn-cancel">Annuler</button>
+                  <button type="submit" disabled={saving} className="btn btn-primary">
+                    {saving ? 'Enregistrement...' : (editingUser ? 'Enregistrer' : 'Créer le compte')}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}
+
       </div>
     </div>
   );

@@ -398,14 +398,25 @@ class SyncController extends Controller
             $nextCursor = $cursor;
         }
 
+        // Rôles personnalisés, zones d'accès, règles métier et templates
+        $roles = \App\Models\Role::whereNull('company_id')->orWhere('company_id', $companyId)->with('permissions:id,name,slug')->get();
+        $accessZones = \App\Models\AccessZone::where('company_id', $companyId)->where('is_active', true)->get();
+        $businessRules = \App\Models\BusinessRule::where('company_id', $companyId)->get();
+        $catalogTemplates = \App\Models\CatalogTemplate::where('is_active', true)->withCount(['categories', 'products'])->get();
+
         return response()->json([
-            'next_cursor' => $nextCursor,
-            'products' => $products,
-            'categories' => $categories,
-            'customers' => $customers,
-            'stocks' => $stocks,
-            'notifications' => $notifications,
-            'server_time' => now()->toIso8601String(),
+            'status'            => 'success',
+            'next_cursor'       => $nextCursor,
+            'products'          => $products,
+            'categories'        => $categories,
+            'customers'         => $customers,
+            'stocks'            => $stocks,
+            'notifications'     => $notifications,
+            'roles'             => $roles,
+            'access_zones'      => $accessZones,
+            'business_rules'    => $businessRules,
+            'catalog_templates' => $catalogTemplates,
+            'synced_at'         => now()->toIso8601String(),
         ]);
     }
 }

@@ -2,6 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
 import { PasswordInput } from '../components/PasswordInput';
+import { BusinessRulesPanel } from '../components/BusinessRulesPanel';
+import { CustomRolesModal } from '../components/CustomRolesModal';
+import { AccessZonesModal } from '../components/AccessZonesModal';
 
 export const Settings = () => {
   const { token, user, companyId } = useApp();
@@ -67,6 +70,8 @@ export const Settings = () => {
   ]);
 
   // ─── Global ───────────────────────────────────────────────────────────────
+  const [showRolesModal, setShowRolesModal] = useState(false);
+  const [showZonesModal, setShowZonesModal] = useState(false);
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState(null);
   const [success, setSuccess]   = useState(null);
@@ -343,9 +348,17 @@ export const Settings = () => {
               <i className="fa-solid fa-building me-2"></i> Entreprise
             </button>
             {isAdmin && (
-              <button className={`settings-tab-btn ${activeTab === 'tva' ? 'active' : ''}`} onClick={() => setActiveTab('tva')}>
-                <i className="fa-solid fa-percent me-2"></i> TVA &amp; Fiscalité
-              </button>
+              <>
+                <button className={`settings-tab-btn ${activeTab === 'tva' ? 'active' : ''}`} onClick={() => setActiveTab('tva')}>
+                  <i className="fa-solid fa-percent me-2"></i> TVA &amp; Fiscalité
+                </button>
+                <button className={`settings-tab-btn ${activeTab === 'rules' ? 'active' : ''}`} onClick={() => setActiveTab('rules')}>
+                  <i className="fa-solid fa-sliders me-2"></i> Règles de Gestion
+                </button>
+                <button className={`settings-tab-btn ${activeTab === 'roles_zones' ? 'active' : ''}`} onClick={() => setActiveTab('roles_zones')}>
+                  <i className="fa-solid fa-user-lock me-2"></i> Rôles &amp; Zones d'Accès
+                </button>
+              </>
             )}
 
             <button className={`settings-tab-btn ${activeTab === 'pos' ? 'active' : ''}`}       onClick={() => setActiveTab('pos')}>
@@ -901,9 +914,44 @@ export const Settings = () => {
               </div>
             )}
 
+            {/* ══════════════ ONGLET RÈGLES DE GESTION ══════════════ */}
+            {activeTab === 'rules' && (
+              <BusinessRulesPanel />
+            )}
+
+            {/* ══════════════ ONGLET RÔLES & ZONES D'ACCÈS ══════════════ */}
+            {activeTab === 'roles_zones' && (
+              <div>
+                <h3>🔒 Rôles Personnalisés & Zones d'Accès du Personnel</h3>
+                <p className="text-muted small mb-4">Gérez la sécurité, les droits d'accès et les périmètres d'intervention de votre équipe.</p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+                  <div className="card p-4 text-center" style={{ background: 'var(--bg-input)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                    <span style={{ fontSize: '40px' }}>🔑</span>
+                    <h4 className="mt-2" style={{ fontWeight: 800 }}>Rôles & Permissions</h4>
+                    <p className="text-muted small">Créez des rôles personnalisés (ex: Vendeur, Magasinier) avec des permissions granulaires.</p>
+                    <button type="button" onClick={() => setShowRolesModal(true)} className="btn btn-primary w-100 mt-2" style={{ fontWeight: 700 }}>
+                      Gérer les Rôles Personnalisés
+                    </button>
+                  </div>
+
+                  <div className="card p-4 text-center" style={{ background: 'var(--bg-input)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                    <span style={{ fontSize: '40px' }}>📍</span>
+                    <h4 className="mt-2" style={{ fontWeight: 800 }}>Zones d'Accès</h4>
+                    <p className="text-muted small">Restreignez le périmètre du personnel à certaines boutiques ou modules spécifiques.</p>
+                    <button type="button" onClick={() => setShowZonesModal(true)} className="btn btn-secondary w-100 mt-2" style={{ fontWeight: 700 }}>
+                      Gérer les Zones d'Accès
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
           </div>
         </div>
       </div>
+
+      <CustomRolesModal isOpen={showRolesModal} onClose={() => setShowRolesModal(false)} />
+      <AccessZonesModal isOpen={showZonesModal} onClose={() => setShowZonesModal(false)} />
 
       <style>{`
         .settings-container { position: relative; width: 100%; min-height: 100vh; padding: 24px; display: flex; align-items: flex-start; justify-content: center; z-index: 1; }

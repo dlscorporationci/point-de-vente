@@ -98,9 +98,34 @@ Route::prefix('v1')->middleware('tenant')->group(function () {
         // -----------------------------------------------------------------------
         // Catalogue Produits & Catégories
         // -----------------------------------------------------------------------
+        // Catalogue Produit & Packs de Catalogues Prédéfinis
+        // -----------------------------------------------------------------------
+        Route::post('/products/destroy-all', [\App\Http\Controllers\API\V1\ProductController::class, 'destroyAll']);
         Route::apiResource('products', \App\Http\Controllers\API\V1\ProductController::class);
         Route::get('/categories',  [\App\Http\Controllers\API\V1\ProductController::class, 'categories']);
         Route::post('/categories', [\App\Http\Controllers\API\V1\ProductController::class, 'storeCategory']);
+
+        // Packs de Catalogues Prédéfinis (Templates)
+        Route::get('/catalog-templates',              [\App\Http\Controllers\API\V1\CatalogTemplateController::class, 'index']);
+        Route::get('/catalog-templates/{id}',         [\App\Http\Controllers\API\V1\CatalogTemplateController::class, 'show']);
+        Route::post('/catalog-templates/{id}/install', [\App\Http\Controllers\API\V1\CatalogTemplateController::class, 'install']);
+
+        // -----------------------------------------------------------------------
+        // Rôles Personnalisés, Permissions & Zones d'Accès
+        // -----------------------------------------------------------------------
+        Route::get('/permissions', [\App\Http\Controllers\API\V1\RoleController::class, 'getAvailablePermissions']);
+        Route::get('/custom-roles', [\App\Http\Controllers\API\V1\RoleController::class, 'index']);
+        Route::post('/custom-roles', [\App\Http\Controllers\API\V1\RoleController::class, 'store']);
+        Route::put('/custom-roles/{id}', [\App\Http\Controllers\API\V1\RoleController::class, 'update']);
+        Route::delete('/custom-roles/{id}', [\App\Http\Controllers\API\V1\RoleController::class, 'destroy']);
+
+        Route::apiResource('access-zones', \App\Http\Controllers\API\V1\AccessZoneController::class);
+
+        // -----------------------------------------------------------------------
+        // Règles de Gestion Configurables (Business Rules)
+        // -----------------------------------------------------------------------
+        Route::get('/business-rules',  [\App\Http\Controllers\API\V1\BusinessRuleController::class, 'index']);
+        Route::post('/business-rules', [\App\Http\Controllers\API\V1\BusinessRuleController::class, 'updateRules']);
 
         // -----------------------------------------------------------------------
         // Référentiel Fournisseurs & Clients

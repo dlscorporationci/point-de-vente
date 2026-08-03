@@ -37,6 +37,27 @@ db.version(2).stores({
   sync_metadata: 'key, value'
 });
 
+// Version 3 : Rôles personnalisés, zones d'accès, règles de gestion et packs de catalogue
+db.version(3).stores({
+  products: 'id, uuid, [company_id+branch_id], company_id, branch_id, barcode, sku, name, category_id, updated_at, deleted_at',
+  categories: 'id, company_id, name',
+  customers: 'id, company_id, name, phone',
+  suppliers: 'id, company_id, name, phone',
+  sales: 'uuid, id, [company_id+branch_id], company_id, branch_id, user_id, sale_number, payment_method, status, created_at, synced',
+  sale_items: '++id, sale_uuid, [company_id+branch_id], company_id, branch_id, product_id, quantity, total',
+  stock: '++id, [company_id+branch_id], company_id, branch_id, product_id, stock_quantity',
+  cash_sessions: 'id, uuid, [company_id+branch_id], company_id, branch_id, user_id, status',
+  purchases: 'id, uuid, [company_id+branch_id], company_id, branch_id',
+  transfers: 'id, uuid, company_id, from_branch_id, to_branch_id, status',
+  notifications: '++id, [company_id+branch_id], company_id, branch_id, user_id, read_at',
+  sync_queue: 'uuid, [company_id+branch_id], company_id, branch_id, user_id, entity_type, entity_id, action, status, created_at',
+  sync_metadata: 'key, value',
+  catalog_templates: 'id, slug, name, domain',
+  custom_roles: 'id, company_id, name, slug',
+  access_zones: 'id, company_id, name',
+  business_rules: 'id, company_id, branch_id, rule_key'
+});
+
 /**
  * Utilitaires d'accès étanche par Entreprise et Boutique (Multi-Tenant & Multi-Branch)
  */

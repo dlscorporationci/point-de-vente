@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
 import { db } from '../services/db';
+import { CatalogTemplatesModal } from '../components/CatalogTemplatesModal';
+import { MassProductDeleteModal } from '../components/MassProductDeleteModal';
 
 export const getImageUrl = (imagePath) => {
   if (!imagePath) return null;
@@ -44,6 +46,8 @@ export const Catalog = () => {
   // États d'ouverture de formulaires
   const [showProductForm, setShowProductForm] = useState(false);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
+  const [showTemplatesModal, setShowTemplatesModal] = useState(false);
+  const [showMassDeleteModal, setShowMassDeleteModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null); // null = création, objet = édition
   
   // États de création de produit
@@ -447,13 +451,21 @@ export const Catalog = () => {
           </div>
           
           {hasCreatePermission && (
-            <div className="action-buttons-group">
+            <div className="action-buttons-group d-flex flex-wrap gap-2">
+              <button onClick={() => setShowTemplatesModal(true)} className="btn btn-outline-primary" style={{ fontWeight: 700 }}>
+                <i className="fa-solid fa-boxes-packing me-1"></i> Packs de Catalogue
+              </button>
               <button onClick={() => { setShowCategoryForm(true); setShowProductForm(false); }} className="btn btn-secondary">
                 <i className="fa-solid fa-folder-open me-1"></i> Nouvelle Catégorie
               </button>
               <button onClick={() => { setEditingProduct(null); setNewProductName(''); setNewProductSku(''); setNewProductBarcode(''); setNewProductPrice(''); setNewProductCategoryId(''); setNewProductDescription(''); setNewProductAlertQty('10'); setNewProductImage(null); setShowProductForm(true); setShowCategoryForm(false); }} className="btn btn-primary">
                 <i className="fa-solid fa-plus me-1"></i> Ajouter un Produit
               </button>
+              {isAdmin && (
+                <button onClick={() => setShowMassDeleteModal(true)} className="btn btn-outline-danger" style={{ fontWeight: 700 }}>
+                  <i className="fa-solid fa-trash-can me-1"></i> Suppression Massive
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -956,6 +968,20 @@ export const Catalog = () => {
           </div>
         )}
       </div>
+
+      <CatalogTemplatesModal
+        isOpen={showTemplatesModal}
+        onClose={() => setShowTemplatesModal(false)}
+        onSuccess={(msg) => { setSuccess(msg); loadData(); }}
+      />
+
+      <MassProductDeleteModal
+        isOpen={showMassDeleteModal}
+        onClose={() => setShowMassDeleteModal(false)}
+        productsCount={products.length}
+        categoriesCount={categories.length}
+        onSuccess={(msg) => { setSuccess(msg); loadData(); }}
+      />
 
       <style>{`
         .catalog-container {

@@ -316,4 +316,51 @@ class ProductController extends Controller
             'category' => $category->load('parent')
         ], 201);
     }
+
+    /**
+     * Suppression massive de tous les produits d'une boutique (Protégée par triple confirmation).
+     */
+    public function destroyAll(Request $request)
+    {
+        $currentUser = $request->user();
+        $isAuthorized = $currentUser->role && in_array($currentUser->role->slug, ['admin', 'super-admin']) || $currentUser->hasPermission('products.delete');
+        if (!$isAuthorized) {
+            return response()->json(['error' => 'Action non autorisée. Seuls les administrateurs peuvent effectuer une suppression massive.'], 403);
+        }
+
+        $request->validate([
+            'confirmation_text' => 'required|string',
+            'branch_id'         => 'nullable|integer',
+        ]);
+
+        if (strtoupper(trim($request->confirmation_text)) !== 'SUPPRIMER') {
+            return response()->json(['error' => 'Le texte de confirmation doit correspondre exactement à "SUPPRIMER".'], 422);
+        }
+
+        $companyId = app(\App\Services\TenantManager::class)->getCompanyId() ?: $currentUser->company_id;
+        $branchId = $request->branch_id ?: $currentUser->branch_id;
+
+        $productsQuery = Product::where('company_id', $companyId);
+        if ($branchId) {
+            $productsQuery->where('branch_id', $branchId);
+        }
+        $affectedCount = $productsQuery->count();
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($productsQuery, $companyId, $branchId, $currentUser, $affectedCount) {
+            $productsQuery->delete();
+
+            $this->logAuditEvent('MASS_PRODUCT_DELETION', [
+                'affected_products_count' => $affectedCount,
+                'company_id'              => $companyId,
+                'branch_id'               => $branchId,
+                'action_by'               => $currentUser->name . ' (' . $currentUser->email . ')',
+                'operation_id'            => (string) \Illuminate\Support\Str::uuid(),
+            ], $currentUser);
+        });
+
+        return response()->json([
+            'message' => "Suppression massive effectuée avec succès. {$affectedCount} produit(s) supprimé(s).",
+            'affected_count' => $affectedCount
+        ]);
+    }
 }
