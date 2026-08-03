@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
 import { db } from '../services/db';
+import { ExportModal } from '../components/ExportModal';
 
 export const Sales = () => {
   const { token } = useApp();
@@ -22,6 +23,7 @@ export const Sales = () => {
 
   // Détail d'une vente
   const [selectedSale, setSelectedSale] = useState(null);
+  const [showExportModal, setShowExportModal] = useState(false);
 
   const loadSales = async () => {
     if (!token) return;
@@ -156,6 +158,13 @@ export const Sales = () => {
           <span><i className="fa-solid fa-lock text-muted"></i></span>
           <h3>Accès Réservé</h3>
           <p>Connectez-vous pour accéder à l'historique des ventes.</p>
+          <ExportModal
+            isOpen={showExportModal}
+            onClose={() => setShowExportModal(false)}
+            documentType="sales_report"
+            documentTitle="Rapport et Historique des Ventes"
+            defaultFilters={{ start_date: dateFrom, end_date: dateTo }}
+          />
         </div>
       </div>
     );
@@ -167,10 +176,15 @@ export const Sales = () => {
       <div className="decorator-sphere sphere-2"></div>
 
       <div className="sales-layout card">
-        <div className="sales-header">
+        <div className="sales-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h2><i className="fa-solid fa-receipt me-2 text-primary"></i> Historique des Ventes</h2>
             <p className="sales-subtitle">Consultez l'ensemble des transactions réalisées, filtrez par date, client ou moyen de paiement.</p>
+          </div>
+          <div>
+            <button type="button" onClick={() => setShowExportModal(true)} className="btn btn-primary" style={{ fontWeight: 700 }}>
+              <i className="fa-solid fa-file-export me-1"></i> Exporter les Ventes
+            </button>
           </div>
         </div>
 

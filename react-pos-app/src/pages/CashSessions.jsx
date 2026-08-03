@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
 import { db } from '../services/db';
+import { ExportModal } from '../components/ExportModal';
 
 export const CashSessions = () => {
   const { user, token } = useApp();
@@ -26,6 +27,7 @@ export const CashSessions = () => {
   // Validation écarts
   const [validationNotes, setValidationNotes] = useState('');
   const [selectedSessionToValidate, setSelectedSessionToValidate] = useState(null);
+  const [showExportModal, setShowExportModal] = useState(false);
 
   // États génériques
   const [loading, setLoading] = useState(false);
@@ -163,6 +165,12 @@ export const CashSessions = () => {
           <span className="alert-icon"><i className="fa-solid fa-lock text-muted"></i></span>
           <h3>Accès Réservé</h3>
           <p>Vous devez vous connecter à une session pour gérer vos caisses.</p>
+          <ExportModal
+            isOpen={showExportModal}
+            onClose={() => setShowExportModal(false)}
+            documentType="cash_sessions"
+            documentTitle="Rapport et Historique des Sessions de Caisses"
+          />
         </div>
       </div>
     );
@@ -190,10 +198,15 @@ export const CashSessions = () => {
       <div className="decorator-sphere sphere-2"></div>
 
       <div className="sessions-layout card">
-        <div className="sessions-header">
+        <div className="sessions-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h2><i className="fa-solid fa-money-bill-wave me-2 text-success"></i> Gestion des Sessions de Caisses</h2>
             <p className="sessions-subtitle">Suivez vos fonds de caisse, dépôts/retraits et régularisez les écarts de clôture</p>
+          </div>
+          <div>
+            <button type="button" onClick={() => setShowExportModal(true)} className="btn btn-outline-secondary" style={{ fontWeight: 700 }}>
+              <i className="fa-solid fa-file-export me-1"></i> Exporter Sessions Caisses
+            </button>
           </div>
         </div>
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
+import { ExportModal } from '../components/ExportModal';
 
 export const AuditLogs = () => {
   const { token, user } = useApp();
@@ -29,6 +30,7 @@ export const AuditLogs = () => {
 
   // Détail sélectionné pour inspection
   const [selectedLog, setSelectedLog] = useState(null);
+  const [showExportModal, setShowExportModal] = useState(false);
 
   // Charger les listes de référence (Entreprises, Boutiques, Utilisateurs)
   useEffect(() => {
@@ -153,8 +155,17 @@ export const AuditLogs = () => {
       <div className="decorator-sphere sphere-2"></div>
 
       <div className="audit-layout card">
-        <h2 className="section-title"><i className="fa-solid fa-shield-halved me-2 text-primary"></i> Journal d'Audit & Sécurité</h2>
-        <p className="section-subtitle">Consignez et inspectez l'historique complet des actions d'écritures sensibles effectuées sur la plateforme.</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h2 className="section-title"><i className="fa-solid fa-shield-halved me-2 text-primary"></i> Journal d'Audit & Sécurité</h2>
+            <p className="section-subtitle">Consignez et inspectez l'historique complet des actions d'écritures sensibles effectuées sur la plateforme.</p>
+          </div>
+          <div>
+            <button type="button" onClick={() => setShowExportModal(true)} className="btn btn-outline-secondary" style={{ fontWeight: 700 }}>
+              <i className="fa-solid fa-file-export me-1"></i> Exporter Journal
+            </button>
+          </div>
+        </div>
 
         {error && <div className="error-banner"><i className="fa-solid fa-circle-exclamation me-1"></i> {error}</div>}
 
@@ -640,6 +651,12 @@ export const AuditLogs = () => {
           }
         }
       `}</style>
+      <ExportModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        documentType="audit_log"
+        documentTitle="Journal d'Audit et Sécurité"
+      />
     </div>
   );
 };
