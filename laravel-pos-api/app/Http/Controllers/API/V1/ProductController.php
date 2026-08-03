@@ -20,19 +20,14 @@ class ProductController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Product::with(['category', 'branchProducts']);
-
         // Filtre par boutique affectée
         $branchId = $request->input('branch_id');
         if (empty($branchId) || $branchId === 'undefined') {
-            $branchId = app(\App\Services\TenantManager::class)->getBranchId();
+            $branchId = app(\App\Services\TenantManager::class)->getBranchId()
+                ?: ($request->user() ? $request->user()->branch_id : null);
         }
 
-        if ($branchId && $branchId !== 'all') {
-            $query->whereHas('branchProducts', function($bp) use ($branchId) {
-                $bp->where('branch_id', $branchId)->where('is_active', true);
-            });
-        }
+        $query = Product::with(['category', 'branchProducts']);
 
         // Filtre recherche par Nom, SKU ou Code-barres
         if ($request->has('search') && !empty($request->search)) {
@@ -49,7 +44,27 @@ class ProductController extends Controller
             $query->where('category_id', $request->category_id);
         }
 
-        return response()->json($query->orderBy('name')->paginate(15));
+        $perPage = $request->input('per_page', 500);
+        $paginated = $query->orderBy('name')->paginate($perPage);
+
+        $paginated->getCollection()->transform(function ($product) use ($branchId) {
+            $totalSum = floatval($product->branchProducts->sum('quantity'));
+            if ($branchId && $branchId !== 'all') {
+                $bp = $product->branchProducts->firstWhere('branch_id', (int)$branchId);
+                $branchQty = $bp ? floatval($bp->quantity) : 0.0;
+                // Si la boutique spécifique a du stock, utiliser ce stock, sinon la somme entreprise
+                $qty = $branchQty > 0 ? $branchQty : $totalSum;
+            } else {
+                $qty = $totalSum;
+            }
+
+            $product->quantity = $qty;
+            $product->stock_quantity = $qty;
+            $product->stock = $qty;
+            return $product;
+        });
+
+        return response()->json($paginated);
     }
 
     /**

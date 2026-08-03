@@ -109,6 +109,11 @@ export const PointDeVente = () => {
 
   useEffect(() => {
     loadData();
+
+    // Recharger automatiquement les stocks réels au retour sur l'onglet POS ou lors du focus
+    const handleFocus = () => loadData();
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, [token]);
 
   // Recherche & Simulation Barcode Scanner (Touche Entrée dans l'input)
