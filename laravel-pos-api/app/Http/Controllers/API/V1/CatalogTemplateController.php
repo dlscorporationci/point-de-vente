@@ -9,9 +9,10 @@ use App\Models\CatalogTemplateCategory;
 use App\Models\CatalogTemplateProduct;
 use App\Models\Category;
 use App\Models\Product;
-use App\Models\Stock;
+use App\Models\BranchProduct;
 use App\Services\TenantManager;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use App\Traits\Auditable;
 
 class CatalogTemplateController extends Controller
@@ -106,6 +107,7 @@ class CatalogTemplateController extends Controller
                         'name'       => $cat->name,
                     ],
                     [
+                        'slug'       => Str::slug($cat->name) . '-' . rand(1000, 9999),
                         'icon'       => $cat->icon ?? 'fa-folder',
                         'image_path' => $cat->image_url,
                     ]
@@ -139,15 +141,14 @@ class CatalogTemplateController extends Controller
 
                 // Créer le stock initial à 0 pour la boutique
                 if ($branchId) {
-                    Stock::firstOrCreate(
+                    BranchProduct::firstOrCreate(
                         [
                             'product_id' => $product->id,
                             'branch_id'  => $branchId,
                         ],
                         [
-                            'company_id'     => $companyId,
-                            'quantity'       => 0,
-                            'alert_quantity' => $tmplProd->alert_quantity,
+                            'quantity'   => 0,
+                            'is_active'  => true,
                         ]
                     );
                 }
@@ -156,13 +157,28 @@ class CatalogTemplateController extends Controller
             }
 
             // Enregistrer dans le journal d'audit
-            $this->logAuditEvent('CATALOG_TEMPLATE_INSTALLED', [
-                'template_name' => $template->name,
-                'template_slug' => $template->slug,
-                'categories_count' => $createdCategoriesCount,
-                'products_count'   => $createdProductsCount,
-                'branch_id'        => $branchId,
-            ], $currentUser);
+            \App\Models\AuditLog::create([
+                'company_id'     => $companyId,
+                'branch_id'      => $branchId,
+                'user_id'        => $currentUser ? $currentUser->id : null,
+                'user_role'      => ($currentUser && $currentUser->role) ? $currentUser->role->slug : null,
+                'auditable_type' => get_class($template),
+                'auditable_id'   => $template->id,
+                'action'         => 'CATALOG_TEMPLATE_INSTALLED',
+                'module'         => 'CatalogTemplate',
+                'new_values'     => [
+                    'template_name'    => $template->name,
+                    'template_slug'    => $template->slug,
+                    'categories_count' => $createdCategoriesCount,
+                    'products_count'   => $createdProductsCount,
+                    'branch_id'        => $branchId,
+                ],
+                'ip_address'     => request()->ip(),
+                'user_agent'     => request()->userAgent(),
+                'device'         => 'Web App',
+                'result'         => 'success',
+                'created_at'     => now(),
+            ]);
         });
 
         return response()->json([

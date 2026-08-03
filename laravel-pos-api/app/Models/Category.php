@@ -20,6 +20,16 @@ class Category extends Model
         'image_path',
     ];
 
+    protected static function boot()
+    {
+        parent::boot();
+        static::creating(function ($category) {
+            if (empty($category->slug)) {
+                $category->slug = \Illuminate\Support\Str::slug($category->name) . '-' . rand(1000, 9999);
+            }
+        });
+    }
+
     public function parent()
     {
         return $this->belongsTo(Category::class, 'parent_id');
