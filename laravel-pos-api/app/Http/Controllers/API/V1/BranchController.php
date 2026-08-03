@@ -35,21 +35,23 @@ class BranchController extends Controller
         $company = app(\App\Services\TenantManager::class)->getCompany();
         if ($company) {
             $currentBranches = Branch::count();
-            $plan = strtolower($company->subscription_plan ?: 'trial');
+            $plan = strtolower($company->subscription_plan ?: 'starter');
 
             $maxBranches = match($plan) {
-                'trial', 'essai' => 5,
-                'starter', 'basic' => 3,
-                'pro' => 10,
+                'starter', 'basic', 'gratuit', 'free' => 1,
+                'pro' => 5,
                 'premium', 'enterprise' => 999,
-                default => 5,
+                default => 1,
             };
 
             if ($currentBranches >= $maxBranches) {
-                $errorMsg = "Quota de boutiques atteint : Votre formule d'abonnement (" . strtoupper($plan) . ") est limitée à {$maxBranches} boutique(s). Veuillez passer à une formule supérieure pour ajouter d'autres espaces.";
+                $errorMsg = "Quota de boutiques atteint : Votre formule d'abonnement (" . strtoupper($plan) . ") est limitée à {$maxBranches} boutique(s). Pour ajouter d'autres espaces de vente, veuillez faire évoluer votre offre vers la formule Pro ou Premium.";
                 return response()->json([
-                    'error'   => $errorMsg,
-                    'message' => $errorMsg,
+                    'error'            => $errorMsg,
+                    'message'          => $errorMsg,
+                    'upgrade_required' => true,
+                    'current_plan'     => strtoupper($plan),
+                    'max_branches'     => $maxBranches,
                 ], 403);
             }
         }

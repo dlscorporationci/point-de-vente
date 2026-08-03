@@ -130,7 +130,19 @@ export const Branches = () => {
           </button>
         </div>
 
-        {error   && <div className="error-banner"><i className="fa-solid fa-circle-exclamation me-1"></i> {error}</div>}
+        {error   && (
+          <div className="error-banner">
+            <i className="fa-solid fa-circle-exclamation me-1"></i> {error}
+            {error.includes('Quota de boutiques atteint') && (
+              <div className="mt-2 pt-2 border-top">
+                <strong>💡 Besoin de gérer plusieurs points de vente ?</strong>
+                <p className="m-0 text-muted" style={{ fontSize: '13px' }}>
+                  Faites évoluer votre formule vers l'offre <strong>PRO (jusqu'à 5 boutiques)</strong> ou <strong>PREMIUM (illimité)</strong> en contactant le support ou l'administrateur SaaS.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
         {success && <div className="success-banner"><i className="fa-solid fa-circle-check me-1"></i> {success}</div>}
 
         {/* ── FORMULAIRE ── */}
