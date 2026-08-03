@@ -388,9 +388,13 @@ export const BackOffice = () => {
     }
   };
 
-  // Filtrage local des entreprises
-  const filteredCompanies = companies.filter(c => {
-    const matchesSearch = c.name.toLowerCase().includes(searchCompany.toLowerCase()) || (c.code && c.code.toLowerCase().includes(searchCompany.toLowerCase()));
+  // Filtrage local des entreprises (sécurisé contre les valeurs nulles)
+  const filteredCompanies = (companies || []).filter(c => {
+    if (!c) return false;
+    const nameStr = (c.name || '').toLowerCase();
+    const codeStr = (c.code || c.company_code || '').toLowerCase();
+    const sTerm   = (searchCompany || '').toLowerCase();
+    const matchesSearch = nameStr.includes(sTerm) || codeStr.includes(sTerm);
     const matchesStatus = filterCompanyStatus === '' || c.status === filterCompanyStatus;
     const plan = c.subscription_plan || 'starter';
     const matchesPlan = filterCompanyPlan === '' || plan === filterCompanyPlan;
