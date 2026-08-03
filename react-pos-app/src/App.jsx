@@ -123,31 +123,90 @@ function MainContent() {
     }
   }
 
-  // Structure des menus avec séparation étanche entre Super-Admin SaaS et Utilisateurs de Boutiques
-  const navLinks = [
-    { tab: 'home',          icon: 'fa-house',           label: 'Accueil',       show: true },
-    { tab: 'backoffice',    icon: 'fa-gears',           label: 'Console SaaS',  show: !!(user && isSuperAdmin) },
-    { tab: 'dashboard',     icon: 'fa-gauge-high',      label: 'Dashboard',     show: !!(user && !isSuperAdmin) },
-    { tab: 'pos',           icon: 'fa-cash-register',   label: 'POS (Caisse)',  show: !!(user && !isSuperAdmin) },
-    { tab: 'sync-center',   icon: 'fa-arrows-rotate',   label: 'Centre Sync',   show: !!user },
-    { tab: 'auth',          icon: user ? 'fa-user' : 'fa-key', label: user ? 'Mon Profil' : 'Connexion', show: true },
-    { tab: 'register',      icon: 'fa-pen-to-square',   label: "S'inscrire",    show: !user },
-    { tab: 'catalog',       icon: 'fa-box',             label: 'Catalogue',     show: !!(user && !isSuperAdmin) },
-    { tab: 'suppliers',     icon: 'fa-handshake',       label: 'Fournisseurs',  show: !!(user && !isSuperAdmin) },
-    { tab: 'customers',     icon: 'fa-users',           label: 'Clients',       show: !!(user && !isSuperAdmin) },
-    { tab: 'purchases',     icon: 'fa-truck-ramp-box',  label: 'Achats',        show: !!(user && !isSuperAdmin) },
-    { tab: 'stocks',        icon: 'fa-layer-group',     label: 'Stocks',        show: !!(user && !isSuperAdmin) },
-    { tab: 'transfers',     icon: 'fa-right-left',      label: 'Transferts',    show: !!(user && !isSuperAdmin) },
-    { tab: 'cash-sessions', icon: 'fa-money-bill-wave', label: 'Caisses',       show: !!(user && !isSuperAdmin) },
-    { tab: 'sales',         icon: 'fa-receipt',         label: 'Ventes',        show: !!(user && !isSuperAdmin) },
-    { tab: 'branches',      icon: 'fa-store',           label: 'Boutiques',     show: !!(user && !isSuperAdmin && (role === 'admin' || role === 'gerant')) },
-    { tab: 'users-mgmt',    icon: 'fa-users-gear',      label: 'Personnel',     show: !!(user && !isSuperAdmin && (role === 'admin' || role === 'gerant')) },
-    { tab: 'audit',         icon: 'fa-shield-halved',   label: 'Audit',         show: !!user },
-    { tab: 'reports',       icon: 'fa-chart-line',      label: 'Rapports',      show: !!(user && !isSuperAdmin && isAdminOrGerant) },
-    { tab: 'notifications', icon: 'fa-bell',            label: 'Notifications', show: !!user },
-    { tab: 'settings',      icon: 'fa-sliders',         label: 'Paramètres',    show: !!(user && !isSuperAdmin && isAdminOrGerant) },
-    { tab: 'userguide',     icon: 'fa-book-open',       label: 'Aide & Guide',  show: !!user },
-  ].filter(l => l.show)
+  // Carte des liens de navigation avec contrôle des permissions d'accès
+  const navLinksMap = {
+    home:          { icon: 'fa-house',           label: 'Accueil',       show: true },
+    backoffice:    { icon: 'fa-gears',           label: 'Console SaaS',  show: !!(user && isSuperAdmin) },
+    dashboard:     { icon: 'fa-gauge-high',      label: 'Dashboard',     show: !!(user && !isSuperAdmin) },
+    pos:           { icon: 'fa-cash-register',   label: 'POS (Caisse)',  show: !!(user && !isSuperAdmin) },
+    catalog:       { icon: 'fa-box',             label: 'Catalogue',     show: !!(user && !isSuperAdmin) },
+    customers:     { icon: 'fa-users',           label: 'Clients',       show: !!(user && !isSuperAdmin) },
+    suppliers:     { icon: 'fa-handshake',       label: 'Fournisseurs',  show: !!(user && !isSuperAdmin) },
+    sales:         { icon: 'fa-receipt',         label: 'Ventes',        show: !!(user && !isSuperAdmin) },
+    'cash-sessions': { icon: 'fa-money-bill-wave', label: 'Caisses',       show: !!(user && !isSuperAdmin) },
+    purchases:     { icon: 'fa-truck-ramp-box',  label: 'Achats & Appro', show: !!(user && !isSuperAdmin) },
+    stocks:        { icon: 'fa-layer-group',     label: 'Stocks',        show: !!(user && !isSuperAdmin) },
+    transfers:     { icon: 'fa-right-left',      label: 'Transferts',    show: !!(user && !isSuperAdmin) },
+    branches:      { icon: 'fa-store',           label: 'Boutiques',     show: !!(user && !isSuperAdmin && (role === 'admin' || role === 'gerant')) },
+    'users-mgmt':  { icon: 'fa-users-gear',      label: 'Personnel & Rôles', show: !!(user && !isSuperAdmin && (role === 'admin' || role === 'gerant')) },
+    settings:      { icon: 'fa-sliders',         label: 'Paramètres',    show: !!(user && !isSuperAdmin && isAdminOrGerant) },
+    reports:       { icon: 'fa-chart-line',      label: 'Rapports',      show: !!(user && !isSuperAdmin && isAdminOrGerant) },
+    audit:         { icon: 'fa-shield-halved',   label: 'Audit & Logs',  show: !!user },
+    'sync-center': { icon: 'fa-arrows-rotate',   label: 'Centre Sync',   show: !!user },
+    notifications: { icon: 'fa-bell',            label: 'Notifications', show: !!user },
+    auth:          { icon: user ? 'fa-user' : 'fa-key', label: user ? 'Mon Profil' : 'Connexion', show: true },
+    register:      { icon: 'fa-pen-to-square',   label: "S'inscrire",    show: !user },
+    userguide:     { icon: 'fa-book-open',       label: 'Aide & Guide',  show: !!user },
+  };
+
+  // Groupes d'onglets pliables (Accordion)
+  const navGroups = [
+    {
+      id: 'main',
+      title: '📌 Raccourcis Principaux',
+      collapsible: false,
+      items: ['home', 'backoffice', 'dashboard', 'pos']
+    },
+    {
+      id: 'sales_catalog',
+      title: '📦 Ventes & Catalogue',
+      icon: 'fa-cart-shopping',
+      collapsible: true,
+      items: ['catalog', 'customers', 'suppliers', 'sales', 'cash-sessions']
+    },
+    {
+      id: 'stock_logistics',
+      title: '🏬 Stock & Logistique',
+      icon: 'fa-boxes-stacked',
+      collapsible: true,
+      items: ['purchases', 'stocks', 'transfers']
+    },
+    {
+      id: 'administration',
+      title: '⚙️ Administration',
+      icon: 'fa-user-gear',
+      collapsible: true,
+      items: ['branches', 'users-mgmt', 'settings', 'reports', 'audit']
+    },
+    {
+      id: 'system_support',
+      title: '🔄 Système & Support',
+      icon: 'fa-circle-info',
+      collapsible: true,
+      items: ['sync-center', 'notifications', 'auth', 'register', 'userguide']
+    }
+  ];
+
+  // État des accordéons de la navigation latérale (ouvert/fermé)
+  const [openNavGroups, setOpenNavGroups] = useState({
+    sales_catalog: true,
+    stock_logistics: false,
+    administration: false,
+    system_support: false
+  });
+
+  // Déplier automatiquement le groupe contenant l'onglet actif
+  useEffect(() => {
+    navGroups.forEach(grp => {
+      if (grp.collapsible && grp.items.includes(activeTab)) {
+        setOpenNavGroups(prev => ({ ...prev, [grp.id]: true }));
+      }
+    });
+  }, [activeTab]);
+
+  const toggleNavGroup = (groupId) => {
+    setOpenNavGroups(prev => ({ ...prev, [groupId]: !prev[groupId] }));
+  };
 
   const [currentTime, setCurrentTime] = useState(() => new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }))
 
@@ -380,12 +439,54 @@ function MainContent() {
                 <span>Retour (Page précédente)</span>
               </button>
             )}
-            {navLinks.map(({ tab, icon, label }) => (
-              <button key={tab} className={`drawer-link-btn ${activeTab === tab ? 'active' : ''}`} onClick={() => navigate(tab)}>
-                <i className={`fa-solid ${icon}`}></i>
-                <span>{label}</span>
-              </button>
-            ))}
+            {navGroups.map(grp => {
+              const visibleItems = grp.items.filter(tabKey => navLinksMap[tabKey] && navLinksMap[tabKey].show);
+              if (visibleItems.length === 0) return null;
+
+              const isExpanded = !grp.collapsible || !!openNavGroups[grp.id];
+              const hasActiveChild = visibleItems.includes(activeTab);
+
+              return (
+                <div key={grp.id} className="drawer-nav-group">
+                  {grp.collapsible ? (
+                    <button 
+                      type="button"
+                      className={`drawer-group-header ${hasActiveChild ? 'has-active' : ''}`}
+                      onClick={() => toggleNavGroup(grp.id)}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <i className={`fa-solid ${grp.icon || 'fa-folder'} text-primary`} style={{ fontSize: '13px' }}></i>
+                        <span style={{ fontWeight: 700, fontSize: '13px' }}>{grp.title}</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span className="badge-count" style={{ fontSize: '10px', padding: '1px 6px', opacity: 0.8, borderRadius: '8px' }}>{visibleItems.length}</span>
+                        <i className={`fa-solid fa-chevron-down chevron-icon ${isExpanded ? 'rotated' : ''}`} style={{ fontSize: '11px' }}></i>
+                      </div>
+                    </button>
+                  ) : (
+                    <div className="drawer-group-title-static">{grp.title}</div>
+                  )}
+
+                  {isExpanded && (
+                    <div className={`drawer-group-content ${grp.collapsible ? 'pliable-content' : ''}`}>
+                      {visibleItems.map(tabKey => {
+                        const { icon, label } = navLinksMap[tabKey];
+                        return (
+                          <button 
+                            key={tabKey} 
+                            className={`drawer-link-btn ${activeTab === tabKey ? 'active' : ''}`} 
+                            onClick={() => navigate(tabKey)}
+                          >
+                            <i className={`fa-solid ${icon}`}></i>
+                            <span>{label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
           {user && (
@@ -496,23 +597,83 @@ function MainContent() {
 
         .drawer-links {
           flex: 1; overflow-y: auto;
-          padding: 12px;
-          display: flex; flex-direction: column; gap: 4px;
+          padding: 12px 10px;
+          display: flex; flex-direction: column; gap: 6px;
         }
         .drawer-links::-webkit-scrollbar { width: 4px; }
         .drawer-links::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 2px; }
 
-        .drawer-link-btn {
-          display: flex; align-items: center; gap: 14px;
-          width: 100%; padding: 12px 16px;
-          border-radius: 12px; background: transparent; border: none;
+        /* GROUPES D'ONGLETS PLIABLES (ACCORDION) */
+        .drawer-nav-group {
+          margin-bottom: 4px;
+        }
+
+        .drawer-group-title-static {
+          font-size: 11px;
+          font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: 0.8px;
           color: var(--text-muted);
-          font-family: var(--font-title); font-weight: 600; font-size: 14px;
+          padding: 6px 12px 2px 12px;
+          opacity: 0.75;
+        }
+
+        .drawer-group-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          width: 100%;
+          padding: 10px 12px;
+          border-radius: 10px;
+          background: var(--bg-input, rgba(255,255,255,0.04));
+          border: 1px solid var(--border-color);
+          color: var(--text-main);
+          font-family: var(--font-title);
+          font-weight: 700;
+          font-size: 13px;
+          cursor: pointer;
+          transition: all var(--transition-fast);
+        }
+
+        .drawer-group-header:hover {
+          background: var(--bg-card);
+          border-color: var(--color-primary);
+        }
+
+        .drawer-group-header.has-active {
+          border-color: var(--color-primary);
+          background: rgba(59, 130, 246, 0.08);
+        }
+
+        .chevron-icon {
+          transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .chevron-icon.rotated {
+          transform: rotate(180deg);
+        }
+
+        .pliable-content {
+          padding-left: 6px;
+          border-left: 2px solid var(--border-color);
+          margin-left: 10px;
+          margin-top: 4px;
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
+        }
+
+        .drawer-link-btn {
+          display: flex; align-items: center; gap: 12px;
+          width: 100%; padding: 10px 14px;
+          border-radius: 10px; background: transparent; border: none;
+          color: var(--text-muted);
+          font-family: var(--font-title); font-weight: 600; font-size: 13.5px;
           cursor: pointer; text-align: left;
           transition: all var(--transition-fast);
         }
-        .drawer-link-btn i { width: 20px; text-align: center; font-size: 15px; flex-shrink: 0; }
-        .drawer-link-btn:hover { background: var(--bg-input); color: var(--text-main); transform: translateX(4px); }
+        .drawer-link-btn i { width: 20px; text-align: center; font-size: 14px; flex-shrink: 0; }
+        .drawer-link-btn:hover { background: var(--bg-input); color: var(--text-main); transform: translateX(3px); }
         .drawer-link-btn.active {
           background: linear-gradient(135deg, var(--color-primary), #10b981);
           color: #fff;
