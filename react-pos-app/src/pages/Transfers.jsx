@@ -161,7 +161,8 @@ export const Transfers = () => {
   const hasWritePermission = user?.permissions?.includes('products.update') || user?.role === 'admin';
 
   return (
-    <div className="transfers-container">
+    <>
+      <div className="transfers-container">
       <div className="decorator-sphere sphere-1"></div>
       <div className="decorator-sphere sphere-2"></div>
 
@@ -430,6 +431,7 @@ export const Transfers = () => {
           </div>
         )}
       </div>
+    </div>
 
       <style>{`
         .transfers-container {
@@ -554,6 +556,14 @@ export const Transfers = () => {
           font-size: 14px;
         }
       `}</style>
-    </div>
+
+        {/* Modal d'exportation */}
+        <ExportModal
+          isOpen={showExportModal}
+          onClose={() => setShowExportModal(false)}
+          documentType="transfers_list"
+          documentTitle="Historique des Transferts de Stock Inter-Boutiques"
+        />
+    </>
   );
 };
