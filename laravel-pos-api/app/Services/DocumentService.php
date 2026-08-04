@@ -177,6 +177,8 @@ class DocumentService
                     ['key' => 'branches_cnt', 'label' => 'Boutiques',     'align' => 'center'],
                     ['key' => 'users_cnt',    'label' => 'Comptes',       'align' => 'center'],
                     ['key' => 'status',       'label' => 'Statut',        'align' => 'center'],
+                ],
+            ],
             'suppliers_list' => [
                 'type'     => 'suppliers_list',
                 'title'    => 'RÉPERTOIRE ET ÉTAT DES FOURNISSEURS',
