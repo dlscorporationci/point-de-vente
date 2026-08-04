@@ -32,6 +32,11 @@ export const Suppliers = () => {
 
   // Packs et Types de Fournisseurs
   const [activeTab, setActiveTab] = useState('suppliers'); // 'suppliers' | 'packs'
+  const [showPackModal, setShowPackModal] = useState(false);
+  const [packName, setPackName] = useState('');
+  const [packDesc, setPackDesc] = useState('');
+  const [packSaving, setPackSaving] = useState(false);
+  const [packs, setPacks] = useState([]);
 
   // Packs de Fournisseurs Prédéfinis par Domaine / Quincaillerie
   const DEFAULT_SUPPLIER_PACKS = [
