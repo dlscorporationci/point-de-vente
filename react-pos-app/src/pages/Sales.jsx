@@ -171,7 +171,8 @@ export const Sales = () => {
   }
 
   return (
-    <div className="sales-container">
+    <>
+      <div className="sales-container">
       <div className="decorator-sphere sphere-1"></div>
       <div className="decorator-sphere sphere-2"></div>
 
@@ -419,6 +420,7 @@ export const Sales = () => {
           </div>
         </div>
       )}
+    </div>
 
       <style>{`
         .sales-container {
@@ -591,9 +593,16 @@ export const Sales = () => {
           color: var(--text-muted);
           font-size: 12px;
         }
-
-        /* L'impression utilise désormais les styles d'impression globaux de index.css */
       `}</style>
-    </div>
+
+        {/* Modal d'exportation */}
+        <ExportModal
+          isOpen={showExportModal}
+          onClose={() => setShowExportModal(false)}
+          documentType="sales_report"
+          documentTitle="Rapport et Historique des Ventes"
+          defaultFilters={{ start_date: dateFrom, end_date: dateTo }}
+        />
+    </>
   );
 };

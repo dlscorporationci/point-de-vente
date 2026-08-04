@@ -144,7 +144,8 @@ export const Stocks = () => {
   const hasAdjustPermission = user?.permissions?.includes('products.update') || user?.role === 'admin';
 
   return (
-    <div className="stocks-container">
+    <>
+      <div className="stocks-container">
       <div className="decorator-sphere sphere-1"></div>
       <div className="decorator-sphere sphere-2"></div>
 
@@ -402,6 +403,7 @@ export const Stocks = () => {
           </div>
         </div>
       </div>
+    </div>
 
       <style>{`
         .stocks-container {
@@ -529,6 +531,14 @@ export const Stocks = () => {
           color: var(--text-muted);
         }
       `}</style>
-    </div>
-  );
-};
+
+        {/* Modal d'exportation */}
+        <ExportModal
+          isOpen={showExportModal}
+          onClose={() => setShowExportModal(false)}
+          documentType="stock_status"
+          documentTitle="État Global des Stocks & Inventaires"
+        />
+      </>
+    );
+  };

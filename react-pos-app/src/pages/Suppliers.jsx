@@ -30,13 +30,105 @@ export const Suppliers = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
-  // Packs et Types de Fournisseurs
-  const [activeTab, setActiveTab] = useState('suppliers'); // 'suppliers' | 'packs'
-  const [packs, setPacks] = useState([]);
-  const [showPackModal, setShowPackModal] = useState(false);
-  const [packName, setPackName] = useState('');
-  const [packDesc, setPackDesc] = useState('');
-  const [packSaving, setPackSaving] = useState(false);
+  // Packs de Fournisseurs Prédéfinis par Domaine / Quincaillerie
+  const DEFAULT_SUPPLIER_PACKS = [
+    {
+      id: 'pack_ciment',
+      title: '🏭 Pack Cimenterie & Gros Œuvre',
+      category: 'Cimenterie',
+      description: 'Fournisseurs majeurs en ciment, liants hydrauliques et béton armé',
+      suppliers: [
+        { name: 'SOCOCIM Industries', phone: '+221 33 839 88 88', email: 'commandes@sococim.sn', address: 'Rufisque, Dakar - Sénégal' },
+        { name: 'CIMAF Sénégal', phone: '+221 33 859 20 20', email: 'vente@cimaf.com', address: 'Zone Industrielle de Bargny' },
+        { name: 'Dangote Cement Senegal', phone: '+221 33 869 90 90', email: 'sales.senegal@dangote.com', address: 'Pout, Thiès' }
+      ]
+    },
+    {
+      id: 'pack_ferraille',
+      title: '🏗️ Pack Ferraille & Métallurgie',
+      category: 'Métallurgie',
+      description: 'Fers à béton (FeE500), treillis soudés, profilés et tubes acier',
+      suppliers: [
+        { name: 'Métal Sénégal SA', phone: '+221 33 832 15 40', email: 'contact@metalsenegal.com', address: 'KM 4 Boulevard Centenaire, Dakar' },
+        { name: 'SIMPA Sénégal', phone: '+221 33 837 28 28', email: 'commercial@simpa.sn', address: 'Zone Industrielle Sodida, Dakar' },
+        { name: 'Aciérie du Sénégal', phone: '+221 33 879 10 10', email: 'ventes@acierie.sn', address: 'Diass, Thiès' }
+      ]
+    },
+    {
+      id: 'pack_plomberie',
+      title: '🚰 Pack Plomberie & Sanitaire',
+      category: 'Plomberie',
+      description: 'Tuyaux PVC/PEX, raccords hydrauliques, robinetterie et réservoirs d\'eau',
+      suppliers: [
+        { name: 'SANI-PLAST Sénégal', phone: '+221 33 824 55 66', email: 'contact@sani-plast.sn', address: 'Avenue Malick Sy, Dakar' },
+        { name: 'Nicoll West Africa', phone: '+221 33 834 12 00', email: 'sales@nicoll.sn', address: 'Zone Industrielle Hann, Dakar' },
+        { name: 'SOGEA Pipes & Fittings', phone: '+221 33 821 99 88', email: 'commande@sogeapipes.com', address: 'Port Autonome de Dakar' }
+      ]
+    },
+    {
+      id: 'pack_electricite',
+      title: '⚡ Pack Électricité & Câblage',
+      category: 'Électricité',
+      description: 'Câbles électriques blindés, disjoncteurs Legrand & Schneider, appareillage',
+      suppliers: [
+        { name: 'Legrand Sénégal / Comptoir Électrique', phone: '+221 33 849 70 00', email: 'info@legrand.sn', address: 'Avenue Lamine Guèye, Dakar' },
+        { name: 'Schneider Electric West Africa', phone: '+221 33 859 80 80', email: 'support.sn@se.com', address: 'Immeuble Kébé, Dakar' },
+        { name: 'Philips Lighting & Cables', phone: '+221 33 822 44 11', email: 'eclairage@philips.sn', address: 'Colobane, Dakar' }
+      ]
+    },
+    {
+      id: 'pack_peinture',
+      title: '🎨 Pack Peintures & Étanchéité',
+      category: 'Peinture',
+      description: 'Peintures acryliques, enduits de lissage, résines d\'étanchéité et vernis',
+      suppliers: [
+        { name: 'Seigneurie Gauthier Sénégal', phone: '+221 33 832 82 82', email: 'seigneurie@ppg.com', address: 'Route de Rufisque, Dakar' },
+        { name: 'MATFORCE Peintures & Chimie', phone: '+221 33 839 95 95', email: 'contact@matforce.com', address: 'KM 3 Avenue Cheikh Anta Diop' },
+        { name: 'Soloplast Étanchéité', phone: '+221 33 827 30 30', email: 'ventes@soloplast.sn', address: 'HLM Grand Yoff, Dakar' }
+      ]
+    },
+    {
+      id: 'pack_outillage',
+      title: '🧰 Pack Outillage & Quincaillerie Générale',
+      category: 'Outillage',
+      description: 'Outillage électroportatif Bosch/Makita, visserie inox, serrures, disques',
+      suppliers: [
+        { name: 'Bosch Pro & Outillage Sénégal', phone: '+221 33 864 11 22', email: 'outillage@bosch.sn', address: 'Avenue Cheikh Anta Diop, Dakar' },
+        { name: 'Stanley & Black+Decker West Africa', phone: '+221 33 825 88 99', email: 'quincaillerie@stanley.sn', address: 'Point E, Dakar' },
+        { name: 'Makita Sénégal & Visserie Industrial', phone: '+221 33 836 44 55', email: 'ventes@makita.sn', address: 'Zone VDN, Dakar' }
+      ]
+    }
+  ];
+
+  const handleImportPack = async (pack) => {
+    if (!window.confirm(`Voulez-vous importer les ${pack.suppliers.length} fournisseurs du "${pack.title}" dans votre répertoire ?`)) return;
+    setLoading(true);
+    setError(null);
+    try {
+      let importedCount = 0;
+      for (const sup of pack.suppliers) {
+        try {
+          await axios.post('/v1/suppliers', {
+            name: sup.name,
+            phone: sup.phone,
+            email: sup.email,
+            address: sup.address,
+            debt_balance: 0
+          });
+          importedCount++;
+        } catch {
+          /* Ignorer les doublons */
+        }
+      }
+      setSuccess(`✅ ${importedCount} fournisseur(s) du "${pack.title}" importé(s) avec succès dans votre répertoire !`);
+      loadData();
+      setActiveTab('suppliers');
+    } catch {
+      setError("Erreur lors de l'importation du pack de fournisseurs.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Charger les données
   const loadData = async () => {
@@ -183,7 +275,8 @@ export const Suppliers = () => {
   const hasUpdatePermission = user?.permissions?.includes('suppliers.update') || user?.role === 'admin' || user?.role?.slug === 'admin' || user?.role?.slug === 'gerant';
 
   return (
-    <div className="suppliers-container">
+    <>
+      <div className="suppliers-container">
       <div className="decorator-sphere sphere-1"></div>
       <div className="decorator-sphere sphere-2"></div>
 
@@ -340,34 +433,53 @@ export const Suppliers = () => {
           </div>
         )}
 
-        {/* CONTENU SECONDAIRE : VUE PACKS & TYPES */}
+        {/* VUE DES PACKS & MODÈLES PRÉDÉFINIS */}
         {activeTab === 'packs' ? (
-          <div style={{ marginTop: '20px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
-              {packs.length === 0 ? (
-                <div className="empty-state card" style={{ padding: '32px', textAlign: 'center', gridColumn: '1 / -1' }}>
-                  <i className="fa-solid fa-boxes-packing" style={{ fontSize: '36px', color: '#64748b', marginBottom: '12px' }}></i>
-                  <p>Aucun pack de fournisseurs configuré pour le moment.</p>
-                  <button onClick={() => setShowPackModal(true)} className="btn btn-primary btn-sm" style={{ marginTop: '12px' }}>
-                    + Créer le premier Pack
-                  </button>
-                </div>
-              ) : (
-                packs.map(pack => (
-                  <div key={pack.id} className="card" style={{ padding: '20px', border: '1px solid var(--border-color)' }}>
+          <div style={{ marginTop: '20px', marginBottom: '24px' }}>
+            <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h4 style={{ margin: 0, color: 'var(--color-primary)', fontWeight: 'bold' }}>📦 Packs & Modèles de Fournisseurs par Secteur</h4>
+                <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'var(--text-muted)' }}>
+                  Sélectionnez un pack métier pré-rempli pour ajouter en 1 clic l'ensemble des partenaires d'approvisionnement dans votre répertoire.
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
+              {DEFAULT_SUPPLIER_PACKS.map(pack => (
+                <div key={pack.id} className="card" style={{ padding: '20px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <h4 style={{ margin: 0, fontWeight: 'bold', color: 'var(--color-primary)' }}>📦 {pack.name}</h4>
-                      <span className="badge badge-success">Actif</span>
+                      <h4 style={{ margin: 0, fontWeight: 'bold', fontSize: '16px', color: 'var(--color-primary)' }}>{pack.title}</h4>
+                      <span className="badge badge-success" style={{ fontSize: '11px' }}>{pack.category}</span>
                     </div>
-                    <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 12px 0' }}>
-                      {pack.description || 'Aucune description'}
+                    <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 14px 0', minHeight: '38px' }}>
+                      {pack.description}
                     </p>
-                    <div style={{ fontSize: '12px', color: '#94a3b8', borderTop: '1px solid var(--border-color)', paddingTop: '8px' }}>
-                      Types associés : {pack.types ? pack.types.length : 0} type(s)
+                    
+                    <div style={{ background: 'var(--bg-card-header)', borderRadius: '6px', padding: '10px 12px', marginBottom: '16px' }}>
+                      <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-main)', marginBottom: '6px' }}>
+                        Fournisseurs inclus ({pack.suppliers.length}) :
+                      </div>
+                      <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12px', color: 'var(--text-muted)' }}>
+                        {pack.suppliers.map((s, idx) => (
+                          <li key={idx} style={{ marginBottom: '3px' }}>
+                            <strong>{s.name}</strong> <span style={{ fontSize: '11px', opacity: 0.8 }}>({s.phone})</span>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                   </div>
-                ))
-              )}
+
+                  <button 
+                    onClick={() => handleImportPack(pack)} 
+                    className="btn btn-primary btn-sm" 
+                    style={{ width: '100%', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                  >
+                    <i className="fa-solid fa-file-import"></i> Importer les 3 Fournisseurs
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
         ) : null}
@@ -458,6 +570,7 @@ export const Suppliers = () => {
           </div>
         )}
       </div>
+    </div>
 
       <style>{`
         .suppliers-container {
@@ -517,6 +630,14 @@ export const Suppliers = () => {
           font-weight: 700;
         }
       `}</style>
-    </div>
+
+        {/* Modal d'exportation */}
+        <ExportModal
+          isOpen={showExportModal}
+          onClose={() => setShowExportModal(false)}
+          documentType="suppliers_list"
+          documentTitle="Répertoire et État des Fournisseurs"
+        />
+    </>
   );
 };

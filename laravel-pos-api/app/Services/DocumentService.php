@@ -177,6 +177,17 @@ class DocumentService
                     ['key' => 'branches_cnt', 'label' => 'Boutiques',     'align' => 'center'],
                     ['key' => 'users_cnt',    'label' => 'Comptes',       'align' => 'center'],
                     ['key' => 'status',       'label' => 'Statut',        'align' => 'center'],
+            'suppliers_list' => [
+                'type'     => 'suppliers_list',
+                'title'    => 'RÉPERTOIRE ET ÉTAT DES FOURNISSEURS',
+                'subtitle' => 'Liste des partenaires d\'approvisionnement, coordonnées et soldes créditeurs',
+                'columns'  => [
+                    ['key' => 'name',    'label' => 'Nom du Fournisseur', 'align' => 'left'],
+                    ['key' => 'phone',   'label' => 'Téléphone',          'align' => 'left'],
+                    ['key' => 'email',   'label' => 'Adresse E-mail',     'align' => 'left'],
+                    ['key' => 'address', 'label' => 'Adresse / Ville',    'align' => 'left'],
+                    ['key' => 'debt',    'label' => 'Solde Dette (FCFA)', 'align' => 'right'],
+                    ['key' => 'status',  'label' => 'Statut Compte',      'align' => 'center'],
                 ],
             ],
             'users_list' => [
@@ -434,7 +445,27 @@ class DocumentService
                 }
                 $totals = [
                     'Nombre total de clients' => count($customers),
-                    'Total Dettes Clients'    => $totalDebt,
+                    'Total Dettes Clients'    => number_format($totalDebt, 0, ',', ' ') . ' FCFA',
+                ];
+                break;
+            case 'suppliers_list':
+                $suppliers = Supplier::where('company_id', $company->id)->get();
+                $totalDebt = 0;
+                foreach ($suppliers as $s) {
+                    $debt = floatval($s->debt_balance || $s->debt || 0);
+                    $totalDebt += $debt;
+                    $rows[] = [
+                        'name'    => $s->name,
+                        'phone'   => $s->phone ?: '—',
+                        'email'   => $s->email ?: '—',
+                        'address' => $s->address ?: '—',
+                        'debt'    => number_format($debt, 0, ',', ' '),
+                        'status'  => $debt > 0 ? '⚠️ Solde En Dette' : 'Régulier',
+                    ];
+                }
+                $totals = [
+                    'Nombre total de fournisseurs' => count($suppliers),
+                    'Total Dette Fournisseurs'    => number_format($totalDebt, 0, ',', ' ') . ' FCFA',
                 ];
                 break;
 
