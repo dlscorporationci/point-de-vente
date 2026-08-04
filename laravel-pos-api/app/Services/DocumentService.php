@@ -447,11 +447,11 @@ class DocumentService
                     $rows[] = [
                         'id'               => 'SESSION #' . $cs->id,
                         'user'             => $cs->user ? $cs->user->name : 'Caissier',
-                        'opened_at'        => $cs->opened_at ? $cs->opened_at->format('d/m/Y H:i') : '',
-                        'closed_at'        => $cs->closed_at ? $cs->closed_at->format('d/m/Y H:i') : 'En cours',
-                        'opening_cash'     => number_format($cs->opening_balance, 0, ',', ' '),
-                        'theoretical_cash' => number_format($cs->theoretical_closing_balance, 0, ',', ' '),
-                        'closing_cash'     => number_format($cs->closing_balance, 0, ',', ' '),
+                        'opened_at'        => $cs->opened_at ? \Carbon\Carbon::parse($cs->opened_at)->format('d/m/Y H:i') : '',
+                        'closed_at'        => $cs->closed_at ? \Carbon\Carbon::parse($cs->closed_at)->format('d/m/Y H:i') : 'En cours',
+                        'opening_cash'     => number_format(floatval($cs->opening_balance ?: 0), 0, ',', ' '),
+                        'theoretical_cash' => number_format(floatval($cs->theoretical_closing_balance ?: 0), 0, ',', ' '),
+                        'closing_cash'     => number_format(floatval($cs->closing_balance ?: 0), 0, ',', ' '),
                         'discrepancy'      => number_format($disc, 0, ',', ' '),
                         'status'           => $cs->status === 'closed' ? 'Clôturée' : 'Ouverte',
                     ];
@@ -463,28 +463,20 @@ class DocumentService
                 break;
 
             case 'audit_log':
-                $logs = AuditLog::where('company_id', $company->id)->orderBy('id', 'desc')->limit(200)->get();
-                foreach ($logs as $l) {
+                $logs = AuditLog::where('company_id', $company->id)->with('user')->orderBy('id', 'desc')->limit(500)->get();
+                foreach ($logs as $log) {
                     $rows[] = [
-                        'date'   => $l->created_at ? $l->created_at->format('d/m/Y H:i:s') : '',
-                        'user'   => $l->user ? $l->user->name : 'Système',
-                        'role'   => $l->user_role ?: '—',
-                        'module' => $l->module,
-                        'action' => $l->action,
-                        'ip'     => $l->ip_address ?: '127.0.0.1',
-                        'device' => $l->device ?: 'Web',
-                        'result' => strtoupper($l->result),
+                        'created_at'  => $log->created_at ? \Carbon\Carbon::parse($log->created_at)->format('d/m/Y H:i:s') : '',
+                        'user'        => $log->user ? $log->user->name : 'Système / Anonyme',
+                        'action'      => $log->action,
+                        'entity'      => $log->entity_type . ($log->entity_id ? " #{$log->entity_id}" : ''),
+                        'details'     => is_array($log->details) ? json_encode($log->details, JSON_UNESCAPED_UNICODE) : ($log->details ?: '—'),
+                        'ip_address'  => $log->ip_address ?: '127.0.0.1',
                     ];
                 }
                 $totals = ['Nombre d\'événements enregistrés' => count($logs)];
                 break;
 
-            case 'purchases_list':
-                $query = Purchase::where('company_id', $company->id)->with('supplier');
-                if ($branch) {
-                    $query->where('branch_id', $branch->id);
-                }
-                $purchases = $query->orderBy('id', 'desc')->get();
                 $sumPurchases = 0;
                 foreach ($purchases as $pur) {
                     $amt = floatval($pur->total_amount || 0);
