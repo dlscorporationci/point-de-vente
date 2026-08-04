@@ -5,6 +5,7 @@ import { useCartStore } from '../store/useCartStore';
 import { getImageUrl } from './Catalog';
 import { offlineStorage } from '../services/offlineStorage';
 import { saleService } from '../services/SaleService';
+import { getAssetUrl } from '../utils/urlHelper';
 
 export const PointDeVente = () => {
   const { user, token, isOnline, refreshPendingSalesCount } = useApp();
@@ -705,7 +706,7 @@ export const PointDeVente = () => {
               <div className="receipt-header">
                 {user?.company?.logo_path && (user?.company?.pos_settings?.show_logo_on_receipt ?? true) && (
                   <img 
-                    src={user.company.logo_path.startsWith('http') ? user.company.logo_path : `http://127.0.0.1:8000${user.company.logo_path}`} 
+                    src={getAssetUrl(user.company.logo_path)} 
                     alt="Logo" 
                     style={{ maxHeight: '50px', maxWidth: '140px', objectFit: 'contain', marginBottom: '8px' }} 
                   />

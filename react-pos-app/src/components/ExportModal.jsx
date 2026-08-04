@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
+import { getAssetUrl } from '../utils/urlHelper';
 
 export const ExportModal = ({ isOpen, onClose, documentType, documentTitle, defaultFilters = {} }) => {
   const { isOnline } = useApp();
@@ -44,10 +45,7 @@ export const ExportModal = ({ isOpen, onClose, documentType, documentTitle, defa
         
         // Déclencher le téléchargement du fichier généré
         if (res.data.document.file_path) {
-          const downloadUrl = res.data.document.file_path.startsWith('http') 
-            ? res.data.document.file_path 
-            : `http://127.0.0.1:8000${res.data.document.file_path}`;
-          
+          const downloadUrl = getAssetUrl(res.data.document.file_path);
           window.open(downloadUrl, '_blank');
         }
 

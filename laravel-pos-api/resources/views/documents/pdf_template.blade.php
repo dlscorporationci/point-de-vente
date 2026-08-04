@@ -94,7 +94,17 @@
             @foreach ($totals as $label => $amount)
                 <tr className="totals-row">
                     <td>{{ $label }} :</td>
-                    <td style="width: 180px;">{{ is_numeric($amount) ? number_format($amount, 0, ',', ' ') . ' FCFA' : $amount }}</td>
+                    <td style="width: 180px;">
+                        @if (is_numeric($amount))
+                            @if (preg_match('/nombre|quantité|total d\'|comptes|entreprises|produits/i', $label))
+                                {{ number_format($amount, 0, ',', ' ') }}
+                            @else
+                                {{ number_format($amount, 0, ',', ' ') }} FCFA
+                            @endif
+                        @else
+                            {{ $amount }}
+                        @endif
+                    </td>
                 </tr>
             @endforeach
         </table>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { AppProvider, useApp } from './context/AppContext'
+import { getAssetUrl } from './utils/urlHelper'
 import { ThemeSelector } from './components/ThemeSelector'
 import { Login } from './pages/Login'
 import { Catalog } from './pages/Catalog'
@@ -116,10 +117,7 @@ function MainContent() {
 
   const getCompanyLogoUrl = (logoPath) => {
     if (!logoPath) return logo;
-    if (logoPath.startsWith('http://') || logoPath.startsWith('https://') || logoPath.startsWith('data:')) {
-      return logoPath;
-    }
-    return `http://127.0.0.1:8000${logoPath}`;
+    return getAssetUrl(logoPath);
   };
 
   useEffect(() => {

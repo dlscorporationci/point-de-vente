@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
 import { ExportModal } from '../components/ExportModal';
+import { getAssetUrl } from '../utils/urlHelper';
 
 export const DocumentCenter = () => {
   const { user } = useApp();
@@ -53,7 +54,7 @@ export const DocumentCenter = () => {
   };
 
   const handleDownload = (filePath) => {
-    const url = filePath.startsWith('http') ? filePath : `http://127.0.0.1:8000${filePath}`;
+    const url = getAssetUrl(filePath);
     window.open(url, '_blank');
   };
 
