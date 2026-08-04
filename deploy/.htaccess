@@ -1,0 +1,16 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # 1. Redirection de l'API (/api/v1/...) vers le point d'entrée Laravel
+    RewriteCond %{REQUEST_URI} ^/api/ [NC]
+    RewriteRule ^api/(.*)$ laravel-pos-api/public/index.php [L]
+
+    # 2. Redirection des fichiers et médias (/storage/...)
+    RewriteCond %{REQUEST_URI} ^/storage/ [NC]
+    RewriteRule ^storage/(.*)$ laravel-pos-api/storage/app/public/$1 [L]
+
+    # 3. Routes React SPA : servir le fichier si existant, sinon index.html
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.html [L]
+</IfModule>
