@@ -88,24 +88,20 @@ export const Home = ({ setActiveTab }) => {
 
   // Chargement dynamique des formules d'abonnement depuis l'API (sans authentification)
   useEffect(() => {
-    const apiBase = (typeof window !== 'undefined' &&
-      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') &&
-      (window.location.port === '5173' || window.location.port === '3000'))
-      ? 'http://127.0.0.1:8000/api'
-      : '/api';
+    let url = '/api/v1/public/plans';
+    if (typeof window !== 'undefined' && window.location && window.location.origin) {
+      url = `${window.location.origin}/api/v1/public/plans?t=${Date.now()}`;
+    }
 
-    axios.get(`${apiBase}/v1/public/plans?t=${Date.now()}`)
+    axios.get(url)
       .then(res => {
         const fetchedPlans = Array.isArray(res.data) ? res.data : (res.data?.data || []);
         if (fetchedPlans && fetchedPlans.length > 0) {
           setPlans(fetchedPlans);
-        } else {
-          setPlans(DEFAULT_PLANS);
         }
         setPlansLoading(false);
       })
       .catch(() => {
-        setPlans(DEFAULT_PLANS);
         setPlansLoading(false);
       });
   }, []);
