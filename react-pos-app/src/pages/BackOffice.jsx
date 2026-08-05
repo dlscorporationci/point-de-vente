@@ -508,7 +508,13 @@ export const BackOffice = () => {
     setPlanMaxBranches(p.max_branches || 1);
     setPlanMaxUsers(p.max_users || 3);
     setPlanMaxProducts(p.max_products || 1000);
-    setPlanFeaturesText(Array.isArray(p.features) ? p.features.join('\n') : '');
+    let feats = [];
+    if (Array.isArray(p.features)) {
+      feats = p.features;
+    } else if (typeof p.features === 'string') {
+      try { feats = JSON.parse(p.features); } catch (e) { feats = [p.features]; }
+    }
+    setPlanFeaturesText(Array.isArray(feats) ? feats.join('\n') : '');
     setPlanIsActive(p.is_active !== false);
     setPlanIsPopular(!!p.is_popular);
     setShowEditPlanModal(true);
