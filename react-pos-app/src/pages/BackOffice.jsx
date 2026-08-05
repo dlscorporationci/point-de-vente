@@ -403,10 +403,14 @@ export const BackOffice = () => {
     setSuccess(null);
     try {
       const res = await axios.post('/v1/admin/email-settings/test-email', { recipient: testRecipientEmail });
-      setSuccess(res.data.message);
-      loadEmailLogs();
+      if (res.data && res.data.success === false) {
+        setError(res.data.error || res.data.message || "Erreur lors de l'envoi de l'e-mail de test.");
+      } else {
+        setSuccess(res.data.message || "E-mail de test transmis avec succès.");
+        loadEmailLogs();
+      }
     } catch (err) {
-      setError(err.response?.data?.error || "Erreur lors de l'envoi de l'e-mail de test.");
+      setError(err.response?.data?.error || err.response?.data?.message || err.message || "Erreur lors de l'envoi de l'e-mail de test.");
     } finally {
       setTestSending(false);
     }
