@@ -21,14 +21,14 @@ class SubscriptionPlanSeeder extends Seeder
                 'max_products'  => 1000,
                 'is_active'     => true,
                 'is_popular'    => false,
-                'features'      => json_encode([
+                'features'      => [
                     '1 Boutique active',
                     '3 Comptes utilisateurs / caissiers',
                     'Jusqu\'à 1 000 références produits',
                     'Gestion de caisse tactile & tickets',
                     'Historique des ventes & rapports de base',
                     'Support par email'
-                ])
+                ]
             ],
             [
                 'name'          => '⭐ Business Pro',
@@ -41,7 +41,7 @@ class SubscriptionPlanSeeder extends Seeder
                 'max_products'  => 10000,
                 'is_active'     => true,
                 'is_popular'    => true,
-                'features'      => json_encode([
+                'features'      => [
                     'Jusqu\'à 5 Boutiques / Succursales',
                     '15 Utilisateurs avec rôles personnalisés (RBAC/ABAC)',
                     '10 000 Produits & catégories',
@@ -49,7 +49,7 @@ class SubscriptionPlanSeeder extends Seeder
                     'Module d\'approvisionnement & fournisseurs',
                     'Plages horaires d\'accès & Audit de sécurité',
                     'Support prioritaire 7j/7'
-                ])
+                ]
             ],
             [
                 'name'          => '🏢 Enterprise Multi-Boutiques',
@@ -62,14 +62,14 @@ class SubscriptionPlanSeeder extends Seeder
                 'max_products'  => 999999,
                 'is_active'     => true,
                 'is_popular'    => false,
-                'features'      => json_encode([
+                'features'      => [
                     'Nombre de boutiques illimité',
                     'Utilisateurs illimités',
                     'Base produits & inventaire illimités',
                     'Synchronisation Offline-First avancée',
                     'API dédiée & intégrations Webhooks',
                     'Gestionnaire de compte dédié & SLA 99.9%'
-                ])
+                ]
             ]
         ];
 
