@@ -238,21 +238,41 @@ class EmailService
         $viewData = ['tested_at' => now()->toIso8601String()];
 
         if ($sync) {
-            $mailable = new ApexPosGenericMail($subject, $viewName, $viewData);
-            Mail::to($recipientEmail)->send($mailable);
+            try {
+                $mailable = new ApexPosGenericMail($subject, $viewName, $viewData);
+                Mail::to($recipientEmail)->send($mailable);
 
-            $log = EmailLog::create([
-                'recipient' => $recipientEmail,
-                'sender'    => config('mail.from.address', 'infos@dlscorporation.ci'),
-                'type'      => 'SMTP_TEST',
-                'subject'   => $subject,
-                'status'    => 'sent',
-                'attempts'  => 1,
-                'sent_at'   => now(),
-                'metadata'  => $viewData,
-            ]);
+                $log = EmailLog::create([
+                    'recipient' => $recipientEmail,
+                    'sender'    => config('mail.from.address', 'infos@dlscorporation.ci'),
+                    'type'      => 'SMTP_TEST',
+                    'subject'   => $subject,
+                    'status'    => 'sent',
+                    'attempts'  => 1,
+                    'sent_at'   => now(),
+                    'metadata'  => $viewData,
+                ]);
 
-            return ['success' => true, 'message' => "E-mail de test transmis avec succès à {$recipientEmail}.", 'log' => $log];
+                return ['success' => true, 'message' => "E-mail de test transmis avec succès à {$recipientEmail}.", 'log' => $log];
+            } catch (\Throwable $e) {
+                $log = EmailLog::create([
+                    'recipient'     => $recipientEmail,
+                    'sender'        => config('mail.from.address', 'infos@dlscorporation.ci'),
+                    'type'          => 'SMTP_TEST',
+                    'subject'       => $subject,
+                    'status'        => 'failed',
+                    'attempts'      => 1,
+                    'error_message' => $e->getMessage(),
+                    'metadata'      => $viewData,
+                ]);
+
+                return [
+                    'success' => false,
+                    'message' => "Échec de l'envoi de l'e-mail de test : " . $e->getMessage(),
+                    'error'   => $e->getMessage(),
+                    'log'     => $log
+                ];
+            }
         }
 
         $log = $this->dispatchEmail($recipientEmail, $subject, $viewName, $viewData, 'SMTP_TEST');
