@@ -439,16 +439,32 @@ class SuperAdminController extends Controller
     {
         $this->authorizeSuperAdmin($request);
 
-        $companies = Company::withCount([
+        $query = Company::withoutGlobalScopes()->withCount([
             'users' => function ($query) {
                 $query->withoutGlobalScopes();
             },
             'branches' => function ($query) {
                 $query->withoutGlobalScopes();
             }
-        ])
-        ->orderBy('created_at', 'desc')
-        ->paginate(15);
+        ]);
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('code', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('plan')) {
+            $query->where('subscription_plan', $request->plan);
+        }
+
+        $companies = $query->orderBy('created_at', 'desc')->get();
 
         return response()->json($companies);
     }
