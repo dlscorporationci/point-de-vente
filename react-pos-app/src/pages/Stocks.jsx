@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
 import { db } from '../services/db';
 import { ExportModal } from '../components/ExportModal';
+import { useRealtime } from '../hooks/useRealtime';
 
 export const Stocks = () => {
   const { user, token } = useApp();
@@ -78,7 +79,7 @@ export const Stocks = () => {
   const [success, setSuccess] = useState(null);
 
   // Charger les stocks et mouvements
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     setError(null);
@@ -117,11 +118,28 @@ export const Stocks = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
+
+  // Abonnement temps réel (SSE) : mise à jour automatique sans F5 de la vue Stock
+  useRealtime(
+    [
+      'stock_updated',
+      'stock_adjusted',
+      'stock_low',
+      'sale_created',
+      'purchase_received',
+      'transfer_received',
+      'transfer_shipped'
+    ],
+    useCallback(() => {
+      loadData();
+    }, [loadData]),
+    { pullOnEvent: true }
+  );
 
   useEffect(() => {
     loadData();
-  }, [token]);
+  }, [loadData]);
 
   if (!token) {
     return (
@@ -141,7 +159,13 @@ export const Stocks = () => {
     );
   }
 
-  const hasAdjustPermission = user?.permissions?.includes('products.update') || user?.role === 'admin';
+  const userRoleSlug = String(user?.role?.slug || user?.role?.name || (typeof user?.role === 'string' ? user.role : '') || '').toLowerCase();
+  const hasAdjustPermission = 
+    user?.permissions?.includes('stock.adjust') || 
+    user?.permissions?.includes('products.update') || 
+    userRoleSlug.includes('admin') || 
+    userRoleSlug.includes('gerant') || 
+    userRoleSlug.includes('magasinier');
 
   return (
     <>

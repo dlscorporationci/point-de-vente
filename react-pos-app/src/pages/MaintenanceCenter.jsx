@@ -63,50 +63,147 @@ export const MaintenanceCenter = () => {
   };
 
   return (
-    <div className="page-container" style={{ padding: '24px' }}>
-      <div className="page-header" style={{ marginBottom: '24px' }}>
-        <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: 'var(--color-primary)' }}>
-          🔧 Console de Maintenance Globale
-        </h1>
-        <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: '14px' }}>
-          Activez ou désactivez la maintenance globale du système pour effectuer des migrations ou opérations techniques
-        </p>
+    <div className="maint-center-root" style={{ width: '100%', maxWidth: '1280px', margin: '0 auto', padding: '16px' }}>
+      
+      {/* ── STYLES AUTONOMES HIGH-END ── */}
+      <style>{`
+        .maint-center-root {
+          font-family: var(--font-text, 'Inter', sans-serif);
+          color: var(--text-main, #1e293b);
+        }
+        .maint-banner {
+          background: linear-gradient(135deg, #0F4A86 0%, #1e40af 50%, #475569 100%);
+          color: #ffffff;
+          padding: 26px 30px;
+          border-radius: 16px;
+          box-shadow: 0 10px 25px -5px rgba(15, 74, 134, 0.25);
+          margin-bottom: 24px;
+        }
+        .maint-banner h1 {
+          color: #ffffff !important;
+          margin: 0;
+          font-size: 24px;
+          font-weight: 800;
+          letter-spacing: -0.5px;
+        }
+        .maint-banner p {
+          color: rgba(255, 255, 255, 0.85) !important;
+          margin: 4px 0 0;
+          font-size: 13.5px;
+        }
+        .maint-card {
+          background: var(--bg-card, #ffffff);
+          border: 1px solid var(--border-color, #e2e8f0);
+          border-radius: 16px;
+          padding: 28px;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04);
+          margin-bottom: 24px;
+        }
+        .maint-status-box {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 20px;
+          padding: 24px;
+          border-radius: 14px;
+          border: 1px solid var(--border-color, #e2e8f0);
+          background: var(--bg-input, #f8fafc);
+        }
+        .maint-status-box.active {
+          background: rgba(239, 68, 68, 0.04);
+          border-color: rgba(239, 68, 68, 0.3);
+        }
+        .maint-status-box.online {
+          background: rgba(16, 185, 129, 0.04);
+          border-color: rgba(16, 185, 129, 0.3);
+        }
+        .pulse-icon {
+          width: 64px;
+          height: 64px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 26px;
+          box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.2);
+          animation: pulse 2s infinite;
+        }
+        .pulse-icon.online {
+          background: rgba(16, 185, 129, 0.15);
+          color: #10b981;
+          border: 2px solid #10b981;
+        }
+        .pulse-icon.active {
+          background: rgba(239, 68, 68, 0.15);
+          color: #ef4444;
+          border: 2px solid #ef4444;
+        }
+        @keyframes pulse {
+          0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+          70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+          100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+        .maint-form-label {
+          font-size: 12.5px;
+          font-weight: 700;
+          color: var(--text-muted, #64748b);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-bottom: 8px;
+          display: block;
+        }
+        .maint-form-input {
+          width: 100%;
+          padding: 12px 16px;
+          border-radius: 10px;
+          border: 1px solid var(--border-input, #cbd5e1);
+          background: var(--bg-input, #f8fafc);
+          color: var(--text-main, #0f172a);
+          font-size: 14px;
+          font-weight: 600;
+          outline: none;
+          transition: all 0.2s;
+        }
+        .maint-form-input:focus {
+          border-color: #0F4A86;
+          box-shadow: 0 0 0 3px rgba(15, 74, 134, 0.15);
+          background: #ffffff;
+        }
+      `}</style>
+
+      {/* ── BANNIÈRE D'EN-TÊTE ── */}
+      <div className="maint-banner">
+        <h1><i className="fa-solid fa-screwdriver-wrench me-2"></i> Console de Maintenance Globale</h1>
+        <p>Activez ou désactivez la maintenance globale du système pour effectuer des migrations ou opérations techniques</p>
       </div>
 
       {error && (
-        <div className="alert alert-danger" style={{ marginBottom: '16px' }}>
-          <i className="fa-solid fa-triangle-exclamation" style={{ marginRight: '8px' }}></i> {error}
+        <div className="alert alert-danger p-3 mb-4 rounded-3">
+          <i className="fa-solid fa-triangle-exclamation me-2"></i> {error}
         </div>
       )}
 
       {success && (
-        <div className="alert alert-success" style={{ marginBottom: '16px' }}>
-          {success}
+        <div className="alert alert-success p-3 mb-4 rounded-3 font-semibold">
+          <i className="fa-solid fa-circle-check me-2"></i> {success}
         </div>
       )}
 
-      <div className="card" style={{ padding: '24px', marginBottom: '24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{
-              width: '60px',
-              height: '60px',
-              borderRadius: '50%',
-              backgroundColor: activeGlobal ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 197, 94, 0.1)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              border: `2px solid ${activeGlobal ? '#ef4444' : '#22c55e'}`
-            }}>
-              <i className={`fa-solid ${activeGlobal ? 'fa-triangle-exclamation' : 'fa-circle-check'}`} style={{ fontSize: '24px', color: activeGlobal ? '#ef4444' : '#22c55e' }}></i>
+      {/* ── BLOC PRINCIPAL DE STATUT ET ACTIONS ── */}
+      <div className="maint-card">
+        <div className={`maint-status-box ${activeGlobal ? 'active' : 'online'}`}>
+          <div className="d-flex align-items-center gap-3">
+            <div className={`pulse-icon ${activeGlobal ? 'active' : 'online'}`}>
+              <i className={`fa-solid ${activeGlobal ? 'fa-triangle-exclamation' : 'fa-circle-check'}`}></i>
             </div>
 
             <div>
-              <h3 style={{ margin: 0, color: '#0f172a' }}>
+              <h3 className="m-0 font-extrabold" style={{ fontSize: '20px', color: activeGlobal ? '#ef4444' : '#10b981' }}>
                 Statut Système : {activeGlobal ? '🔴 MAINTENANCE ACTIVÉE' : '🟢 APPLICATIF EN LIGNE'}
               </h3>
-              <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: '13px' }}>
-                {activeGlobal ? 'Les utilisateurs standard sont bloqués. Seul le SuperAdmin a accès à l\'administration.' : 'Toutes les boutiques et terminaux POS opèrent normalement.'}
+              <p className="text-muted small m-0 mt-1" style={{ fontSize: '13.5px' }}>
+                {activeGlobal ? 'Les utilisateurs standard sont bloqués. Seul le SuperAdmin a accès à l\'administration.' : 'Toutes les boutiques et terminaux POS opèrent normalement sans restriction.'}
               </p>
             </div>
           </div>
@@ -114,48 +211,60 @@ export const MaintenanceCenter = () => {
           <div>
             {activeGlobal ? (
               <button
-                className="btn btn-success"
+                className="btn btn-success font-bold shadow-sm"
                 onClick={() => handleToggleMaintenance(false)}
                 disabled={updating}
-                style={{ padding: '12px 24px', fontWeight: 'bold' }}
+                style={{ padding: '12px 26px', fontSize: '14px', borderRadius: '10px', backgroundColor: '#10b981', borderColor: '#10b981', color: '#fff' }}
               >
-                {updating ? 'Désactivation...' : '🟢 DÉSACTIVER LA MAINTENANCE'}
+                {updating ? <i className="fa-solid fa-spinner fa-spin me-2"></i> : <i className="fa-solid fa-play me-2"></i>}
+                🟢 DÉSACTIVER LA MAINTENANCE
               </button>
             ) : (
               <button
-                className="btn btn-danger"
+                className="btn btn-danger font-bold shadow-sm"
                 onClick={() => handleToggleMaintenance(true)}
                 disabled={updating}
-                style={{ padding: '12px 24px', fontWeight: 'bold', backgroundColor: '#dc2626', borderColor: '#b91c1c', color: '#fff' }}
+                style={{ padding: '12px 26px', fontSize: '14px', borderRadius: '10px', backgroundColor: '#ef4444', borderColor: '#dc2626', color: '#fff' }}
               >
-                {updating ? 'Activation...' : '🔴 ACTIVER LA MAINTENANCE GLOBALE'}
+                {updating ? <i className="fa-solid fa-spinner fa-spin me-2"></i> : <i className="fa-solid fa-pause me-2"></i>}
+                🔴 ACTIVER LA MAINTENANCE GLOBALE
               </button>
             )}
           </div>
         </div>
 
         {/* Formulaire de Configuration de la Maintenance */}
-        <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px solid #e2e8f0' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-            <div className="form-group">
-              <label className="form-label" style={{ fontWeight: 'bold' }}>Message d'information aux utilisateurs :</label>
+        <div style={{ marginTop: '28px', paddingTop: '24px', borderTop: '1px solid var(--border-color, #e2e8f0)' }}>
+          <h5 className="font-bold mb-3 text-primary">
+            <i className="fa-solid fa-sliders me-2"></i> Configuration du Message & Durée
+          </h5>
+
+          <div className="row g-4">
+            <div className="col-lg-7">
+              <label className="maint-form-label">Message d'information aux utilisateurs :</label>
               <textarea
-                className="form-input"
+                className="maint-form-input"
                 rows={3}
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="Rédigez le message affiché sur l'écran de maintenance..."
               ></textarea>
+              <span className="text-muted small mt-1 d-block" style={{ fontSize: '11.5px' }}>
+                Ce message sera affiché en temps réel sur tous les terminaux caisses et smartphones.
+              </span>
             </div>
 
-            <div className="form-group">
-              <label className="form-label" style={{ fontWeight: 'bold' }}>Heure de Fin Estimée (Optionnelle) :</label>
+            <div className="col-lg-5">
+              <label className="maint-form-label">Heure de Fin Estimée (Optionnelle) :</label>
               <input
                 type="datetime-local"
-                className="form-input"
+                className="maint-form-input"
                 value={estimatedEnd}
                 onChange={(e) => setEstimatedEnd(e.target.value)}
               />
+              <span className="text-muted small mt-1 d-block" style={{ fontSize: '11.5px' }}>
+                Permet d'afficher un compte à rebours aux utilisateurs bloqués.
+              </span>
             </div>
           </div>
         </div>
@@ -163,3 +272,5 @@ export const MaintenanceCenter = () => {
     </div>
   );
 };
+
+export default MaintenanceCenter;

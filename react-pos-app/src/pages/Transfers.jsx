@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
 import { db } from '../services/db';
 import { ExportModal } from '../components/ExportModal';
+import { useRealtime } from '../hooks/useRealtime';
 
 export const Transfers = () => {
   const { user, token, activeBranch } = useApp();
@@ -31,7 +32,7 @@ export const Transfers = () => {
   const [success, setSuccess] = useState(null);
 
   // Charger les données
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     setError(null);
@@ -62,11 +63,27 @@ export const Transfers = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
+
+  // Abonnement temps réel (SSE) : actualisation sans F5 des transferts inter-boutiques
+  useRealtime(
+    [
+      'transfer_created',
+      'transfer_approved',
+      'transfer_shipped',
+      'transfer_received',
+      'transfer_rejected',
+      'transfer_cancelled'
+    ],
+    useCallback(() => {
+      loadData();
+    }, [loadData]),
+    { pullOnEvent: true }
+  );
 
   useEffect(() => {
     loadData();
-  }, [token]);
+  }, [loadData]);
 
   const handleAddItem = () => {
     setItems([...items, { product_id: '', quantity: '1' }]);
@@ -158,7 +175,14 @@ export const Transfers = () => {
     );
   }
 
-  const hasWritePermission = user?.permissions?.includes('products.update') || user?.role === 'admin';
+  const userRoleSlug = String(user?.role?.slug || user?.role?.name || (typeof user?.role === 'string' ? user.role : '') || '').toLowerCase();
+  const hasWritePermission = 
+    user?.permissions?.includes('stock.transfer') || 
+    user?.permissions?.includes('stock.approve_transfer') || 
+    user?.permissions?.includes('products.update') || 
+    userRoleSlug.includes('admin') || 
+    userRoleSlug.includes('gerant') || 
+    userRoleSlug.includes('magasinier');
 
   return (
     <>

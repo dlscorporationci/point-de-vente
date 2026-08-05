@@ -13,9 +13,13 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->redirectGuestsTo(fn () => null);
+
         $middleware->alias([
-            'tenant' => \App\Http\Middleware\TenantScopeMiddleware::class,
-            'role'   => \App\Http\Middleware\CheckRoleMiddleware::class,
+            'tenant'      => \App\Http\Middleware\TenantScopeMiddleware::class,
+            'role'        => \App\Http\Middleware\CheckRoleMiddleware::class,
+            'access.zone' => \App\Http\Middleware\CheckAccessZoneMiddleware::class,
+            'permission'  => \App\Http\Middleware\CheckPermissionMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

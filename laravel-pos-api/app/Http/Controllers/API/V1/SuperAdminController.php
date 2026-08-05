@@ -13,11 +13,63 @@ use Illuminate\Validation\Rules;
 use App\Models\Product;
 use App\Models\Customer;
 use App\Models\Supplier;
+use App\Models\Purchase;
+use App\Models\CashSession;
+use App\Models\StockTransfer;
 use App\Models\AuditLog;
 use Carbon\Carbon;
 
 class SuperAdminController extends Controller
 {
+    /**
+     * Helper de parsing et normalisation des plages de dates.
+     */
+    protected function parseDateRange(Request $request)
+    {
+        $period = $request->input('period', 'this_month');
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+
+        $now = Carbon::now();
+
+        if ($startDate && $endDate) {
+            return [
+                'start'  => Carbon::parse($startDate)->startOfDay(),
+                'end'    => Carbon::parse($endDate)->endOfDay(),
+                'period' => 'custom',
+                'label'  => 'Période du ' . Carbon::parse($startDate)->format('d/m/Y') . ' au ' . Carbon::parse($endDate)->format('d/m/Y'),
+            ];
+        }
+
+        switch ($period) {
+            case 'today':
+                return ['start' => $now->copy()->startOfDay(), 'end' => $now->copy()->endOfDay(), 'period' => 'today', 'label' => "Aujourd'hui"];
+            case 'yesterday':
+                return ['start' => $now->copy()->subDay()->startOfDay(), 'end' => $now->copy()->subDay()->endOfDay(), 'period' => 'yesterday', 'label' => 'Hier'];
+            case 'this_week':
+                return ['start' => $now->copy()->startOfWeek(), 'end' => $now->copy()->endOfWeek(), 'period' => 'this_week', 'label' => 'Cette semaine'];
+            case 'last_week':
+                return ['start' => $now->copy()->subWeek()->startOfWeek(), 'end' => $now->copy()->subWeek()->endOfWeek(), 'period' => 'last_week', 'label' => 'Semaine précédente'];
+            case 'last_month':
+                return ['start' => $now->copy()->subMonth()->startOfMonth(), 'end' => $now->copy()->subMonth()->endOfMonth(), 'period' => 'last_month', 'label' => 'Mois précédent'];
+            case 'this_quarter':
+                return ['start' => $now->copy()->startOfQuarter(), 'end' => $now->copy()->endOfQuarter(), 'period' => 'this_quarter', 'label' => 'Ce trimestre'];
+            case 'last_quarter':
+                return ['start' => $now->copy()->subQuarter()->startOfQuarter(), 'end' => $now->copy()->subQuarter()->endOfQuarter(), 'period' => 'last_quarter', 'label' => 'Trimestre précédent'];
+            case 'this_semester':
+                $start = $now->month <= 6 ? $now->copy()->startOfYear() : $now->copy()->month(7)->startOfMonth();
+                $end   = $now->month <= 6 ? $now->copy()->month(6)->endOfMonth() : $now->copy()->endOfYear();
+                return ['start' => $start, 'end' => $end, 'period' => 'this_semester', 'label' => 'Ce semestre'];
+            case 'this_year':
+                return ['start' => $now->copy()->startOfYear(), 'end' => $now->copy()->endOfYear(), 'period' => 'this_year', 'label' => 'Cette année'];
+            case 'last_year':
+                return ['start' => $now->copy()->subYear()->startOfYear(), 'end' => $now->copy()->subYear()->endOfYear(), 'period' => 'last_year', 'label' => 'Année précédente'];
+            case 'this_month':
+            default:
+                return ['start' => $now->copy()->startOfMonth(), 'end' => $now->copy()->endOfMonth(), 'period' => 'this_month', 'label' => 'Ce mois-ci'];
+        }
+    }
+
     /**
      * Obtenir des statistiques globales pour le tableau de bord du Super Admin (SaaS).
      */
@@ -25,14 +77,14 @@ class SuperAdminController extends Controller
     {
         $this->authorizeSuperAdmin($request);
 
-        // Dates clés
-        $now = Carbon::now();
-        $startOfMonth = $now->copy()->startOfMonth();
+        $range = $this->parseDateRange($request);
+        $startDate = $range['start'];
+        $endDate = $range['end'];
 
         // 1. Volumes d'entreprises (Tenants)
         $companiesCount = Company::count();
         $companiesActive = Company::where('status', 'active')->count();
-        $companiesSuspended = Company::where('status', 'inactive')->count();
+        $companiesSuspended = Company::whereIn('status', ['inactive', 'suspended', 'expired'])->count();
 
         // 2. Volumes d'utilisateurs par rôles
         $usersCount = User::withoutGlobalScopes()->count();
@@ -43,10 +95,56 @@ class SuperAdminController extends Controller
             $q->whereIn('slug', ['gerant', 'caissier', 'comptable']);
         })->count();
 
-        // Nouvelles inscriptions de ce mois-ci
-        $newSignupsCount = Company::where('created_at', '>=', $startOfMonth)->count();
+        // Inscriptions sur la période sélectionnée
+        $newSignupsCount = Company::whereBetween('created_at', [$startDate, $endDate])->count();
 
-        // 3. Activités récentes (derniers logs d'audit sensibles de tout le système)
+        // 3. Métriques financières SaaS (MRR, ARR, ARPU, Churn Rate)
+        $plansMap = \App\Models\SubscriptionPlan::all()->keyBy('slug');
+
+        // Total des règlements SaaS encaissés sur la période sélectionnée
+        $saasRevenuePeriod = \App\Models\SubscriptionPayment::where('status', 'paid')
+            ->whereBetween('payment_date', [$startDate, $endDate])
+            ->sum('amount');
+
+        // MRR = Somme mensuelle récurrente issue des abonnements actifs
+        $activeSubs = \App\Models\CompanySubscription::where('status', 'active')->get();
+        $mrr = 0;
+        foreach ($activeSubs as $sub) {
+            $mrr += $sub->billing_period === 'yearly' ? ($sub->amount / 12) : $sub->amount;
+        }
+
+        // Si aucune souscription dans company_subscriptions, déduire depuis la table companies et subscription_plans
+        if ($mrr == 0) {
+            $activeCompaniesList = Company::where('status', 'active')->get();
+            foreach ($activeCompaniesList as $comp) {
+                $p = $plansMap->get($comp->subscription_plan);
+                if ($p) {
+                    $mrr += floatval($p->price_monthly);
+                } else {
+                    $mrr += ($comp->subscription_plan === 'pro' ? 50000 : ($comp->subscription_plan === 'basic' ? 25000 : ($comp->subscription_plan === 'enterprise' ? 150000 : 0)));
+                }
+            }
+        }
+
+        $arr = $mrr * 12;
+        $payingCompaniesCount = max(1, $companiesActive);
+        $arpu = round($mrr / $payingCompaniesCount);
+
+        // Churn Rate = (Entreprises inactives ou suspendues / Total Entreprises) * 100
+        $churnRate = $companiesCount > 0 ? round(($companiesSuspended / $companiesCount) * 100, 1) : 0;
+
+        // Chiffre d'affaires cumulé généré par le réseau d'entreprises sur la période (Ventes Métier)
+        $tenantTotalSalesCA = Sale::withoutGlobalScopes()
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->where('payment_status', 'paid')
+            ->sum('total');
+
+        $tenantSalesCount = Sale::withoutGlobalScopes()
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->where('payment_status', 'paid')
+            ->count();
+
+        // 4. Activités récentes (derniers logs d'audit sensibles de tout le système)
         $recentActivities = AuditLog::withoutGlobalScope('tenant')
             ->with('user')
             ->orderByDesc('created_at')
@@ -57,22 +155,40 @@ class SuperAdminController extends Controller
         $proCount = Company::whereIn('subscription_plan', ['pro', 'premium'])->count();
         $enterpriseCount = Company::where('subscription_plan', 'enterprise')->count();
 
+        // 5. Nombre d'entreprises présentant des risques
+        $atRiskCount = Company::where('status', '!=', 'active')
+            ->orWhereNull('subscription_plan')
+            ->count();
+
         return response()->json([
             'metrics' => [
-                'companies_count' => $companiesCount,
-                'companies_active' => $companiesActive,
-                'companies_suspended' => $companiesSuspended,
-                'starter_count' => $starterCount,
-                'pro_count' => $proCount,
-                'enterprise_count' => $enterpriseCount,
-                'users_count' => $usersCount,
-                'admins_count' => $adminsCount,
-                'employees_count' => $employeesCount,
-                'new_signups_count' => $newSignupsCount,
+                'companies_count'       => $companiesCount,
+                'companies_active'      => $companiesActive,
+                'companies_suspended'   => $companiesSuspended,
+                'starter_count'         => $starterCount,
+                'pro_count'             => $proCount,
+                'enterprise_count'      => $enterpriseCount,
+                'users_count'           => $usersCount,
+                'admins_count'          => $adminsCount,
+                'employees_count'       => $employeesCount,
+                'new_signups_count'     => $newSignupsCount,
+                // SaaS Financials
+                'mrr'                   => round($mrr),
+                'arr'                   => round($arr),
+                'arpu'                  => round($arpu),
+                'churn_rate'            => $churnRate,
+                'saas_revenue_period'   => round($saasRevenuePeriod),
+                'tenant_sales_ca'       => round($tenantTotalSalesCA),
+                'tenant_sales_count'    => $tenantSalesCount,
+                'at_risk_count'         => $atRiskCount,
+                'period_label'          => $range['label'],
+                'date_start'            => $startDate->toDateTimeString(),
+                'date_end'              => $endDate->toDateTimeString(),
             ],
             'recent_activities' => $recentActivities
         ]);
     }
+
 
     /**
      * Obtenir la liste de toutes les formules d'abonnement.
@@ -81,6 +197,17 @@ class SuperAdminController extends Controller
     {
         $this->authorizeSuperAdmin($request);
         $plans = \App\Models\SubscriptionPlan::orderBy('price_monthly', 'asc')->get();
+        return response()->json($plans);
+    }
+
+    /**
+     * Obtenir la liste des formules d'abonnement actives (Accès public landing page).
+     */
+    public function publicPlans(Request $request)
+    {
+        $plans = \App\Models\SubscriptionPlan::where('is_active', true)
+            ->orderBy('price_monthly', 'asc')
+            ->get();
         return response()->json($plans);
     }
 
@@ -157,6 +284,152 @@ class SuperAdminController extends Controller
         return response()->json([
             'message' => 'Formule d\'abonnement supprimée.'
         ]);
+    }
+
+    /**
+     * Obtenir la configuration SMTP actuelle (Secrets masqués).
+     */
+    public function emailSettings(Request $request)
+    {
+        $this->authorizeSuperAdmin($request);
+
+        return response()->json([
+            'mailer'          => config('mail.default', 'smtp'),
+            'host'            => config('mail.mailers.smtp.host', 'webmail.oxa.host'),
+            'port'            => config('mail.mailers.smtp.port', 465),
+            'encryption'      => config('mail.mailers.smtp.encryption', 'ssl'),
+            'username'        => config('mail.mailers.smtp.username', 'infos@dlscorporation.ci'),
+            'from_address'    => config('mail.from.address', 'infos@dlscorporation.ci'),
+            'from_name'       => config('mail.from.name', 'ApexPOS'),
+            'password_set'    => !empty(config('mail.mailers.smtp.password')),
+            'masked_password' => '••••••••••••',
+        ]);
+    }
+
+    /**
+     * Tester la connectivité TCP/SMTP vers le serveur hôte.
+     */
+    public function testEmailConnection(Request $request)
+    {
+        $this->authorizeSuperAdmin($request);
+
+        $host = config('mail.mailers.smtp.host', 'webmail.oxa.host');
+        $port = (int) config('mail.mailers.smtp.port', 465);
+
+        $connection = @fsockopen($host, $port, $errno, $errstr, 5);
+
+        if (is_resource($connection)) {
+            fclose($connection);
+            return response()->json([
+                'success' => true,
+                'message' => "Connexion réseau SMTP réussie vers {$host}:{$port} (SSL/TLS).",
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'error'   => "Impossible de se connecter au serveur SMTP {$host}:{$port} ({$errstr}).",
+        ], 500);
+    }
+
+    /**
+     * Envoyer un e-mail de test réel.
+     */
+    public function testEmailSend(Request $request, \App\Services\EmailService $emailService)
+    {
+        $this->authorizeSuperAdmin($request);
+
+        $request->validate([
+            'recipient' => 'required|email',
+        ]);
+
+        try {
+            $result = $emailService->sendTestEmail($request->recipient, sync: true);
+            return response()->json($result);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'error'   => "Échec de l'envoi de l'e-mail de test : " . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Consulter le journal des e-mails (email_logs).
+     */
+    public function emailLogs(Request $request)
+    {
+        $this->authorizeSuperAdmin($request);
+
+        $query = \App\Models\EmailLog::with(['company', 'user']);
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('type')) {
+            $query->where('type', $request->type);
+        }
+
+        if ($request->filled('company_id')) {
+            $query->where('company_id', $request->company_id);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('recipient', 'like', "%{$search}%")
+                  ->orWhere('subject', 'like', "%{$search}%");
+            });
+        }
+
+        $logs = $query->orderByDesc('created_at')->paginate($request->input('per_page', 20));
+
+        return response()->json([
+            'success' => true,
+            'logs'    => $logs
+        ]);
+    }
+
+    /**
+     * Réessayer l'envoi d'un e-mail échoué.
+     */
+    public function retryEmail(Request $request, $id)
+    {
+        $this->authorizeSuperAdmin($request);
+
+        $log = \App\Models\EmailLog::findOrFail($id);
+
+        try {
+            $mailable = new \App\Mail\ApexPosGenericMail($log->subject, 'emails.test-email', $log->metadata ?: []);
+            \Illuminate\Support\Facades\Mail::to($log->recipient)->send($mailable);
+
+            $log->update([
+                'status'        => 'sent',
+                'attempts'      => $log->attempts + 1,
+                'sent_at'       => now(),
+                'error_message' => null,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "E-mail #{$log->id} renvoyé avec succès à {$log->recipient}.",
+                'log'     => $log
+            ]);
+        } catch (\Throwable $e) {
+            $log->update([
+                'status'        => 'failed',
+                'attempts'      => $log->attempts + 1,
+                'failed_at'     => now(),
+                'error_message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error'   => "Nouvel échec lors du renvoi de l'e-mail : " . $e->getMessage(),
+                'log'     => $log
+            ], 500);
+        }
     }
 
     /**
@@ -260,8 +533,12 @@ class SuperAdminController extends Controller
             $company->status = $request->status;
         }
 
-        if ($request->filled('subscription_plan')) {
+        $planChanged = false;
+        $oldPlan = $company->subscription_plan;
+
+        if ($request->filled('subscription_plan') && $request->subscription_plan !== $oldPlan) {
             $company->subscription_plan = $request->subscription_plan;
+            $planChanged = true;
         }
 
         if ($request->has('subscription_expires_at')) {
@@ -279,8 +556,107 @@ class SuperAdminController extends Controller
 
         $company->save();
 
+        // Si la formule d'abonnement a changé (Paiement effectué / validé par le SuperAdmin)
+        if ($planChanged) {
+            $newPlanSlug = $company->subscription_plan;
+            $planObj = \App\Models\SubscriptionPlan::where('slug', $newPlanSlug)->first();
+
+            $planPrices = [
+                'starter' => 0,
+                'basic' => 25000,
+                'pro' => 50000,
+                'enterprise' => 150000,
+                'premium' => 100000,
+            ];
+            $planAmount = $planObj ? floatval($planObj->price_monthly) : ($planPrices[$newPlanSlug] ?? 50000);
+            $planName = $planObj ? $planObj->name : strtoupper($newPlanSlug);
+
+            // Prolongation de la date d'échéance d'abonnement (+30 jours à compter d'aujourd'hui ou prolongation)
+            $newExpiration = date('Y-m-d 23:59:59', strtotime('+30 days'));
+            $company->subscription_expires_at = $newExpiration;
+            $company->status = 'active';
+            $company->save();
+
+            // 1. Enregistrer le RÈGLEMENT EFFECTUÉ (Paiement validé)
+            $payment = \App\Models\SubscriptionPayment::create([
+                'uuid'            => (string) \Illuminate\Support\Str::uuid(),
+                'company_id'      => $company->id,
+                'subscription_id' => null,
+                'amount'          => $planAmount,
+                'currency'        => 'XOF',
+                'payment_method'  => $request->input('payment_method', 'mobile_money'),
+                'status'          => 'paid',
+                'reference'       => 'PAY-' . strtoupper(\Illuminate\Support\Str::random(6)),
+                'notes'           => "Règlement validé pour le passage à la formule {$planName}",
+                'payment_date'    => date('Y-m-d H:i:s'),
+                'user_id'         => $request->user() ? $request->user()->id : null,
+                'validated_at'    => date('Y-m-d H:i:s'),
+            ]);
+
+            // 2. Générer et Acquitter automatiquement la Facture (Status = PAID)
+            $nextNum = \App\Models\SubscriptionInvoice::count() + 1;
+            $invNum = 'INV-' . date('Y') . '-' . str_pad($nextNum, 4, '0', STR_PAD_LEFT);
+
+            $invoice = \App\Models\SubscriptionInvoice::create([
+                'uuid'            => (string) \Illuminate\Support\Str::uuid(),
+                'invoice_number'  => $invNum,
+                'company_id'      => $company->id,
+                'billing_period'  => 'Souscription Formule ' . $planName . ' (' . date('F Y') . ')',
+                'subtotal'        => $planAmount,
+                'tax_amount'      => 0,
+                'total_amount'    => $planAmount,
+                'status'          => 'paid',
+                'issue_date'      => date('Y-m-d'),
+                'due_date'        => date('Y-m-d'),
+            ]);
+
+            // 3. Mettre à jour / Créer l'enregistrement de l'Abonnement (company_subscriptions)
+            \App\Models\CompanySubscription::updateOrCreate(
+                ['company_id' => $company->id],
+                [
+                    'uuid'           => (string) \Illuminate\Support\Str::uuid(),
+                    'plan_id'        => $planObj ? $planObj->id : null,
+                    'billing_period' => 'monthly',
+                    'amount'         => $planAmount,
+                    'currency'       => 'XOF',
+                    'start_date'     => date('Y-m-d H:i:s'),
+                    'end_date'       => $newExpiration,
+                    'status'         => 'active',
+                    'auto_renew'     => true,
+                ]
+            );
+
+            // 4. Transmettre la notification à l'entreprise
+            \App\Models\Notification::create([
+                'company_id' => $company->id,
+                'user_id'    => null,
+                'title'      => 'Confirmation d\'Abonnement & Règlement Validé',
+                'message'    => "Félicitations ! Votre abonnement a été mis à jour vers la formule « {$planName} ». Le règlement d'un montant de " . number_format($planAmount, 0, ',', ' ') . " FCFA a été validé avec succès. Facture acquittée N° {$invNum}.",
+                'type'       => 'subscription',
+                'priority'   => 'high',
+                'actor_id'   => $request->user() ? $request->user()->id : null,
+                'data'       => json_encode([
+                    'invoice_number' => $invNum,
+                    'invoice_id'     => $invoice->id,
+                    'payment_id'     => $payment->id,
+                    'plan'           => $newPlanSlug,
+                    'amount'         => $planAmount,
+                    'status'         => 'paid'
+                ])
+            ]);
+
+            // 5. Diffuser le signal Temps Réel SSE à l'entreprise
+            \App\Services\RealtimeBroadcastService::pushCompanyWide('subscription_updated', (int)$company->id, [
+                'company_id'     => (int)$company->id,
+                'plan'           => $newPlanSlug,
+                'invoice_number' => $invNum,
+                'amount'         => $planAmount,
+                'status'         => 'paid'
+            ]);
+        }
+
         return response()->json([
-            'message' => 'Entreprise mise à jour avec succès.',
+            'message' => 'Abonnement, règlement et formule mis à jour avec succès.',
             'company' => $company
         ]);
     }
@@ -689,6 +1065,21 @@ class SuperAdminController extends Controller
             $company->save();
         }
 
+        try {
+            if ($company) {
+                (new \App\Services\EmailService())->sendSubscriptionActivatedEmail(
+                    company: $company,
+                    subscription: [
+                        'plan_name' => $sub->plan ? $sub->plan->name : $company->subscription_plan,
+                        'starts_at' => $sub->start_date,
+                        'ends_at'   => $sub->end_date,
+                    ]
+                );
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Échec mail activation abonnement : " . $e->getMessage());
+        }
+
         return response()->json(['message' => 'Abonnement créé avec succès.', 'subscription' => $sub->load(['company', 'plan'])], 201);
     }
 
@@ -755,6 +1146,24 @@ class SuperAdminController extends Controller
                 $comp->subscription_expires_at = now()->addDays(30);
                 $comp->save();
             }
+        }
+
+        try {
+            $comp = \App\Models\Company::find($companyId);
+            if ($comp) {
+                (new \App\Services\EmailService())->sendPaymentStatusEmail(
+                    company: $comp,
+                    payment: [
+                        'amount'            => $payment->amount,
+                        'payment_method'    => $payment->payment_method,
+                        'payment_reference' => $payment->reference,
+                        'status'            => $payment->status,
+                        'payment_date'      => $payment->payment_date,
+                    ]
+                );
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Échec mail paiement : " . $e->getMessage());
         }
 
         return response()->json(['message' => 'Paiement enregistré avec succès.', 'payment' => $payment->load(['company'])], 201);
@@ -842,6 +1251,8 @@ class SuperAdminController extends Controller
         $type = $validated['type'] ?? 'subscription';
         $priority = ($type === 'danger' || $type === 'critical') ? 'critical' : (($type === 'warning') ? 'warning' : 'normal');
 
+        $emailService = new \App\Services\EmailService();
+
         if ($companyId) {
             \App\Models\Notification::create([
                 'company_id' => $companyId,
@@ -853,6 +1264,26 @@ class SuperAdminController extends Controller
                 'actor_id'   => $request->user() ? $request->user()->id : null,
                 'data'       => json_encode(['source' => 'superadmin_notice'])
             ]);
+
+            try {
+                $comp = \App\Models\Company::find($companyId);
+                if ($comp) {
+                    $adminUser = \App\Models\User::withoutGlobalScopes()
+                        ->where('company_id', $comp->id)
+                        ->where('status', 'active')
+                        ->first();
+                    $recipient = $adminUser?->email ?: ($comp->email ?: 'infos@dlscorporation.ci');
+                    $emailService->sendMaintenanceNotificationEmail(
+                        recipient: $recipient,
+                        title: $title,
+                        messageBody: $message,
+                        status: 'scheduled',
+                        companyId: $comp->id
+                    );
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning("Échec mail notification SuperAdmin : " . $e->getMessage());
+            }
         } else {
             $companies = \App\Models\Company::all();
             foreach ($companies as $comp) {
@@ -866,10 +1297,532 @@ class SuperAdminController extends Controller
                     'actor_id'   => $request->user() ? $request->user()->id : null,
                     'data'       => json_encode(['source' => 'superadmin_global_notice'])
                 ]);
+
+                try {
+                    $adminUser = \App\Models\User::withoutGlobalScopes()
+                        ->where('company_id', $comp->id)
+                        ->where('status', 'active')
+                        ->first();
+                    $recipient = $adminUser?->email ?: ($comp->email ?: 'infos@dlscorporation.ci');
+                    $emailService->sendMaintenanceNotificationEmail(
+                        recipient: $recipient,
+                        title: $title,
+                        messageBody: $message,
+                        status: 'scheduled',
+                        companyId: $comp->id
+                    );
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning("Échec mail notification globale SuperAdmin : " . $e->getMessage());
+                }
             }
         }
 
-        return response()->json(['message' => 'Notification transmise avec succès aux administrateurs.']);
+        return response()->json(['message' => 'Notification in-app et e-mail transmises avec succès aux administrateurs.']);
+    }
+
+    /**
+     * Traçabilité d'audit pour l'inspection SuperAdmin d'une entreprise client.
+     */
+    protected function logInspectionAudit(Request $request, Company $company, string $module)
+    {
+        try {
+            AuditLog::create([
+                'company_id'     => $company->id,
+                'branch_id'      => null,
+                'user_id'        => $request->user() ? $request->user()->id : null,
+                'user_role'      => 'super-admin',
+                'auditable_type' => Company::class,
+                'auditable_id'   => $company->id,
+                'action'         => 'SUPERADMIN_COMPANY_INSPECTION_VIEW',
+                'module'         => 'SuperAdmin',
+                'description'    => "SuperAdmin a consulté l'inspection de l'entreprise [{$company->name}] (ID: {$company->id}) - Module: {$module}",
+                'ip_address'     => $request->ip(),
+                'device'         => $request->userAgent(),
+                'result'         => 'success',
+            ]);
+        } catch (\Throwable $e) {
+            // Ignorer silencieusement si la table d'audit log présente un souci
+        }
+    }
+
+    /**
+     * Obtenir le classement de performance des entreprises.
+     */
+    public function performanceRanking(Request $request)
+    {
+        $this->authorizeSuperAdmin($request);
+
+        $range = $this->parseDateRange($request);
+        $startDate = $range['start'];
+        $endDate = $range['end'];
+        $sortBy = $request->input('sort_by', 'ca');
+
+        $companies = Company::all();
+        $rankings = [];
+
+        foreach ($companies as $comp) {
+            $ca = Sale::withoutGlobalScopes()
+                ->where('company_id', $comp->id)
+                ->whereBetween('created_at', [$startDate, $endDate])
+                ->where('payment_status', 'paid')
+                ->sum('total');
+
+            $salesCount = Sale::withoutGlobalScopes()
+                ->where('company_id', $comp->id)
+                ->whereBetween('created_at', [$startDate, $endDate])
+                ->count();
+
+            $customersCount = Customer::withoutGlobalScopes()->where('company_id', $comp->id)->count();
+            $productsCount  = Product::withoutGlobalScopes()->where('company_id', $comp->id)->count();
+            $stockValue     = Product::withoutGlobalScopes()->where('company_id', $comp->id)->sum(\DB::raw('selling_price * 10'));
+
+            $branchesCount = \App\Models\Branch::where('company_id', $comp->id)->count();
+            $usersCount    = User::withoutGlobalScopes()->where('company_id', $comp->id)->count();
+
+            $score = round(($ca / 10000) + ($salesCount * 5) + ($customersCount * 2) + ($branchesCount * 10));
+
+            $rankings[] = [
+                'company_id'      => $comp->id,
+                'company_name'    => $comp->name,
+                'company_code'    => $comp->code,
+                'status'          => $comp->status,
+                'plan'            => $comp->subscription_plan ?? 'starter',
+                'ca'              => round($ca),
+                'sales_count'     => $salesCount,
+                'average_cart'    => $salesCount > 0 ? round($ca / $salesCount) : 0,
+                'customers_count' => $customersCount,
+                'products_count'  => $productsCount,
+                'stock_value'     => round($stockValue),
+                'branches_count'  => $branchesCount,
+                'users_count'     => $usersCount,
+                'score'           => $score,
+            ];
+        }
+
+        usort($rankings, function($a, $b) use ($sortBy) {
+            if ($sortBy === 'sales') return $b['sales_count'] <=> $a['sales_count'];
+            if ($sortBy === 'customers') return $b['customers_count'] <=> $a['customers_count'];
+            if ($sortBy === 'score') return $b['score'] <=> $a['score'];
+            return $b['ca'] <=> $a['ca'];
+        });
+
+        foreach ($rankings as $idx => &$item) {
+            $item['rank'] = $idx + 1;
+        }
+
+        return response()->json([
+            'success'      => true,
+            'period_label' => $range['label'],
+            'rankings'     => $rankings
+        ]);
+    }
+
+    /**
+     * Détecter les entreprises à risque (expiration, baisse CA, inactivité).
+     */
+    public function companiesAtRisk(Request $request)
+    {
+        $this->authorizeSuperAdmin($request);
+
+        $companies = Company::all();
+        $atRiskList = [];
+
+        foreach ($companies as $comp) {
+            $reasons = [];
+            $level = 'low';
+
+            if (in_array($comp->status, ['inactive', 'suspended', 'expired'])) {
+                $reasons[] = "Compte d'entreprise suspendu ou inactif";
+                $level = 'critical';
+            }
+
+            $sub = \App\Models\CompanySubscription::where('company_id', $comp->id)->orderBy('end_date', 'desc')->first();
+            if ($sub) {
+                $daysRemaining = Carbon::now()->diffInDays($sub->end_date, false);
+                if ($daysRemaining < 0) {
+                    $reasons[] = "Abonnement expiré depuis " . abs((int)$daysRemaining) . " jours";
+                    $level = 'critical';
+                } elseif ($daysRemaining <= 7) {
+                    $reasons[] = "Abonnement expire dans " . (int)$daysRemaining . " jours";
+                    if ($level !== 'critical') $level = 'high';
+                }
+            }
+
+            $lastSale = Sale::withoutGlobalScopes()->where('company_id', $comp->id)->orderBy('created_at', 'desc')->first();
+            if (!$lastSale) {
+                $reasons[] = "Aucune vente enregistrée dans le système";
+                if ($level === 'low') $level = 'medium';
+            } else {
+                $daysSinceLastSale = Carbon::now()->diffInDays($lastSale->created_at);
+                if ($daysSinceLastSale > 14) {
+                    $reasons[] = "Inactivité de vente depuis {$daysSinceLastSale} jours";
+                    if ($level === 'low') $level = 'medium';
+                    if ($daysSinceLastSale > 30 && $level !== 'critical') $level = 'high';
+                }
+            }
+
+            $currentMonthSales = Sale::withoutGlobalScopes()->where('company_id', $comp->id)->where('created_at', '>=', Carbon::now()->startOfMonth())->sum('total');
+            $prevMonthSales = Sale::withoutGlobalScopes()->where('company_id', $comp->id)->whereBetween('created_at', [Carbon::now()->subMonth()->startOfMonth(), Carbon::now()->subMonth()->endOfMonth()])->sum('total');
+            if ($prevMonthSales > 50000 && $currentMonthSales < ($prevMonthSales * 0.5)) {
+                $reasons[] = "Baisse significative du chiffre d'affaires (>50% vs mois dernier)";
+                if ($level === 'low') $level = 'high';
+            }
+
+            if (!empty($reasons)) {
+                $atRiskList[] = [
+                    'company_id'         => $comp->id,
+                    'company_name'       => $comp->name,
+                    'company_code'       => $comp->code,
+                    'status'             => $comp->status,
+                    'plan'               => $comp->subscription_plan ?? 'starter',
+                    'level'              => $level,
+                    'reasons'            => $reasons,
+                    'last_activity_at'   => $lastSale ? $lastSale->created_at->toDateTimeString() : $comp->created_at->toDateTimeString(),
+                    'recommended_action' => $level === 'critical' ? 'Relancer la facturation / Contacter le client' : ($level === 'high' ? 'Assistance technique ou offre de réengagement' : 'Suivi de vente hebdomadaire'),
+                ];
+            }
+        }
+
+        usort($atRiskList, function($a, $b) {
+            $weights = ['critical' => 4, 'high' => 3, 'medium' => 2, 'low' => 1];
+            return ($weights[$b['level']] ?? 0) <=> ($weights[$a['level']] ?? 0);
+        });
+
+        return response()->json([
+            'success'            => true,
+            'at_risk_companies' => $atRiskList,
+            'count'              => count($atRiskList)
+        ]);
+    }
+
+    /**
+     * DRILL-DOWN: Vue générale et bilan d'une entreprise spécifique.
+     */
+    public function companyOverview($companyId, Request $request)
+    {
+        $this->authorizeSuperAdmin($request);
+        $company = Company::findOrFail($companyId);
+
+        $this->logInspectionAudit($request, $company, 'Overview');
+
+        $range = $this->parseDateRange($request);
+        $startDate = $range['start'];
+        $endDate = $range['end'];
+
+        $branches = \App\Models\Branch::withoutGlobalScopes()->where('company_id', $companyId)->get();
+        $usersCount = User::withoutGlobalScopes()->where('company_id', $companyId)->count();
+        $adminUser = User::withoutGlobalScopes()->where('company_id', $companyId)->whereHas('role', function($q){
+            $q->where('slug', 'admin');
+        })->first();
+
+        // Statistiques financières
+        $totalCA = Sale::withoutGlobalScopes()->where('company_id', $companyId)->where('payment_status', 'paid')->sum('total');
+        $periodCA = Sale::withoutGlobalScopes()->where('company_id', $companyId)->where('payment_status', 'paid')->whereBetween('created_at', [$startDate, $endDate])->sum('total');
+        
+        $totalSalesCount = Sale::withoutGlobalScopes()->where('company_id', $companyId)->count();
+        $periodSalesCount = Sale::withoutGlobalScopes()->where('company_id', $companyId)->whereBetween('created_at', [$startDate, $endDate])->count();
+        $averageCart = $periodSalesCount > 0 ? round($periodCA / $periodSalesCount) : 0;
+
+        $productsCount = Product::withoutGlobalScopes()->where('company_id', $companyId)->count();
+        $stockValue = Product::withoutGlobalScopes()->where('company_id', $companyId)->sum(\DB::raw('selling_price * 10'));
+        $lowStockCount = Product::withoutGlobalScopes()->where('company_id', $companyId)->whereColumn('alert_quantity', '>=', \DB::raw('10'))->count();
+
+        $customersCount = Customer::withoutGlobalScopes()->where('company_id', $companyId)->count();
+        $suppliersCount = Supplier::withoutGlobalScopes()->where('company_id', $companyId)->count();
+        $purchasesCount = Purchase::withoutGlobalScopes()->where('company_id', $companyId)->count();
+        $purchasesTotal = Purchase::withoutGlobalScopes()->where('company_id', $companyId)->sum('total_amount');
+
+        $cashSessionsCount = CashSession::withoutGlobalScopes()->where('company_id', $companyId)->count();
+        $openCashSessions = CashSession::withoutGlobalScopes()->where('company_id', $companyId)->where('status', 'open')->count();
+        $transfersCount = StockTransfer::withoutGlobalScopes()->where('company_id', $companyId)->count();
+
+        $subscription = \App\Models\CompanySubscription::where('company_id', $companyId)->orderBy('end_date', 'desc')->first();
+
+        $recentSales = Sale::withoutGlobalScopes()
+            ->where('company_id', $companyId)
+            ->with([
+                'branch' => fn($q) => $q->withoutGlobalScopes(),
+                'user'   => fn($q) => $q->withoutGlobalScopes(),
+                'customer' => fn($q) => $q->withoutGlobalScopes(),
+            ])
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'company' => [
+                'id'                   => $company->id,
+                'name'                 => $company->name,
+                'code'                 => $company->code,
+                'email'                => $company->email,
+                'phone'                => $company->phone,
+                'address'              => $company->address,
+                'status'               => $company->status,
+                'plan'                 => $company->subscription_plan ?? 'starter',
+                'created_at'           => $company->created_at->toDateTimeString(),
+                'branches_count'       => $branches->count(),
+                'users_count'          => $usersCount,
+                'admin_user'           => $adminUser ? ['name' => $adminUser->name, 'email' => $adminUser->email, 'phone' => $adminUser->phone] : null,
+                'subscription'         => $subscription,
+            ],
+            'kpis' => [
+                'total_ca'             => round($totalCA),
+                'period_ca'            => round($periodCA),
+                'total_sales'          => $totalSalesCount,
+                'period_sales'         => $periodSalesCount,
+                'average_cart'         => $averageCart,
+                'products_count'       => $productsCount,
+                'stock_value'          => round($stockValue),
+                'low_stock_count'      => $lowStockCount,
+                'customers_count'      => $customersCount,
+                'suppliers_count'      => $suppliersCount,
+                'purchases_count'      => $purchasesCount,
+                'purchases_total'      => round($purchasesTotal),
+                'cash_sessions_count'  => $cashSessionsCount,
+                'open_cash_sessions'   => $openCashSessions,
+                'transfers_count'      => $transfersCount,
+                'period_label'         => $range['label'],
+            ],
+            'branches'     => $branches,
+            'recent_sales' => $recentSales,
+        ]);
+    }
+
+    /**
+     * DRILL-DOWN: Liste des ventes d'une entreprise (Lecture Seule).
+     */
+    public function companySales($companyId, Request $request)
+    {
+        $this->authorizeSuperAdmin($request);
+        $company = Company::findOrFail($companyId);
+        $this->logInspectionAudit($request, $company, 'Sales');
+
+        $query = Sale::withoutGlobalScopes()
+            ->where('company_id', $companyId)
+            ->with([
+                'branch' => fn($q) => $q->withoutGlobalScopes(),
+                'user'   => fn($q) => $q->withoutGlobalScopes(),
+                'customer' => fn($q) => $q->withoutGlobalScopes()
+            ]);
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('sale_number', 'like', "%{$search}%")
+                  ->orWhere('client_name', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('branch_id')) {
+            $query->where('branch_id', $request->branch_id);
+        }
+
+        if ($request->filled('payment_method')) {
+            $query->where('payment_method', $request->payment_method);
+        }
+
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $query->whereBetween('created_at', [
+                Carbon::parse($request->start_date)->startOfDay(),
+                Carbon::parse($request->end_date)->endOfDay()
+            ]);
+        }
+
+        $sales = $query->orderBy('created_at', 'desc')->paginate($request->input('per_page', 20));
+
+        return response()->json(['success' => true, 'sales' => $sales]);
+    }
+
+    /**
+     * DRILL-DOWN: Liste des clients d'une entreprise (Lecture Seule).
+     */
+    public function companyCustomers($companyId, Request $request)
+    {
+        $this->authorizeSuperAdmin($request);
+        $company = Company::findOrFail($companyId);
+        $this->logInspectionAudit($request, $company, 'Customers');
+
+        $query = Customer::withoutGlobalScopes()->where('company_id', $companyId);
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        $customers = $query->orderBy('id', 'desc')->paginate($request->input('per_page', 20));
+
+        return response()->json(['success' => true, 'customers' => $customers]);
+    }
+
+    /**
+     * DRILL-DOWN: Liste des fournisseurs d'une entreprise (Lecture Seule).
+     */
+    public function companySuppliers($companyId, Request $request)
+    {
+        $this->authorizeSuperAdmin($request);
+        $company = Company::findOrFail($companyId);
+        $this->logInspectionAudit($request, $company, 'Suppliers');
+
+        $query = Supplier::withoutGlobalScopes()->where('company_id', $companyId);
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        $suppliers = $query->orderBy('id', 'desc')->paginate($request->input('per_page', 20));
+
+        return response()->json(['success' => true, 'suppliers' => $suppliers]);
+    }
+
+    /**
+     * DRILL-DOWN: Liste des produits et état du stock d'une entreprise (Lecture Seule).
+     */
+    public function companyProducts($companyId, Request $request)
+    {
+        $this->authorizeSuperAdmin($request);
+        $company = Company::findOrFail($companyId);
+        $this->logInspectionAudit($request, $company, 'Products');
+
+        $query = Product::withoutGlobalScopes()
+            ->where('company_id', $companyId)
+            ->with(['category']);
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('sku', 'like', "%{$search}%")
+                  ->orWhere('barcode', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('category_id')) {
+            $query->where('category_id', $request->category_id);
+        }
+
+        $products = $query->orderBy('name', 'asc')->paginate($request->input('per_page', 20));
+
+        return response()->json(['success' => true, 'products' => $products]);
+    }
+
+    /**
+     * DRILL-DOWN: Liste des achats d'une entreprise (Lecture Seule).
+     */
+    public function companyPurchases($companyId, Request $request)
+    {
+        $this->authorizeSuperAdmin($request);
+        $company = Company::findOrFail($companyId);
+        $this->logInspectionAudit($request, $company, 'Purchases');
+
+        $query = Purchase::withoutGlobalScopes()
+            ->where('company_id', $companyId)
+            ->with([
+                'branch'   => fn($q) => $q->withoutGlobalScopes(),
+                'supplier' => fn($q) => $q->withoutGlobalScopes()
+            ]);
+
+        if ($request->filled('search')) {
+            $query->where('purchase_number', 'like', "%{$request->search}%");
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $purchases = $query->orderBy('created_at', 'desc')->paginate($request->input('per_page', 20));
+
+        return response()->json(['success' => true, 'purchases' => $purchases]);
+    }
+
+    /**
+     * DRILL-DOWN: Sessions de caisse d'une entreprise (Lecture Seule).
+     */
+    public function companyCashSessions($companyId, Request $request)
+    {
+        $this->authorizeSuperAdmin($request);
+        $company = Company::findOrFail($companyId);
+        $this->logInspectionAudit($request, $company, 'CashSessions');
+
+        $query = CashSession::withoutGlobalScopes()
+            ->where('company_id', $companyId)
+            ->with([
+                'branch' => fn($q) => $q->withoutGlobalScopes(),
+                'user'   => fn($q) => $q->withoutGlobalScopes(),
+                'register'
+            ]);
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $sessions = $query->orderBy('created_at', 'desc')->paginate($request->input('per_page', 20));
+
+        return response()->json(['success' => true, 'cash_sessions' => $sessions]);
+    }
+
+    /**
+     * DRILL-DOWN: Transferts de stock d'une entreprise (Lecture Seule).
+     */
+    public function companyTransfers($companyId, Request $request)
+    {
+        $this->authorizeSuperAdmin($request);
+        $company = Company::findOrFail($companyId);
+        $this->logInspectionAudit($request, $company, 'Transfers');
+
+        $query = StockTransfer::withoutGlobalScopes()
+            ->where('company_id', $companyId)
+            ->with([
+                'fromBranch' => fn($q) => $q->withoutGlobalScopes(),
+                'toBranch'   => fn($q) => $q->withoutGlobalScopes(),
+                'details'
+            ]);
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $transfers = $query->orderBy('created_at', 'desc')->paginate($request->input('per_page', 20));
+
+        return response()->json(['success' => true, 'transfers' => $transfers]);
+    }
+
+    /**
+     * DRILL-DOWN: Utilisateurs d'une entreprise (Lecture Seule).
+     */
+    public function companyUsers($companyId, Request $request)
+    {
+        $this->authorizeSuperAdmin($request);
+        $company = Company::findOrFail($companyId);
+        $this->logInspectionAudit($request, $company, 'Users');
+
+        $query = User::withoutGlobalScopes()
+            ->where('company_id', $companyId)
+            ->with([
+                'role',
+                'branch' => fn($q) => $q->withoutGlobalScopes()
+            ]);
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        $users = $query->orderBy('id', 'asc')->paginate($request->input('per_page', 20));
+
+        return response()->json(['success' => true, 'users' => $users]);
     }
 
     /**

@@ -5,7 +5,9 @@ namespace App\Http\Controllers\API\V1;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\AccessZone;
+use App\Models\AccessZoneSchedule;
 use App\Services\TenantManager;
+use App\Services\AccessControlLogger;
 use Illuminate\Support\Str;
 use App\Traits\Auditable;
 
@@ -24,6 +26,7 @@ class AccessZoneController extends Controller
 
         $zones = AccessZone::where('company_id', $companyId)
             ->withCount('users')
+            ->with('schedules')
             ->get();
 
         return response()->json($zones);
@@ -57,15 +60,31 @@ class AccessZoneController extends Controller
             'is_active'       => true,
         ]);
 
-        $this->logAuditEvent('ACCESS_ZONE_CREATED', [
-            'zone_name'  => $zone->name,
-            'branch_ids' => $zone->branch_ids,
-            'modules'    => $zone->allowed_modules,
-        ], $currentUser);
+        // Traitement optionnel des plages horaires
+        if ($request->has('schedules') && is_array($request->schedules)) {
+            foreach ($request->schedules as $sch) {
+                if (isset($sch['day_of_week'], $sch['start_time'], $sch['end_time'])) {
+                    AccessZoneSchedule::updateOrCreate([
+                        'access_zone_id' => $zone->id,
+                        'day_of_week'    => (int) $sch['day_of_week'],
+                    ], [
+                        'start_time' => $sch['start_time'],
+                        'end_time'   => $sch['end_time'],
+                        'is_active'  => $sch['is_active'] ?? true,
+                    ]);
+                }
+            }
+        }
+
+        AccessControlLogger::log('access_zone.created', $currentUser, null, [
+            'new_access_zone_id' => $zone->id,
+            'new_modules'        => $zone->allowed_modules,
+            'new_branches'       => $zone->branch_ids,
+        ]);
 
         return response()->json([
             'message' => "Zone d'accès \"{$zone->name}\" créée avec succès.",
-            'zone'    => $zone
+            'zone'    => $zone->load('schedules')
         ], 201);
     }
 
@@ -97,14 +116,32 @@ class AccessZoneController extends Controller
             'is_active'       => $request->is_active ?? true,
         ]);
 
-        $this->logAuditEvent('ACCESS_ZONE_UPDATED', [
-            'zone_id'   => $zone->id,
-            'zone_name' => $zone->name,
-        ], $currentUser);
+        // Traitement optionnel des plages horaires
+        if ($request->has('schedules') && is_array($request->schedules)) {
+            foreach ($request->schedules as $sch) {
+                if (isset($sch['day_of_week'], $sch['start_time'], $sch['end_time'])) {
+                    AccessZoneSchedule::updateOrCreate([
+                        'access_zone_id' => $zone->id,
+                        'day_of_week'    => (int) $sch['day_of_week'],
+                    ], [
+                        'start_time' => $sch['start_time'],
+                        'end_time'   => $sch['end_time'],
+                        'is_active'  => $sch['is_active'] ?? true,
+                    ]);
+                }
+            }
+        }
+
+        AccessControlLogger::log('access_zone.updated', $currentUser, null, [
+            'old_access_zone_id' => $zone->id,
+            'new_access_zone_id' => $zone->id,
+            'new_modules'        => $zone->allowed_modules,
+            'new_branches'       => $zone->branch_ids,
+        ]);
 
         return response()->json([
             'message' => "Zone d'accès \"{$zone->name}\" mise à jour.",
-            'zone'    => $zone
+            'zone'    => $zone->load('schedules')
         ]);
     }
 
@@ -126,11 +163,12 @@ class AccessZoneController extends Controller
         }
 
         $zoneName = $zone->name;
+        $zone->schedules()->delete();
         $zone->delete();
 
-        $this->logAuditEvent('ACCESS_ZONE_DELETED', [
-            'zone_name' => $zoneName,
-        ], $currentUser);
+        AccessControlLogger::log('access_zone.deleted', $currentUser, null, [
+            'old_access_zone_id' => $id,
+        ]);
 
         return response()->json(['message' => "Zone d'accès \"{$zoneName}\" supprimée."]);
     }

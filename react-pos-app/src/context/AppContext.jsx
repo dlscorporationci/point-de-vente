@@ -2,6 +2,7 @@ import React, { createContext, useState, useEffect, useContext, useCallback } fr
 import axios from 'axios';
 import { offlineStorage } from '../services/offlineStorage';
 import { purgeLocalCacheOnLogout } from '../services/db';
+import { realtimeService } from '../services/RealtimeService';
 
 const AppContext = createContext(null);
 
@@ -70,6 +71,9 @@ export const AppProvider = ({ children }) => {
   const [isOnline, setIsOnline] = useState(() => typeof navigator !== 'undefined' ? navigator.onLine : true);
   const [pendingSalesCount, setPendingSalesCount] = useState(() => offlineStorage.getPendingSales().length);
   const [isSyncing, setIsSyncing] = useState(false);
+
+  // 4b. Statut de la connexion SSE temps réel
+  const [realtimeStatus, setRealtimeStatus] = useState('disconnected'); // 'connected' | 'connecting' | 'disconnected' | 'error'
 
   // 5. Gestion du Mode Maintenance Applicatif Global
   const [maintenanceInfo, setMaintenanceInfo] = useState(null);
@@ -228,6 +232,39 @@ export const AppProvider = ({ children }) => {
     return () => clearInterval(interval);
   }, [checkMaintenanceStatus]);
 
+  // ─── Refresh automatique des données utilisateur (zones d'accès, rôles, etc.) ───
+  // Nécessaire pour que les modifications de zone/rôle faites par l'admin
+  // s'appliquent immédiatement sans reconnexion.
+  const refreshUser = useCallback(async () => {
+    const currentToken = localStorage.getItem('token');
+    if (!currentToken || !navigator.onLine) return;
+    try {
+      const res = await axios.get('/v1/auth/me');
+      const freshUser = res.data?.user || res.data;
+      if (freshUser && (freshUser.id || freshUser.email)) {
+        setUser(freshUser);
+        localStorage.setItem('user', JSON.stringify(freshUser));
+      }
+    } catch {
+      // Silencieux si token expiré (le 401 interceptor gère la déconnexion)
+    }
+  }, []);
+
+  // Refresh toutes les 60 secondes si l'utilisateur est connecté
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    const interval = setInterval(refreshUser, 60000);
+    return () => clearInterval(interval);
+  }, [refreshUser]);
+
+  // Refresh immédiat sur événement 'access-zone-updated' (déclenché par AccessZonesModal)
+  useEffect(() => {
+    const handler = () => refreshUser();
+    window.addEventListener('access-zone-updated', handler);
+    return () => window.removeEventListener('access-zone-updated', handler);
+  }, [refreshUser]);
+
   // Synchroniser l'utilisateur dans le stockage local
   useEffect(() => {
     if (user) {
@@ -370,6 +407,17 @@ export const AppProvider = ({ children }) => {
     if (userData.assigned_branches) {
       setAssignedBranches(userData.assigned_branches);
     }
+
+    // Connexion SSE temps réel après login réussi
+    // Utiliser un léger délai pour laisser le temps à Axios de configurer les headers
+    setTimeout(() => {
+      realtimeService.connect({
+        token: userToken,
+        companyId: userData.company_id?.toString(),
+        branchId: (userData.active_branch?.id || userData.branch?.id)?.toString(),
+        userId: userData.id?.toString(),
+      });
+    }, 200);
   };
 
   const logout = () => {
@@ -392,6 +440,9 @@ export const AppProvider = ({ children }) => {
 
     // Purge du cache local sensible Dexie lors du logout (tout en conservant les pending non-sync)
     purgeLocalCacheOnLogout().catch(() => {});
+
+    // Déconnexion SSE temps réel au logout
+    realtimeService.disconnect();
 
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('app-logout'));
@@ -418,6 +469,36 @@ export const AppProvider = ({ children }) => {
     };
   }, []);
 
+  // Abonnement aux changements de statut SSE
+  useEffect(() => {
+    const cleanup = realtimeService.onStatusChange(setRealtimeStatus);
+    return cleanup;
+  }, []);
+
+  // Reconnexion SSE lors du changement de boutique
+  useEffect(() => {
+    const handleBranchSwitch = () => {
+      const currentToken = localStorage.getItem('token');
+      const newBranchId  = localStorage.getItem('branch-id');
+      const newCompanyId = localStorage.getItem('company-id');
+      if (currentToken && newCompanyId) {
+        // Déconnecter l'ancienne connexion SSE
+        realtimeService.disconnect();
+        // Se reconnecter avec le nouveau contexte boutique
+        setTimeout(() => {
+          realtimeService.connect({
+            token:     currentToken,
+            companyId: newCompanyId,
+            branchId:  newBranchId,
+            userId:    localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user'))?.id?.toString() : null,
+          });
+        }, 300);
+      }
+    };
+    window.addEventListener('branch-switched', handleBranchSwitch);
+    return () => window.removeEventListener('branch-switched', handleBranchSwitch);
+  }, []);
+
   const setTheme = (newTheme) => {
     setThemeState(newTheme);
   };
@@ -434,14 +515,18 @@ export const AppProvider = ({ children }) => {
     setBranchIdState(newBranchId);
   };
 
-  const updateCompanyLogo = useCallback((newLogoPath) => {
+  // Met à jour le branding complet de l'entreprise en mémoire (logo, slogan, favicon, nom)
+  const updateCompanyLogo = useCallback((newLogoPath, brandingUpdates = {}) => {
     setUser(prev => {
       if (!prev) return prev;
       const updated = {
         ...prev,
         company: {
           ...(prev.company || {}),
-          logo_path: newLogoPath
+          ...(newLogoPath !== undefined ? { logo_path: newLogoPath } : {}),
+          ...(brandingUpdates.name !== undefined ? { name: brandingUpdates.name } : {}),
+          ...(brandingUpdates.slogan !== undefined ? { slogan: brandingUpdates.slogan } : {}),
+          ...(brandingUpdates.favicon_path !== undefined ? { favicon_path: brandingUpdates.favicon_path } : {}),
         }
       };
       localStorage.setItem('user', JSON.stringify(updated));
@@ -466,17 +551,20 @@ export const AppProvider = ({ children }) => {
       unreadCount,
       fetchNotifications,
       user,
+      setUser,
       token,
       login,
       logout,
       updateCompanyLogo,
+      refreshUser,
       isOnline,
       pendingSalesCount,
       isSyncing,
       syncOfflineSales,
       refreshPendingSalesCount,
       maintenanceInfo,
-      checkMaintenanceStatus
+      checkMaintenanceStatus,
+      realtimeStatus,
     }}>
       {children}
     </AppContext.Provider>

@@ -2,6 +2,7 @@
 namespace App\Listeners;
 use App\Events\Customer\CustomerCreated;
 use App\Services\NotificationService;
+use App\Services\RealtimeBroadcastService;
 
 class NotifyCustomerEvents
 {
@@ -24,6 +25,15 @@ class NotifyCustomerEvents
             data: ['customer_id' => $customer->id, 'customer_name' => $customer->name],
             actorId: $actor->id,
             targetRoute: 'customers',
+        );
+
+        // SSE — Signal temps réel : nouveau client
+        RealtimeBroadcastService::push(
+            eventType: 'customer_created',
+            companyId: $customer->company_id,
+            branchId:  $branchId,
+            payload:   ['customer_id' => $customer->id, 'customer_name' => $customer->name],
+            actorId: $actor->id
         );
     }
 

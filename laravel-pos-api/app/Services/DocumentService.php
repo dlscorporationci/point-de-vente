@@ -241,6 +241,17 @@ class DocumentService
                     ['key' => 'status',      'label' => 'Statut',          'align' => 'center'],
                 ],
             ],
+            'company_inspection_report' => [
+                'type'     => 'company_inspection_report',
+                'title'    => 'RAPPORT D\'INSPECTION D\'ENTREPRISE',
+                'subtitle' => 'Bilan et audit complet des activités, ventes, clients et stocks d\'une entreprise client',
+                'columns'  => [
+                    ['key' => 'module',      'label' => 'Module / Rubrique',  'align' => 'left'],
+                    ['key' => 'indicator',   'label' => 'Indicateur Clef',    'align' => 'left'],
+                    ['key' => 'val',         'label' => 'Valeur Mesurée',     'align' => 'right'],
+                    ['key' => 'notes',       'label' => 'Observation Audit',  'align' => 'left'],
+                ],
+            ],
             'invoices_list' => [
                 'type'     => 'invoices_list',
                 'title'    => 'LIVRE DES FACTURES CLIENTS SAAS',
@@ -633,6 +644,34 @@ class DocumentService
                 $totals = [
                     'Nombre d\'abonnements' => count($rows),
                     'Montant cumulé'       => number_format($sumAmt, 0, ',', ' ') . ' FCFA'
+                ];
+                break;
+
+            case 'company_inspection_report':
+                $targetCompId = $filters['company_id'] ?? $company->id;
+                $comp = Company::withoutGlobalScopes()->find($targetCompId) ?: $company;
+
+                $totalCA = Sale::withoutGlobalScopes()->where('company_id', $comp->id)->where('payment_status', 'paid')->sum('total');
+                $salesCount = Sale::withoutGlobalScopes()->where('company_id', $comp->id)->count();
+                $customersCount = Customer::withoutGlobalScopes()->where('company_id', $comp->id)->count();
+                $suppliersCount = Supplier::withoutGlobalScopes()->where('company_id', $comp->id)->count();
+                $productsCount = Product::withoutGlobalScopes()->where('company_id', $comp->id)->count();
+                $usersCount = User::withoutGlobalScopes()->where('company_id', $comp->id)->count();
+
+                $rows = [
+                    ['module' => 'IDENTIFICATION', 'indicator' => 'Nom Entreprise', 'val' => $comp->name, 'notes' => 'Code: ' . $comp->code],
+                    ['module' => 'IDENTIFICATION', 'indicator' => 'Formule Abonnement', 'val' => strtoupper($comp->subscription_plan ?: 'Starter'), 'notes' => 'Statut: ' . strtoupper($comp->status)],
+                    ['module' => 'FINANCES & VENTES', 'indicator' => 'CA Total Encaissé', 'val' => number_format($totalCA, 0, ',', ' ') . ' FCFA', 'notes' => $salesCount . ' transactions enregistrées'],
+                    ['module' => 'FINANCES & VENTES', 'indicator' => 'Panier Moyen', 'val' => number_format($salesCount > 0 ? $totalCA / $salesCount : 0, 0, ',', ' ') . ' FCFA', 'notes' => 'Moyenne par ticket de caisse'],
+                    ['module' => 'RÉPERTOIRE', 'indicator' => 'Portefeuille Clients', 'val' => $customersCount . ' client(s)', 'notes' => 'Base de données clients'],
+                    ['module' => 'RÉPERTOIRE', 'indicator' => 'Partenaires Fournisseurs', 'val' => $suppliersCount . ' fournisseur(s)', 'notes' => 'Achats & approvisionnements'],
+                    ['module' => 'CATALOGUE & STOCK', 'indicator' => 'Nombre d\'Articles', 'val' => $productsCount . ' référence(s)', 'notes' => 'Catalogue produits'],
+                    ['module' => 'OPERATEURS', 'indicator' => 'Comptes Utilisateurs', 'val' => $usersCount . ' compte(s)', 'notes' => 'Administrateurs & caissiers'],
+                ];
+
+                $totals = [
+                    'Inspection d\'entreprise client' => $comp->name . ' (ID: ' . $comp->id . ')',
+                    'Horodatage d\'inspection'      => date('d/m/Y H:i:s')
                 ];
                 break;
 

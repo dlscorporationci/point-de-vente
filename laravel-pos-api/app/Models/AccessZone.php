@@ -36,4 +36,9 @@ class AccessZone extends Model
     {
         return $this->hasMany(User::class);
     }
+
+    public function schedules()
+    {
+        return $this->hasMany(AccessZoneSchedule::class, 'access_zone_id');
+    }
 }

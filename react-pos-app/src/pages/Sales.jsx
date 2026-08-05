@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
 import { db } from '../services/db';
 import { ExportModal } from '../components/ExportModal';
+import { useRealtime } from '../hooks/useRealtime';
 
 export const Sales = () => {
   const { token } = useApp();
@@ -25,7 +26,7 @@ export const Sales = () => {
   const [selectedSale, setSelectedSale] = useState(null);
   const [showExportModal, setShowExportModal] = useState(false);
 
-  const loadSales = async () => {
+  const loadSales = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     setError(null);
@@ -85,9 +86,18 @@ export const Sales = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, page, search, paymentMethod, paymentStatus, dateFrom, dateTo]);
 
-  useEffect(() => { loadSales(); }, [token, page, paymentMethod, paymentStatus, dateFrom, dateTo]);
+  // Abonnement temps réel : mise à jour automatique sans F5 de la liste des ventes
+  useRealtime(
+    ['sale_created', 'sale_cancelled'],
+    useCallback(() => {
+      loadSales();
+    }, [loadSales]),
+    { pullOnEvent: true }
+  );
+
+  useEffect(() => { loadSales(); }, [loadSales]);
 
   const handleSearch = (e) => {
     e.preventDefault();

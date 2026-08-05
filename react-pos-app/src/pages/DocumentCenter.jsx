@@ -64,47 +64,185 @@ export const DocumentCenter = () => {
   };
 
   return (
-    <div className="page-container" style={{ padding: '24px' }}>
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+    <div className="doc-center-root" style={{ width: '100%', maxWidth: '1280px', margin: '0 auto', padding: '16px' }}>
+      
+      {/* ── STYLES AUTONOMES HIGH-END ── */}
+      <style>{`
+        .doc-center-root {
+          font-family: var(--font-text, 'Inter', sans-serif);
+          color: var(--text-main, #1e293b);
+        }
+        .doc-banner {
+          background: linear-gradient(135deg, #0F4A86 0%, #1e40af 50%, #0d9488 100%);
+          color: #ffffff;
+          padding: 26px 30px;
+          border-radius: 16px;
+          box-shadow: 0 10px 25px -5px rgba(15, 74, 134, 0.25);
+          margin-bottom: 24px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 16px;
+        }
+        .doc-banner h1 {
+          color: #ffffff !important;
+          margin: 0;
+          font-size: 24px;
+          font-weight: 800;
+          letter-spacing: -0.5px;
+        }
+        .doc-banner p {
+          color: rgba(255, 255, 255, 0.85) !important;
+          margin: 4px 0 0;
+          font-size: 13.5px;
+        }
+        .doc-filter-card {
+          background: var(--bg-card, #ffffff);
+          border: 1px solid var(--border-color, #e2e8f0);
+          border-radius: 14px;
+          padding: 20px;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04);
+          margin-bottom: 24px;
+        }
+        .doc-form-label {
+          font-size: 12px;
+          font-weight: 700;
+          color: var(--text-muted, #64748b);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-bottom: 6px;
+          display: block;
+        }
+        .doc-form-control {
+          width: 100%;
+          padding: 10px 14px;
+          border-radius: 10px;
+          border: 1px solid var(--border-input, #cbd5e1);
+          background: var(--bg-input, #f8fafc);
+          color: var(--text-main, #0f172a);
+          font-size: 13.5px;
+          font-weight: 600;
+          outline: none;
+          transition: all 0.2s;
+        }
+        .doc-form-control:focus {
+          border-color: #0F4A86;
+          box-shadow: 0 0 0 3px rgba(15, 74, 134, 0.15);
+          background: #ffffff;
+        }
+        .doc-table-card {
+          background: var(--bg-card, #ffffff);
+          border: 1px solid var(--border-color, #e2e8f0);
+          border-radius: 16px;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04);
+          overflow: hidden;
+        }
+        .doc-table {
+          width: 100%;
+          border-collapse: collapse;
+          text-align: left;
+        }
+        .doc-table th {
+          background: var(--bg-input, #f8fafc);
+          color: var(--text-muted, #475569);
+          font-size: 11.5px;
+          font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          padding: 16px;
+          border-bottom: 2px solid var(--border-color, #e2e8f0);
+        }
+        .doc-table td {
+          padding: 16px;
+          border-bottom: 1px solid var(--border-color, #f1f5f9);
+          font-size: 13.5px;
+        }
+        .doc-table tr:hover td {
+          background: var(--bg-hover, #f8fafc);
+        }
+        .format-badge-pdf {
+          background: rgba(239, 68, 68, 0.1);
+          color: #dc2626;
+          border: 1px solid rgba(239, 68, 68, 0.3);
+          font-weight: 800;
+          padding: 4px 10px;
+          border-radius: 6px;
+          font-size: 11px;
+        }
+        .format-badge-xlsx {
+          background: rgba(16, 185, 129, 0.1);
+          color: #059669;
+          border: 1px solid rgba(16, 185, 129, 0.3);
+          font-weight: 800;
+          padding: 4px 10px;
+          border-radius: 6px;
+          font-size: 11px;
+        }
+        .action-btn-circle {
+          width: 34px;
+          height: 34px;
+          border-radius: 8px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid var(--border-color, #e2e8f0);
+          background: var(--bg-card, #ffffff);
+          color: var(--text-main, #334155);
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .action-btn-circle:hover {
+          background: #0F4A86;
+          color: #ffffff;
+          border-color: #0F4A86;
+        }
+        .action-btn-circle.danger:hover {
+          background: #ef4444;
+          color: #ffffff;
+          border-color: #ef4444;
+        }
+      `}</style>
+
+      {/* ── BANNIÈRE D'EN-TÊTE ── */}
+      <div className="doc-banner">
         <div>
-          <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: 'var(--color-primary)' }}>
-            📁 Centre de Documents & Archives
-          </h1>
-          <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: '14px' }}>
-            Gestion centralisée, archivage et historique de tous les rapports PDF et Excel générés
-          </p>
+          <h1><i className="fa-solid fa-folder-open me-2"></i> Centre de Documents & Archives</h1>
+          <p>Gestion centralisée, archivage et historique de tous les rapports PDF et Excel générés</p>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button className="btn btn-primary" onClick={() => triggerExportModal('sales_report')}>
-            <i className="fa-solid fa-plus" style={{ marginRight: '6px' }}></i> Nouveau Rapport
-          </button>
-        </div>
+        <button 
+          className="btn btn-light font-bold shadow-sm"
+          onClick={() => triggerExportModal('sales_report')}
+          style={{ padding: '10px 20px', borderRadius: '10px', color: '#0F4A86', fontSize: '13.5px' }}
+        >
+          <i className="fa-solid fa-plus me-1.5"></i> Nouveau Rapport
+        </button>
       </div>
 
       {error && (
-        <div className="alert alert-danger" style={{ marginBottom: '16px' }}>
-          <i className="fa-solid fa-triangle-exclamation" style={{ marginRight: '8px' }}></i> {error}
+        <div className="alert alert-danger p-3 mb-4 rounded-3">
+          <i className="fa-solid fa-triangle-exclamation me-2"></i> {error}
         </div>
       )}
 
-      {/* Barre de Recherche & Filtres */}
-      <div className="card" style={{ padding: '16px', marginBottom: '24px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', alignItems: 'end' }}>
-          <div className="form-group">
-            <label className="form-label">Rechercher un document :</label>
+      {/* ── CARTES DE FILTRES ET RECHERCHE ── */}
+      <div className="doc-filter-card">
+        <div className="row g-3 align-items-end">
+          <div className="col-lg-4 col-md-6">
+            <label className="doc-form-label"><i className="fa-solid fa-magnifying-glass me-1"></i> Rechercher un document :</label>
             <input
               type="text"
-              className="form-input"
+              className="doc-form-control"
               placeholder="Titre, UUID, nom de fichier..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Type de Document :</label>
-            <select className="form-input" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+          <div className="col-lg-3 col-md-6">
+            <label className="doc-form-label"><i className="fa-solid fa-file-contract me-1"></i> Type de Document :</label>
+            <select className="doc-form-control" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
               <option value="">Tous les types</option>
               {Object.keys(contracts).map((key) => (
                 <option key={key} value={key}>{contracts[key].title}</option>
@@ -112,107 +250,94 @@ export const DocumentCenter = () => {
             </select>
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Format :</label>
-            <select className="form-input" value={formatFilter} onChange={(e) => setFormatFilter(e.target.value)}>
+          <div className="col-lg-3 col-md-6">
+            <label className="doc-form-label"><i className="fa-solid fa-file-export me-1"></i> Format :</label>
+            <select className="doc-form-control" value={formatFilter} onChange={(e) => setFormatFilter(e.target.value)}>
               <option value="">Tous les formats</option>
-              <option value="pdf">PDF (.pdf)</option>
-              <option value="xlsx">Excel (.xlsx)</option>
+              <option value="pdf">📄 PDF (.pdf)</option>
+              <option value="xlsx">📊 Excel (.xlsx)</option>
             </select>
           </div>
 
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="btn btn-outline" onClick={fetchDocuments} style={{ flex: 1 }}>
-              <i className="fa-solid fa-arrows-rotate" style={{ marginRight: '6px' }}></i> Rafraîchir
+          <div className="col-lg-2 col-md-6">
+            <button className="btn btn-outline-secondary font-bold w-100" onClick={fetchDocuments} style={{ padding: '10px 14px', borderRadius: '10px' }}>
+              <i className="fa-solid fa-rotate me-1.5"></i> Actualiser
             </button>
           </div>
         </div>
       </div>
 
-      {/* Tableau des Documents Archivés */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+      {/* ── TABLEAU DES DOCUMENTS ARCHIVÉS ── */}
+      <div className="doc-table-card">
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
-            <i className="fa-solid fa-spinner fa-spin fa-2x" style={{ marginBottom: '12px', display: 'block' }}></i>
-            Chargement des documents archivés...
+          <div className="py-5 text-center text-muted">
+            <i className="fa-solid fa-circle-notch fa-spin fa-2x mb-3 text-primary"></i>
+            <p className="m-0 font-medium">Chargement des documents archivés...</p>
           </div>
         ) : documents.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '50px 20px', color: '#94a3b8' }}>
-            <i className="fa-solid fa-folder-open fa-3x" style={{ marginBottom: '16px', display: 'block' }}></i>
-            <h3>Aucun document archivé</h3>
-            <p>Cliquez sur "Nouveau Rapport" ou exportez des données depuis les pages métiers pour archiver vos documents.</p>
+          <div className="py-5 text-center text-muted">
+            <i className="fa-solid fa-box-archive fa-3x mb-3 text-muted" style={{ opacity: 0.5 }}></i>
+            <h4 className="font-bold text-dark mb-1">Aucun document archivé</h4>
+            <p className="small m-0">Cliquez sur "Nouveau Rapport" ou exportez des données depuis les modules métiers.</p>
           </div>
         ) : (
           <div className="table-responsive">
-            <table className="table" style={{ width: '100%', margin: 0 }}>
+            <table className="doc-table">
               <thead>
-                <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                  <th style={{ padding: '12px 16px' }}>Document & UUID</th>
-                  <th style={{ padding: '12px 16px' }}>Type & Catégorie</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'center' }}>Format</th>
-                  <th style={{ padding: '12px 16px' }}>Boutique</th>
-                  <th style={{ padding: '12px 16px' }}>Généré par</th>
-                  <th style={{ padding: '12px 16px' }}>Date</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'right' }}>Actions</th>
+                <tr>
+                  <th>Document & UUID</th>
+                  <th>Type & Catégorie</th>
+                  <th style={{ textAlign: 'center' }}>Format</th>
+                  <th>Boutique</th>
+                  <th>Généré par</th>
+                  <th>Date & Heure</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {documents.map((doc) => (
-                  <tr key={doc.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '12px 16px' }}>
-                      <div style={{ fontWeight: 'bold', color: '#1e293b' }}>{doc.title}</div>
-                      <div style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'monospace' }}>{doc.uuid}</div>
+                  <tr key={doc.id}>
+                    <td>
+                      <strong style={{ fontSize: '14px', color: 'var(--text-main, #0f172a)' }}>{doc.title || doc.file_name}</strong>
+                      <div className="text-muted small" style={{ fontSize: '11px', fontFamily: 'monospace', marginTop: '2px' }}>
+                        UUID: <code>{doc.uuid}</code>
+                      </div>
                     </td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <span className="badge" style={{ background: '#eff6ff', color: '#1e40af', padding: '4px 8px', borderRadius: '4px', fontSize: '11px' }}>
+                    <td>
+                      <span className="badge bg-primary-light text-primary px-2.5 py-1" style={{ fontSize: '11px', fontWeight: 700 }}>
                         {doc.document_type}
                       </span>
                     </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                      {doc.format === 'pdf' ? (
-                        <span className="badge" style={{ background: '#fef2f2', color: '#dc2626', fontWeight: 'bold' }}>
-                          <i className="fa-solid fa-file-pdf" style={{ marginRight: '4px' }}></i> PDF
-                        </span>
-                      ) : (
-                        <span className="badge" style={{ background: '#f0fdf4', color: '#16a34a', fontWeight: 'bold' }}>
-                          <i className="fa-solid fa-file-excel" style={{ marginRight: '4px' }}></i> XLSX
-                        </span>
-                      )}
+                    <td style={{ textAlign: 'center' }}>
+                      <span className={doc.format === 'pdf' ? 'format-badge-pdf' : 'format-badge-xlsx'}>
+                        <i className={`fa-solid ${doc.format === 'pdf' ? 'fa-file-pdf' : 'fa-file-excel'} me-1`}></i>
+                        {doc.format?.toUpperCase()}
+                      </span>
                     </td>
-                    <td style={{ padding: '12px 16px' }}>
-                      {doc.branch ? doc.branch.name : 'Toutes les boutiques'}
+                    <td>
+                      <span className="text-muted small">{doc.branch?.name || 'Toutes les boutiques'}</span>
                     </td>
-                    <td style={{ padding: '12px 16px' }}>
-                      {doc.user ? doc.user.name : (doc.metadata?.generated_by || 'Système')}
+                    <td>
+                      <span className="font-semibold" style={{ fontSize: '13px' }}>{doc.user?.name || 'Système'}</span>
                     </td>
-                    <td style={{ padding: '12px 16px', fontSize: '13px', color: '#64748b' }}>
-                      {doc.created_at ? new Date(doc.created_at).toLocaleString('fr-FR') : ''}
+                    <td>
+                      <span className="text-muted small">{new Date(doc.created_at).toLocaleString('fr-FR')}</span>
                     </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
+                    <td style={{ textAlign: 'right' }}>
+                      <div className="d-flex justify-content-end gap-2">
                         <button
-                          className="btn btn-outline"
+                          className="action-btn-circle"
                           onClick={() => handleDownload(doc.file_path)}
-                          title="Télécharger"
-                          style={{ padding: '6px 10px', fontSize: '12px' }}
+                          title="Télécharger / Ouvrir"
                         >
                           <i className="fa-solid fa-download"></i>
                         </button>
                         <button
-                          className="btn btn-outline"
-                          onClick={() => triggerExportModal(doc.document_type)}
-                          title="Régénérer"
-                          style={{ padding: '6px 10px', fontSize: '12px' }}
-                        >
-                          <i className="fa-solid fa-rotate-right"></i>
-                        </button>
-                        <button
-                          className="btn btn-outline"
+                          className="action-btn-circle danger"
                           onClick={() => handleDelete(doc.id)}
-                          title="Supprimer"
-                          style={{ padding: '6px 10px', fontSize: '12px', color: '#dc2626', borderColor: '#fca5a5' }}
+                          title="Supprimer l'archive"
                         >
-                          <i className="fa-solid fa-trash"></i>
+                          <i className="fa-solid fa-trash-can"></i>
                         </button>
                       </div>
                     </td>
@@ -227,13 +352,12 @@ export const DocumentCenter = () => {
       {/* Modal Universel d'Exportation */}
       <ExportModal
         isOpen={isExportModalOpen}
-        onClose={() => {
-          setIsExportModalOpen(false);
-          fetchDocuments();
-        }}
+        onClose={() => setIsExportModalOpen(false)}
         documentType={selectedDocType}
-        documentTitle={contracts[selectedDocType]?.title || 'Rapport Documentaire'}
+        documentTitle={contracts[selectedDocType]?.title || 'Exportation de document'}
       />
     </div>
   );
 };
+
+export default DocumentCenter;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
 import { useCartStore } from '../store/useCartStore';
@@ -6,6 +6,8 @@ import { getImageUrl } from './Catalog';
 import { offlineStorage } from '../services/offlineStorage';
 import { saleService } from '../services/SaleService';
 import { getAssetUrl } from '../utils/urlHelper';
+import { useRealtime } from '../hooks/useRealtime';
+import { hasPermission } from '../services/permissionService';
 
 export const PointDeVente = () => {
   const { user, token, isOnline, refreshPendingSalesCount } = useApp();
@@ -41,13 +43,37 @@ export const PointDeVente = () => {
   // Reçu thermique
   const [completedSale, setCompletedSale] = useState(null);
 
+  // Ouverture rapide de caisse
+  const [quickOpeningBalance, setQuickOpeningBalance] = useState('10000');
+  const [quickOpeningLoading, setQuickOpeningLoading] = useState(false);
+
   // États génériques
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
+  const handleQuickOpenSession = async (e) => {
+    e.preventDefault();
+    setQuickOpeningLoading(true);
+    setError(null);
+    try {
+      const res = await axios.post('/v1/cash-sessions/open', {
+        opening_balance: parseFloat(quickOpeningBalance),
+        notes: 'Ouverture rapide POS'
+      });
+      if (res.data?.session) {
+        setCurrentSession(res.data.session);
+        setSuccess('Caisse de la boutique ouverte avec succès !');
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || "Erreur lors de l'ouverture de la caisse.");
+    } finally {
+      setQuickOpeningLoading(false);
+    }
+  };
+
   // Charger les données (avec repli hors-ligne automatique)
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     setError(null);
@@ -106,7 +132,38 @@ export const PointDeVente = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
+
+  // Abonnement Temps Réel (SSE) sur le POS : mise à jour sans F5 du catalogue, stocks et caisse
+  useRealtime(
+    [
+      'stock_updated',
+      'stock_adjusted',
+      'stock_low',
+      'product_created',
+      'product_updated',
+      'product_deleted',
+      'sale_created',
+      'cash_session_opened',
+      'cash_session_closed'
+    ],
+    useCallback((eventType, payload) => {
+      // Recharger le catalogue et la session
+      loadData();
+
+      // Si le stock d'un produit en panier diminue ou s'épuise sur le serveur
+      if (['stock_updated', 'stock_adjusted', 'sale_created'].includes(eventType) && payload.product_id) {
+        const itemInCart = cart.find(item => item.product?.id === payload.product_id);
+        if (itemInCart) {
+          const newQty = typeof payload.new_quantity === 'number' ? payload.new_quantity : 0;
+          if (newQty < itemInCart.quantity) {
+            setError(`Stock insuffisant. Le stock disponible pour "${itemInCart.product?.name}" est maintenant de ${newQty}.`);
+          }
+        }
+      }
+    }, [loadData, cart]),
+    { pullOnEvent: true }
+  );
 
   useEffect(() => {
     loadData();
@@ -316,11 +373,33 @@ export const PointDeVente = () => {
 
   if (!currentSession) {
     return (
-      <div className="pos-container">
-        <div className="alert-card card" style={{ borderColor: 'var(--color-error)' }}>
-          <span className="alert-icon">⚠️</span>
-          <h3>Session de Caisse Requise</h3>
-          <p>Vous devez ouvrir une session de caisse dans l'onglet <strong>💸 Caisses</strong> avant de pouvoir enregistrer des ventes.</p>
+      <div className="pos-container" style={{ minHeight: '75vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="alert-card card p-4 text-center" style={{ maxWidth: '480px', width: '100%', borderColor: 'var(--color-primary, #6366f1)', borderRadius: '16px', margin: 'auto' }}>
+          <div style={{ fontSize: '3rem', marginBottom: '8px' }}>💸</div>
+          <h3 style={{ fontWeight: 800, marginBottom: '6px' }}>Caisse de la Boutique Fermée</h3>
+          <p className="text-muted small mb-4" style={{ fontSize: '13px', lineHeight: 1.5 }}>
+            La session de caisse pour cette boutique n'est pas encore ouverte. Ouvrez-la ci-dessous pour démarrer les encaissements pour toute l'équipe.
+          </p>
+
+          {error && <div className="error-banner mb-3" style={{ fontSize: '12px', padding: '8px' }}>⚠️ {error}</div>}
+
+          <form onSubmit={handleQuickOpenSession}>
+            <div className="form-group text-start mb-3">
+              <label className="form-label fw-bold" style={{ fontSize: '13px' }}>Fonds de caisse d'ouverture (XOF) *</label>
+              <input
+                type="number"
+                className="form-control form-control-lg"
+                value={quickOpeningBalance}
+                onChange={(e) => setQuickOpeningBalance(e.target.value)}
+                required
+                min="0"
+                placeholder="Ex: 10000"
+              />
+            </div>
+            <button type="submit" className="btn btn-primary w-100 py-2 fw-bold" disabled={quickOpeningLoading} style={{ fontSize: '14px', borderRadius: '8px' }}>
+              {quickOpeningLoading ? 'Ouverture en cours...' : '🔓 Ouvrir la Caisse & Accéder au POS'}
+            </button>
+          </form>
         </div>
       </div>
     );
@@ -511,10 +590,12 @@ export const PointDeVente = () => {
                       {/* Remise par ligne */}
                       <input 
                         type="number" 
-                        placeholder="Remise XOF" 
+                        placeholder={hasPermission(user, 'sales.discount') ? "Remise XOF" : "🔒 Non autorisé"} 
                         className="form-control item-discount-input"
+                        disabled={!hasPermission(user, 'sales.discount')}
+                        title={hasPermission(user, 'sales.discount') ? "Appliquer une remise" : "Permission 'sales.discount' manquante"}
                         value={item.discount === 0 ? '' : item.discount}
-                        onChange={(e) => updateDiscount(item.product.id, e.target.value)}
+                        onChange={(e) => hasPermission(user, 'sales.discount') && updateDiscount(item.product.id, e.target.value)}
                       />
 
                       {/* Supprimer */}
@@ -536,8 +617,11 @@ export const PointDeVente = () => {
                 <input 
                   type="number" 
                   className="global-discount-input"
+                  disabled={!hasPermission(user, 'sales.discount')}
+                  placeholder={hasPermission(user, 'sales.discount') ? "0" : "🔒 Inactif"}
+                  title={hasPermission(user, 'sales.discount') ? "Remise globale" : "Permission 'sales.discount' manquante"}
                   value={globalDiscount === 0 ? '' : globalDiscount}
-                  onChange={(e) => setGlobalDiscount(e.target.value)}
+                  onChange={(e) => hasPermission(user, 'sales.discount') && setGlobalDiscount(e.target.value)}
                 />
               </div>
               <div className="totals-row">

@@ -87,7 +87,7 @@ export const UsersManagement = () => {
       if (!payload.password) delete payload.password;
       if (!payload.pin_code) delete payload.pin_code;
       if (!payload.branch_id) delete payload.branch_id;
-      if (!payload.access_zone_id) delete payload.access_zone_id;
+      payload.access_zone_id = payload.access_zone_id ? parseInt(payload.access_zone_id) : null;
 
       if (editingUser) {
         await axios.put(`/v1/users/${editingUser.id}`, payload);
@@ -96,6 +96,7 @@ export const UsersManagement = () => {
         await axios.post('/v1/users', payload);
         setSuccess('✅ Nouveau membre du personnel enregistré avec succès.');
       }
+      window.dispatchEvent(new Event('access-zone-updated'));
       setShowForm(false);
       load();
     } catch (err) {

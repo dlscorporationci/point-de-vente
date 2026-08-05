@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
 import { db } from '../services/db';
 import { ExportModal } from '../components/ExportModal';
+import { useRealtime } from '../hooks/useRealtime';
+import { hasPermission } from '../services/permissionService';
 
 export const CashSessions = () => {
   const { user, token } = useApp();
@@ -35,7 +37,7 @@ export const CashSessions = () => {
   const [success, setSuccess] = useState(null);
 
   // Charger la session courante et l'historique
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     setError(null);
@@ -69,11 +71,25 @@ export const CashSessions = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
+
+  // Abonnement Temps Réel (SSE) : actualisation automatique sans F5
+  useRealtime(
+    [
+      'cash_session_opened',
+      'cash_session_closed',
+      'cash_session_validated',
+      'cash_session_transaction'
+    ],
+    useCallback((eventType) => {
+      loadData();
+    }, [loadData]),
+    { pullOnEvent: true }
+  );
 
   useEffect(() => {
     loadData();
-  }, [token]);
+  }, [token, loadData]);
 
   const handleOpenSession = async (e) => {
     e.preventDefault();
@@ -84,7 +100,7 @@ export const CashSessions = () => {
         opening_balance: parseFloat(openingBalance),
         notes
       });
-      setSuccess('Caisse ouverte pour la journée !');
+      setSuccess('Caisse ouverte pour la boutique !');
       setNotes('');
       loadData();
     } catch (err) {
@@ -98,7 +114,7 @@ export const CashSessions = () => {
     setSuccess(null);
 
     if (!currentSession || !currentSession.id) {
-      setError("Impossible d'enregistrer l'opération : aucune session de caisse active (ouverte) n'a été détectée.");
+      setError("Impossible d'enregistrer l'opération : aucune session de caisse active n'a été détectée.");
       return;
     }
 
@@ -165,12 +181,6 @@ export const CashSessions = () => {
           <span className="alert-icon"><i className="fa-solid fa-lock text-muted"></i></span>
           <h3>Accès Réservé</h3>
           <p>Vous devez vous connecter à une session pour gérer vos caisses.</p>
-          <ExportModal
-            isOpen={showExportModal}
-            onClose={() => setShowExportModal(false)}
-            documentType="cash_sessions"
-            documentTitle="Rapport et Historique des Sessions de Caisses"
-          />
         </div>
       </div>
     );
@@ -178,9 +188,11 @@ export const CashSessions = () => {
 
   const isAdminOrManager = user?.role === 'admin' || user?.role === 'gerant';
 
-  // Calcul du solde théorique dynamique côté client pour affichage direct
   const calculateTheoreticalDynamic = () => {
     if (!currentSession) return 0;
+    if (currentSession.computed_theoretical_balance !== undefined) {
+      return currentSession.computed_theoretical_balance;
+    }
     let balance = parseFloat(currentSession.opening_balance) || 0;
     currentSession.transactions?.forEach(tx => {
       const amt = parseFloat(tx.amount) || 0;
@@ -201,7 +213,7 @@ export const CashSessions = () => {
         <div className="sessions-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h2><i className="fa-solid fa-money-bill-wave me-2 text-success"></i> Gestion des Sessions de Caisses</h2>
-            <p className="sessions-subtitle">Suivez vos fonds de caisse, dépôts/retraits et régularisez les écarts de clôture</p>
+            <p className="sessions-subtitle">Suivez vos fonds de caisse, entrées/sorties et régularisez les écarts de clôture</p>
           </div>
           <div>
             <button type="button" onClick={() => setShowExportModal(true)} className="btn btn-outline-secondary" style={{ fontWeight: 700 }}>
@@ -213,13 +225,13 @@ export const CashSessions = () => {
         {error && <div className="error-banner"><i className="fa-solid fa-circle-exclamation me-1"></i> {error}</div>}
         {success && <div className="success-banner"><i className="fa-solid fa-circle-check me-1"></i> {success}</div>}
 
-        {/* SECTION 1: ÉTAT COURANT DE LA CAISSE (OUVERTURE / CLÔTURE) */}
+        {/* SECTION 1: ÉTAT COURANT DE LA CAISSE (OUVERTURE / DÉTAIL / CLÔTURE) */}
         <div className="sessions-main-grid">
           {!currentSession ? (
             /* CAS CAISSE FERMÉE : FORMULAIRE D'OUVERTURE */
             <div className="session-card-block card-secondary">
-              <h3><i className="fa-solid fa-cash-register me-2 text-danger"></i> Votre Caisse est Fermée</h3>
-              <p className="block-desc">Vous devez ouvrir une session de caisse avec un fonds de tiroir-caisse pour pouvoir débuter les ventes.</p>
+              <h3><i className="fa-solid fa-cash-register me-2 text-danger"></i> La Caisse de cette Boutique est Fermée</h3>
+              <p className="block-desc">Ouvrez la session de caisse avec un fonds de tiroir-caisse pour autoriser les encaissements dans cette boutique.</p>
               
               <form onSubmit={handleOpenSession} style={{ marginTop: '20px' }}>
                 <div className="form-group">
@@ -244,98 +256,167 @@ export const CashSessions = () => {
                   />
                 </div>
                 <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '12px' }}>
-                  <i className="fa-solid fa-unlock-keyhole me-1"></i> Ouvrir la caisse pour la journée
+                  <i className="fa-solid fa-unlock-keyhole me-1"></i> Ouvrir la caisse de la boutique
                 </button>
               </form>
             </div>
           ) : (
-            /* CAS CAISSE OUVERTE : TABLEAU DE BORD DE LA CAISSE ACTIVE */
-            <div className="session-dashboard-grid">
-              {/* Infos & Solde */}
+            /* CAS CAISSE OUVERTE : TABLEAU DE BORD DÉTAILLÉ */
+            <div className="session-dashboard-grid" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
+              {/* Infos & Métriques Globales */}
               <div className="session-card-block card-success-light">
-                <div className="session-status-badge"><i className="fa-solid fa-circle-dot text-success me-1"></i> CAISSE OUVERTE</div>
-                <div className="session-metric">
-                  <span className="metric-label">Solde Théorique Actuel :</span>
-                  <span className="metric-val">{new Intl.NumberFormat('fr-FR').format(activeTheoretical)} XOF</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', borderBottom: '1px solid rgba(16, 185, 129, 0.2)', paddingBottom: '12px', marginBottom: '16px' }}>
+                  <div>
+                    <div className="session-status-badge">
+                      <i className="fa-solid fa-circle-dot text-success me-1"></i> CAISSE OUVERTE — {currentSession.branch?.name || 'Boutique Active'}
+                    </div>
+                    <small className="text-muted">Session partagée active pour tous les vendeurs et caissiers de cette boutique</small>
+                  </div>
+                  <div className="text-end">
+                    <small className="text-muted d-block">Ouverte le {currentSession.opened_at ? new Date(currentSession.opened_at).toLocaleString('fr-FR') : '-'}</small>
+                    <small className="text-muted">Responsable ouverture : <strong>{currentSession.user?.name || '-'}</strong></small>
+                  </div>
                 </div>
-                <div className="session-details-list" style={{ fontSize: '13px', marginTop: '16px' }}>
-                  <div>• Caissier : <strong>{currentSession.user?.name || '-'}</strong></div>
-                  <div>• Boutique : <strong>{currentSession.branch?.name || '-'}</strong></div>
-                  <div>• Ouvert le : <strong>{currentSession.opened_at ? new Date(currentSession.opened_at).toLocaleString('fr-FR') : '-'}</strong></div>
-                  <div>• Fonds d'ouverture : <strong>{new Intl.NumberFormat('fr-FR').format(parseFloat(currentSession.opening_balance) || 0)} XOF</strong></div>
+
+                <div className="row g-3">
+                  <div className="col-md-4 col-sm-6">
+                    <div className="p-3 rounded border text-center" style={{ background: 'var(--bg-card, #ffffff)' }}>
+                      <span className="text-muted small d-block mb-1">💰 Solde Espèces (Tiroir-Caisse)</span>
+                      <strong className="text-success" style={{ fontSize: '1.6rem', fontWeight: 900 }}>
+                        {new Intl.NumberFormat('fr-FR').format(activeTheoretical)} XOF
+                      </strong>
+                    </div>
+                  </div>
+                  <div className="col-md-2 col-sm-6">
+                    <div className="p-3 rounded border text-center" style={{ background: 'var(--bg-card, #ffffff)' }}>
+                      <span className="text-muted small d-block mb-1">💵 Ouverture</span>
+                      <strong style={{ fontSize: '1.1rem', fontWeight: 700 }}>
+                        {new Intl.NumberFormat('fr-FR').format(parseFloat(currentSession.opening_balance) || 0)} XOF
+                      </strong>
+                    </div>
+                  </div>
+                  <div className="col-md-2 col-sm-6">
+                    <div className="p-3 rounded border text-center" style={{ background: 'var(--bg-card, #ffffff)' }}>
+                      <span className="text-muted small d-block mb-1">🛒 Ventes Espèces</span>
+                      <strong className="text-primary" style={{ fontSize: '1.1rem', fontWeight: 700 }}>
+                        +{new Intl.NumberFormat('fr-FR').format(currentSession.cash_sales || 0)} XOF
+                      </strong>
+                    </div>
+                  </div>
+                  <div className="col-md-2 col-sm-6">
+                    <div className="p-3 rounded border text-center" style={{ background: 'var(--bg-card, #ffffff)' }}>
+                      <span className="text-muted small d-block mb-1">💳 Ventes Carte</span>
+                      <strong style={{ fontSize: '1.1rem', fontWeight: 700, color: '#6366f1' }}>
+                        {new Intl.NumberFormat('fr-FR').format(currentSession.card_sales || 0)} XOF
+                      </strong>
+                    </div>
+                  </div>
+                  <div className="col-md-2 col-sm-6">
+                    <div className="p-3 rounded border text-center" style={{ background: 'var(--bg-card, #ffffff)' }}>
+                      <span className="text-muted small d-block mb-1">📋 Ventes Crédit</span>
+                      <strong style={{ fontSize: '1.1rem', fontWeight: 700, color: '#f59e0b' }}>
+                        {new Intl.NumberFormat('fr-FR').format(currentSession.credit_sales || 0)} XOF
+                      </strong>
+                    </div>
+                  </div>
                 </div>
+
+                {(currentSession.deposits_sum > 0 || currentSession.withdrawals_sum > 0) && (
+                  <div className="mt-3 pt-2 d-flex gap-4 border-top text-muted small">
+                    <span>➕ Dépôts manuel : <strong>+{new Intl.NumberFormat('fr-FR').format(currentSession.deposits_sum || 0)} XOF</strong></span>
+                    <span>➖ Retraits manuel : <strong>-{new Intl.NumberFormat('fr-FR').format(currentSession.withdrawals_sum || 0)} XOF</strong></span>
+                  </div>
+                )}
               </div>
 
-              {/* Transactions manuelles */}
-              <div className="session-card-block">
-                <h3><i className="fa-solid fa-arrow-right-arrow-left me-2 text-primary"></i> Entrées/Sorties de caisse</h3>
-                <form onSubmit={handleTxSubmit} className="tx-form">
-                  <div className="form-row-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
-                    <div className="form-group">
-                      <label className="form-label">Type d'opération</label>
-                      <select className="form-control" value={txType} onChange={(e) => setTxType(e.target.value)}>
-                        <option value="deposit">Dépôt de monnaie</option>
-                        <option value="withdrawal">Retrait de caisse</option>
-                      </select>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
+                {/* Transactions manuelles */}
+                <div className="session-card-block">
+                  <h3><i className="fa-solid fa-arrow-right-arrow-left me-2 text-primary"></i> Entrées/Sorties de caisse</h3>
+                  <form onSubmit={handleTxSubmit} className="tx-form">
+                    <div className="form-row-grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                      <div className="form-group">
+                        <label className="form-label">Type d'opération</label>
+                        <select className="form-control" value={txType} onChange={(e) => setTxType(e.target.value)}>
+                          <option value="deposit">Dépôt de monnaie (+)</option>
+                          <option value="withdrawal">Retrait de caisse (-)</option>
+                        </select>
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Montant (XOF) *</label>
+                        <input 
+                          type="number" 
+                          className="form-control" 
+                          value={txAmount} 
+                          onChange={(e) => setTxAmount(e.target.value)} 
+                          required 
+                          min="1"
+                        />
+                      </div>
                     </div>
-                    <div className="form-group">
-                      <label className="form-label">Montant (XOF) *</label>
+                    <div className="form-group mt-2">
+                      <label className="form-label">Description / Motif *</label>
                       <input 
-                        type="number" 
+                        type="text" 
                         className="form-control" 
-                        value={txAmount} 
-                        onChange={(e) => setTxAmount(e.target.value)} 
-                        required 
-                        min="1"
+                        placeholder="Ex: Appoint monnaie 5000, Carburant livraison" 
+                        value={txDesc} 
+                        onChange={(e) => setTxDesc(e.target.value)} 
+                        required
                       />
                     </div>
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Description / Motif *</label>
-                    <input 
-                      type="text" 
-                      className="form-control" 
-                      placeholder="Ex: Achat fournitures de bureau, Monnaie 1000 XOF" 
-                      value={txDesc} 
-                      onChange={(e) => setTxDesc(e.target.value)} 
-                      required
-                    />
-                  </div>
-                  <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>
-                    Enregistrer l'opération
-                  </button>
-                </form>
-              </div>
+                    <button type="submit" className="btn btn-primary mt-3" style={{ width: '100%' }}>
+                      Enregistrer l'opération
+                    </button>
+                  </form>
+                </div>
 
-              {/* Clôture de caisse */}
-              <div className="session-card-block card-danger-light">
-                <h3><i className="fa-solid fa-vault me-2 text-danger"></i> Fermeture Tiroir-Caisse</h3>
-                <form onSubmit={handleCloseSession}>
-                  <div className="form-group">
-                    <label className="form-label">Montant réel compté dans le tiroir (XOF) *</label>
-                    <input 
-                      type="number" 
-                      className="form-control" 
-                      placeholder="Comptez tout l'argent liquide disponible"
-                      value={closingBalance}
-                      onChange={(e) => setClosingBalance(e.target.value)}
-                      required
-                      min="0"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Notes de clôture (Optionnel)</label>
-                    <input 
-                      type="text" 
-                      className="form-control" 
-                      value={closingNotes}
-                      onChange={(e) => setClosingNotes(e.target.value)}
-                    />
-                  </div>
-                  <button type="submit" className="btn btn-cancel" style={{ width: '100%', background: '#EF4444', color: '#FFF' }}>
-                    🔒 Soumettre la clôture de caisse
-                  </button>
-                </form>
+                {/* Clôture de caisse */}
+                <div className="session-card-block card-danger-light">
+                  <h3><i className="fa-solid fa-vault me-2 text-danger"></i> Fermeture Tiroir-Caisse</h3>
+                  {!hasPermission(user, 'cash.close') ? (
+                    <div className="alert alert-warning m-0 mt-3">
+                      <i className="fa-solid fa-lock me-2"></i>
+                      <strong>Fermeture non autorisée :</strong> La permission <code>cash.close</code> est obligatoire pour effectuer le comptage et la clôture de la caisse.
+                    </div>
+                  ) : (
+                    <form onSubmit={handleCloseSession}>
+                      <div className="form-group">
+                        <label className="form-label">Montant réel compté dans le tiroir (XOF) *</label>
+                        <input 
+                          type="number" 
+                          className="form-control" 
+                          placeholder={`Solde attendu: ${new Intl.NumberFormat('fr-FR').format(activeTheoretical)} XOF`}
+                          value={closingBalance}
+                          onChange={(e) => setClosingBalance(e.target.value)}
+                          required
+                          min="0"
+                        />
+                        {closingBalance !== '' && (
+                          <div className="mt-2 style-xs" style={{
+                            fontWeight: 700,
+                            color: (parseFloat(closingBalance) - activeTheoretical) === 0 ? '#10b981' : '#ef4444'
+                          }}>
+                            Écart de caisse : {new Intl.NumberFormat('fr-FR').format(parseFloat(closingBalance) - activeTheoretical)} XOF
+                          </div>
+                        )}
+                      </div>
+                      <div className="form-group mt-2">
+                        <label className="form-label">Notes de clôture (Optionnel)</label>
+                        <input 
+                          type="text" 
+                          className="form-control" 
+                          placeholder="Remarques éventuelles sur l'écart"
+                          value={closingNotes}
+                          onChange={(e) => setClosingNotes(e.target.value)}
+                        />
+                      </div>
+                      <button type="submit" className="btn btn-danger mt-3" style={{ width: '100%' }}>
+                        <i className="fa-solid fa-lock me-1"></i> Clôturer et sceller la caisse
+                      </button>
+                    </form>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -353,10 +434,11 @@ export const CashSessions = () => {
                   <h3>✔️ Régulariser l'écart de caisse</h3>
                   <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px' }}>
                     Session de : <strong>{selectedSessionToValidate.user?.name}</strong> <br />
-                    Solde Théorique : <strong>{selectedSessionToValidate.theoretical_balance} XOF</strong> <br />
-                    Solde Réel compté : <strong>{selectedSessionToValidate.closing_balance} XOF</strong> <br />
+                    Boutique : <strong>{selectedSessionToValidate.branch?.name}</strong> <br />
+                    Solde Théorique : <strong>{new Intl.NumberFormat('fr-FR').format(selectedSessionToValidate.theoretical_balance || 0)} XOF</strong> <br />
+                    Solde Réel compté : <strong>{new Intl.NumberFormat('fr-FR').format(selectedSessionToValidate.closing_balance || 0)} XOF</strong> <br />
                     Écart constaté : <strong style={{ color: 'var(--color-error)' }}>
-                      {selectedSessionToValidate.closing_balance - selectedSessionToValidate.theoretical_balance} XOF
+                      {new Intl.NumberFormat('fr-FR').format((selectedSessionToValidate.closing_balance || 0) - (selectedSessionToValidate.theoretical_balance || 0))} XOF
                     </strong>
                   </p>
 
@@ -387,10 +469,10 @@ export const CashSessions = () => {
                 <table className="products-table">
                   <thead>
                     <tr>
-                      <th>Caissier / Date</th>
-                      <th>Boutique</th>
-                      <th>Fonds Ouverture</th>
-                      <th>Théorique / Réel</th>
+                      <th>Boutique / Responsable</th>
+                      <th>Ouverture</th>
+                      <th>Fonds Initial</th>
+                      <th>Solde Théorique / Réel</th>
                       <th>Écart</th>
                       <th>Statut</th>
                       <th>Action</th>
@@ -402,18 +484,18 @@ export const CashSessions = () => {
                       return (
                         <tr key={session.id}>
                           <td>
-                            <div className="product-title-cell">{session.user?.name}</div>
-                            <div className="barcode-sub">{new Date(session.opened_at).toLocaleDateString()}</div>
+                            <div className="product-title-cell">{session.branch?.name || 'Boutique'}</div>
+                            <div className="barcode-sub">Par {session.user?.name || '-'} • {new Date(session.opened_at).toLocaleDateString('fr-FR')}</div>
                           </td>
                           <td>
-                            <div className="desc-sub">{session.branch?.name}</div>
+                            <div className="desc-sub">{new Date(session.opened_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</div>
                           </td>
                           <td className="price-cell">
                             {new Intl.NumberFormat('fr-FR').format(session.opening_balance)} XOF
                           </td>
                           <td>
                             {session.status === 'open' ? (
-                              <span style={{ color: 'var(--text-muted)' }}>En cours...</span>
+                              <span style={{ color: 'var(--text-muted)' }}>En cours ({new Intl.NumberFormat('fr-FR').format(session.computed_theoretical_balance || session.opening_balance)} XOF)</span>
                             ) : (
                               <div style={{ fontSize: '12px' }}>
                                 Th: {new Intl.NumberFormat('fr-FR').format(session.theoretical_balance)} XOF <br />
@@ -422,7 +504,7 @@ export const CashSessions = () => {
                             )}
                           </td>
                           <td style={{ color: difference === 0 ? 'var(--color-success)' : 'var(--color-error)', fontWeight: '700' }}>
-                            {session.status === 'open' ? '-' : `${difference > 0 ? '+' : ''}${difference} XOF`}
+                            {session.status === 'open' ? '-' : `${difference > 0 ? '+' : ''}${new Intl.NumberFormat('fr-FR').format(difference)} XOF`}
                           </td>
                           <td>
                             <span className={`badge-status ${session.status === 'open' ? 'status-ordered' : session.status === 'closed' ? 'payment-unpaid' : 'status-received'}`}>
@@ -457,116 +539,12 @@ export const CashSessions = () => {
         )}
       </div>
 
-      <style>{`
-        .sessions-container {
-          position: relative;
-          width: 100%;
-          min-height: 100vh;
-          padding: 24px;
-          display: flex;
-          align-items: flex-start;
-          justify-content: center;
-          z-index: 1;
-        }
-
-        .sessions-layout {
-          width: 100%;
-          max-width: 1080px;
-          padding: 32px;
-          margin-top: 100px;
-        }
-
-        .sessions-header {
-          border-bottom: 1px solid var(--border-color);
-          padding-bottom: 24px;
-          margin-bottom: 24px;
-          text-align: left;
-        }
-
-        .sessions-subtitle {
-          font-size: 13px;
-          color: var(--text-muted);
-          font-weight: 500;
-          margin-top: 4px;
-        }
-
-        .sessions-main-grid {
-          text-align: left;
-        }
-
-        .session-card-block {
-          background: var(--bg-input);
-          border: 1px solid var(--border-color);
-          border-radius: var(--border-radius-sm);
-          padding: 20px;
-          margin-bottom: 20px;
-        }
-
-        .card-secondary {
-          border-top: 4px solid var(--color-primary);
-        }
-
-        .card-success-light {
-          border-top: 4px solid var(--color-success);
-        }
-
-        .card-danger-light {
-          border-top: 4px solid #EF4444;
-        }
-
-        .block-desc {
-          font-size: 13px;
-          color: var(--text-muted);
-        }
-
-        .session-dashboard-grid {
-          display: grid;
-          grid-template-columns: 1fr 1.2fr 1fr;
-          gap: 20px;
-        }
-
-        .session-status-badge {
-          display: inline-block;
-          background: rgba(0, 166, 81, 0.1);
-          color: var(--color-success);
-          font-size: 11px;
-          font-weight: 800;
-          padding: 4px 8px;
-          border-radius: 4px;
-          margin-bottom: 12px;
-        }
-
-        .session-metric {
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-        }
-
-        .metric-label {
-          font-size: 12px;
-          color: var(--text-muted);
-        }
-
-        .metric-val {
-          font-size: 22px;
-          font-weight: 800;
-          color: var(--text-main);
-        }
-
-        .tx-form {
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-        }
-
-        .admin-validation-block h3 {
-          font-size: 16px;
-          margin-bottom: 16px;
-          border-left: 3px solid var(--color-primary);
-          padding-left: 10px;
-          text-align: left;
-        }
-      `}</style>
+      <ExportModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        documentType="cash_sessions"
+        documentTitle="Rapport et Historique des Sessions de Caisses"
+      />
     </div>
   );
 };

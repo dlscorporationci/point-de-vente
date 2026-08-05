@@ -14,7 +14,7 @@ use App\Traits\Auditable;
 use Laravel\Sanctum\HasApiTokens;
 use App\Traits\BelongsToTenant;
 
-#[Fillable(['company_id', 'branch_id', 'role_id', 'name', 'email', 'password', 'pin_code', 'status'])]
+#[Fillable(['company_id', 'branch_id', 'access_zone_id', 'role_id', 'name', 'email', 'password', 'pin_code', 'status'])]
 #[Hidden(['password', 'remember_token', 'pin_code'])]
 class User extends Authenticatable
 {
@@ -49,6 +49,11 @@ class User extends Authenticatable
         return $this->belongsTo(Branch::class)->withoutGlobalScopes();
     }
 
+    public function accessZone()
+    {
+        return $this->belongsTo(AccessZone::class, 'access_zone_id');
+    }
+
     public function branches()
     {
         return $this->belongsToMany(Branch::class, 'user_branches')
@@ -60,20 +65,30 @@ class User extends Authenticatable
     /**
      * Obtenir toutes les boutiques accessibles par l'utilisateur.
      * Pour les super-admins ou admins d'entreprise, renvoie toutes les boutiques de l'entreprise.
+     * Si une zone d'accès filtre les boutiques, restreindre selon branch_ids de la zone.
      */
     public function assignedBranches()
     {
+        $all = null;
         if ($this->role && in_array($this->role->slug, ['super-admin', 'admin'])) {
-            return Branch::where('company_id', $this->company_id)->get();
+            $all = Branch::where('company_id', $this->company_id)->get();
+        } else {
+            $assigned = $this->branches;
+            if ($assigned->isEmpty() && $this->branch_id) {
+                $primary = Branch::find($this->branch_id);
+                $all = $primary ? collect([$primary]) : collect([]);
+            } else {
+                $all = $assigned;
+            }
         }
 
-        $assigned = $this->branches;
-        if ($assigned->isEmpty() && $this->branch_id) {
-            $primary = Branch::find($this->branch_id);
-            return $primary ? collect([$primary]) : collect([]);
+        // Si l'utilisateur est soumis à une zone d'accès restreinte sur certaines boutiques
+        if ($this->accessZone && !empty($this->accessZone->branch_ids)) {
+            $allowedBranchIds = array_map('intval', $this->accessZone->branch_ids);
+            return $all->filter(fn($b) => in_array(intval($b->id), $allowedBranchIds))->values();
         }
 
-        return $assigned;
+        return $all;
     }
 
     /**
@@ -82,6 +97,14 @@ class User extends Authenticatable
     public function hasAccessToBranch($branchId): bool
     {
         if (!$branchId) return false;
+
+        // Restriction prioritaire de la zone d'accès
+        if ($this->accessZone && !empty($this->accessZone->branch_ids)) {
+            $allowedBranchIds = array_map('intval', $this->accessZone->branch_ids);
+            if (!in_array(intval($branchId), $allowedBranchIds)) {
+                return false;
+            }
+        }
         
         if ($this->role && in_array($this->role->slug, ['super-admin', 'admin'])) {
             $branch = Branch::find($branchId);
@@ -96,20 +119,27 @@ class User extends Authenticatable
     }
 
     /**
-     * Check if the user has a specific permission.
+     * Vérifier si un module de la plateforme est autorisé pour cet utilisateur.
      */
-    public function hasPermission(string $permissionSlug): bool
+    public function isModuleAllowed(string $module): bool
     {
-        if ($this->role_id === null) {
-            return false;
-        }
-
-        // Les super-admins et admins de compagnie possèdent toutes les autorisations applicatives
         if ($this->role && in_array($this->role->slug, ['super-admin', 'admin'])) {
             return true;
         }
 
-        return $this->role->hasPermission($permissionSlug);
+        if (!$this->accessZone || empty($this->accessZone->allowed_modules)) {
+            return true;
+        }
+
+        return in_array($module, $this->accessZone->allowed_modules);
+    }
+
+    /**
+     * Check if the user has a specific permission.
+     */
+    public function hasPermission(string $permissionSlug): bool
+    {
+        return app(\App\Services\AuthorizationService::class)->hasPermission($this, $permissionSlug);
     }
 
     /**

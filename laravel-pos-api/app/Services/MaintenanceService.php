@@ -73,6 +73,54 @@ class MaintenanceService
             'result'         => 'success',
         ]);
 
+        // Transmettre les e-mails de notification de maintenance à toutes les entreprises clientes
+        try {
+            $emailService = new \App\Services\EmailService();
+            $status = $enabled ? 'started' : 'completed';
+            $title = $enabled ? 'Intervention de Maintenance Système SaaS' : 'Fin de l\'Intervention de Maintenance';
+            $endsAtStr = $maint->estimated_end_at ? \Carbon\Carbon::parse($maint->estimated_end_at)->format('d/m/Y H:i') : null;
+
+            if ($type === 'global') {
+                $companies = \App\Models\Company::all();
+                foreach ($companies as $comp) {
+                    $adminUser = \App\Models\User::withoutGlobalScopes()
+                        ->where('company_id', $comp->id)
+                        ->where('status', 'active')
+                        ->first();
+                    $recipient = $adminUser?->email ?: ($comp->email ?: 'infos@dlscorporation.ci');
+                    $emailService->sendMaintenanceNotificationEmail(
+                        recipient: $recipient,
+                        title: $title,
+                        messageBody: $message,
+                        status: $status,
+                        startsAt: $maint->started_at ? $maint->started_at->format('d/m/Y H:i') : null,
+                        endsAt: $endsAtStr,
+                        companyId: $comp->id
+                    );
+                }
+            } elseif ($companyId) {
+                $comp = \App\Models\Company::find($companyId);
+                if ($comp) {
+                    $adminUser = \App\Models\User::withoutGlobalScopes()
+                        ->where('company_id', $comp->id)
+                        ->where('status', 'active')
+                        ->first();
+                    $recipient = $adminUser?->email ?: ($comp->email ?: 'infos@dlscorporation.ci');
+                    $emailService->sendMaintenanceNotificationEmail(
+                        recipient: $recipient,
+                        title: $title,
+                        messageBody: $message,
+                        status: $status,
+                        startsAt: $maint->started_at ? $maint->started_at->format('d/m/Y H:i') : null,
+                        endsAt: $endsAtStr,
+                        companyId: $comp->id
+                    );
+                }
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Échec envoi mails maintenance : " . $e->getMessage());
+        }
+
         return $maint;
     }
 }

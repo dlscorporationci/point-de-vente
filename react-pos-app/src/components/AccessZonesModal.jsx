@@ -12,16 +12,32 @@ export const AccessZonesModal = ({ isOpen, onClose }) => {
   const [description, setDescription] = useState('');
   const [selectedBranches, setSelectedBranches] = useState([]);
   const [selectedModules, setSelectedModules] = useState([]);
+  const [schedules, setSchedules] = useState([
+    { day_of_week: 1, day_name: 'Lundi', start_time: '08:00', end_time: '18:00', is_active: true },
+    { day_of_week: 2, day_name: 'Mardi', start_time: '08:00', end_time: '18:00', is_active: true },
+    { day_of_week: 3, day_name: 'Mercredi', start_time: '08:00', end_time: '18:00', is_active: true },
+    { day_of_week: 4, day_name: 'Jeudi', start_time: '08:00', end_time: '18:00', is_active: true },
+    { day_of_week: 5, day_name: 'Vendredi', start_time: '08:00', end_time: '18:00', is_active: true },
+    { day_of_week: 6, day_name: 'Samedi', start_time: '08:00', end_time: '18:00', is_active: true },
+    { day_of_week: 7, day_name: 'Dimanche', start_time: '08:00', end_time: '18:00', is_active: false },
+  ]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
   const availableModules = [
-    { key: 'pos', name: '🛒 Ventes & Caisses' },
-    { key: 'catalog', name: '📦 Produits & Stock' },
-    { key: 'purchases', name: '🛍️ Achats & Approvisionnement' },
-    { key: 'transfers', name: '🔄 Transferts Inter-Boutiques' },
-    { key: 'reports', name: '📊 Rapports & Statistiques' },
-    { key: 'settings', name: '⚙️ Paramètres & Configuration' },
+    { key: 'pos',           name: '🛒 Caisse Tactile (POS)' },
+    { key: 'sales',         name: '🧾 Historique des Ventes' },
+    { key: 'cash-sessions', name: '💵 Sessions de Caisse' },
+    { key: 'catalog',       name: '📦 Catalogue Produits' },
+    { key: 'stocks',        name: '📊 Stocks & Inventaire' },
+    { key: 'purchases',     name: '🛍️ Achats & Approvisionnements' },
+    { key: 'suppliers',     name: '🤝 Fournisseurs' },
+    { key: 'customers',     name: '👥 Clients & Créances' },
+    { key: 'transfers',     name: '🔄 Transferts Inter-Boutiques' },
+    { key: 'reports',       name: '📈 Rapports & Statistiques' },
+    { key: 'branches',      name: '🏪 Gestion des Boutiques' },
+    { key: 'users-mgmt',    name: '🛡️ Personnel & Rôles' },
+    { key: 'settings',      name: '⚙️ Paramètres système' },
   ];
 
   useEffect(() => {
@@ -51,17 +67,37 @@ export const AccessZonesModal = ({ isOpen, onClose }) => {
     setEditingZone(z);
     setZoneName(z ? z.name : '');
     setDescription(z ? z.description || '' : '');
-    setSelectedBranches(z && z.branch_ids ? z.branch_ids : []);
-    setSelectedModules(z && z.allowed_modules ? z.allowed_modules : availableModules.map(m => m.key));
+    const savedBranches = (z && Array.isArray(z.branch_ids)) ? z.branch_ids.map(Number) : [];
+    
+    let savedModules = [];
+    if (z && Array.isArray(z.allowed_modules)) {
+      savedModules = [...z.allowed_modules];
+      // Si la zone contient des anciens alias (ex: catalog sans stocks, pos sans sales/cash-sessions),
+      // on étend les permissions automatiquement pour ne pas les verrouiller par inadvertance
+      if (savedModules.includes('catalog') && !savedModules.includes('stocks')) savedModules.push('stocks');
+      if (savedModules.includes('stocks') && !savedModules.includes('catalog')) savedModules.push('catalog');
+      if (savedModules.includes('pos')) {
+        if (!savedModules.includes('sales')) savedModules.push('sales');
+        if (!savedModules.includes('cash-sessions')) savedModules.push('cash-sessions');
+      }
+    } else {
+      // Par défaut pour une nouvelle zone, tout est coché
+      savedModules = availableModules.map(m => m.key);
+    }
+    
+    setSelectedBranches(savedBranches);
+    setSelectedModules(savedModules);
     setShowForm(true);
     setError(null);
   };
 
   const toggleBranch = (bId) => {
-    if (selectedBranches.includes(bId)) {
-      setSelectedBranches(selectedBranches.filter(id => id !== bId));
+    // Forcer la comparaison en nombre pour éviter les faux négatifs string vs int
+    const numId = Number(bId);
+    if (selectedBranches.map(Number).includes(numId)) {
+      setSelectedBranches(selectedBranches.filter(id => Number(id) !== numId));
     } else {
-      setSelectedBranches([...selectedBranches, bId]);
+      setSelectedBranches([...selectedBranches, numId]);
     }
   };
 
@@ -78,23 +114,30 @@ export const AccessZonesModal = ({ isOpen, onClose }) => {
     setSaving(true);
     setError(null);
     try {
+      const payload = {
+        name: zoneName,
+        description: description,
+        branch_ids: selectedBranches.map(Number),
+        allowed_modules: selectedModules,
+        schedules: schedules.map(s => ({
+          day_of_week: s.day_of_week,
+          start_time: s.start_time.length === 5 ? `${s.start_time}:00` : s.start_time,
+          end_time: s.end_time.length === 5 ? `${s.end_time}:00` : s.end_time,
+          is_active: s.is_active,
+        })),
+      };
+
       if (editingZone) {
-        await axios.put(`/v1/access-zones/${editingZone.id}`, {
-          name: zoneName,
-          description: description,
-          branch_ids: selectedBranches,
-          allowed_modules: selectedModules
-        });
+        await axios.put(`/v1/access-zones/${editingZone.id}`, payload);
       } else {
-        await axios.post('/v1/access-zones', {
-          name: zoneName,
-          description: description,
-          branch_ids: selectedBranches,
-          allowed_modules: selectedModules
-        });
+        await axios.post('/v1/access-zones', payload);
       }
+      // ⚠️ IMPORTANT : on attend que loadData() ait TERMINÉ avant de fermer
+      // le formulaire — sans ce await, l'utilisateur rouvrirait le formulaire
+      // avec les ANCIENNES données (race condition).
+      await loadData();
+      window.dispatchEvent(new Event('access-zone-updated'));
       setShowForm(false);
-      loadData();
     } catch (err) {
       setError(err.response?.data?.error || err.response?.data?.message || 'Erreur de sauvegarde de la zone d\'accès.');
     } finally {
@@ -107,6 +150,8 @@ export const AccessZonesModal = ({ isOpen, onClose }) => {
     setError(null);
     try {
       await axios.delete(`/v1/access-zones/${z.id}`);
+      // Notifier l'app que les zones ont changé → force le refresh user
+      window.dispatchEvent(new Event('access-zone-updated'));
       loadData();
     } catch (err) {
       setError(err.response?.data?.error || 'Impossible de supprimer cette zone.');
@@ -217,10 +262,25 @@ export const AccessZonesModal = ({ isOpen, onClose }) => {
                 />
               </div>
 
-              <h4 className="mb-2" style={{ fontWeight: 800 }}>Boutiques autorisées dans cette zone</h4>
+              <div className="d-flex justify-content-between align-items-center mb-2">
+                <h4 className="m-0" style={{ fontWeight: 800 }}>Boutiques autorisées dans cette zone</h4>
+                <button 
+                  type="button" 
+                  className="btn btn-link btn-sm p-0 text-decoration-none"
+                  onClick={() => {
+                    if (selectedBranches.length === branches.length) {
+                      setSelectedBranches([]);
+                    } else {
+                      setSelectedBranches(branches.map(b => Number(b.id)));
+                    }
+                  }}
+                >
+                  {selectedBranches.length === branches.length ? '❌ Tout décocher' : '✅ Tout cocher'}
+                </button>
+              </div>
               <div className="d-flex flex-wrap gap-2 mb-4">
                 {branches.map(b => {
-                  const isChecked = selectedBranches.includes(b.id);
+                  const isChecked = selectedBranches.map(Number).includes(Number(b.id));
                   return (
                     <label 
                       key={b.id}
@@ -242,7 +302,22 @@ export const AccessZonesModal = ({ isOpen, onClose }) => {
                 })}
               </div>
 
-              <h4 className="mb-2" style={{ fontWeight: 800 }}>Espaces fonctionnels autorisés</h4>
+              <div className="d-flex justify-content-between align-items-center mb-2">
+                <h4 className="m-0" style={{ fontWeight: 800 }}>Espaces fonctionnels autorisés</h4>
+                <button 
+                  type="button" 
+                  className="btn btn-link btn-sm p-0 text-decoration-none"
+                  onClick={() => {
+                    if (selectedModules.length === availableModules.length) {
+                      setSelectedModules([]);
+                    } else {
+                      setSelectedModules(availableModules.map(m => m.key));
+                    }
+                  }}
+                >
+                  {selectedModules.length === availableModules.length ? '❌ Tout décocher' : '✅ Tout cocher'}
+                </button>
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }} className="mb-4">
                 {availableModules.map(mod => {
                   const isChecked = selectedModules.includes(mod.key);

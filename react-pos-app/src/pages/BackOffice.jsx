@@ -5,6 +5,8 @@ import { PasswordInput } from '../components/PasswordInput';
 import { CountUp } from '../components/CountUp';
 import { AuditLogs } from './AuditLogs';
 import { ExportModal } from '../components/ExportModal';
+import { GlobalDateRangeFilter } from '../components/GlobalDateRangeFilter';
+import { CompanyInspection } from './CompanyInspection';
 
 export const BackOffice = () => {
   const { token, user } = useApp();
@@ -81,6 +83,16 @@ export const BackOffice = () => {
   const [notifyType, setNotifyType] = useState('warning');
   const [actionSaving, setActionSaving] = useState(false);
 
+  // ── GESTION SMTP & LOGS E-MAILS ──
+  const [emailSettingsData, setEmailSettingsData] = useState(null);
+  const [emailLogsList, setEmailLogsList] = useState([]);
+  const [emailLogsLoading, setEmailLogsLoading] = useState(false);
+  const [testRecipientEmail, setTestRecipientEmail] = useState('infos@dlscorporation.ci');
+  const [testSending, setTestSending] = useState(false);
+  const [testConnecting, setTestConnecting] = useState(false);
+  const [emailLogFilterStatus, setEmailLogFilterStatus] = useState('');
+  const [emailLogSearchTerm, setEmailLogSearchTerm] = useState('');
+
   // ── MESSAGES ET ÉTATS ──
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -110,15 +122,30 @@ export const BackOffice = () => {
   const [exportType, setExportType] = useState('saas_metrics');
   const [exportTitle, setExportTitle] = useState('Supervision SaaS');
 
+  // ── DRILL-DOWN & SURVEILLANCE & PERFORMANCE (PHASE 3.1) ──
+  const [selectedCompanyForInspection, setSelectedCompanyForInspection] = useState(null);
+  const [dateFilter, setDateFilter] = useState({ period: 'this_month', start_date: '', end_date: '' });
+  const [rankings, setRankings] = useState([]);
+  const [rankingsLoading, setRankingsLoading] = useState(false);
+  const [sortBy, setSortBy] = useState('ca');
+  const [companiesAtRisk, setCompaniesAtRisk] = useState([]);
+  const [atRiskLoading, setAtRiskLoading] = useState(false);
+
   const userRole = typeof user?.role === 'string' ? user.role : (user?.role?.slug || user?.role?.name || '');
   const isSuperAdmin = userRole === 'super-admin' || userRole === 'Super Admin' || userRole === 'superadmin' || user?.email === 'superadmin@dls.com' || !!user?.is_superadmin;
 
-  // 1. Charger le Dashboard SaaS
-  const loadDashboard = async () => {
+  // 1. Charger le Dashboard SaaS avec filtres temporels
+  const loadDashboard = async (filterParams = dateFilter) => {
     if (!token) return;
     setLoading(true);
     try {
-      const res = await axios.get('/v1/admin/dashboard');
+      const res = await axios.get('/v1/admin/dashboard', {
+        params: {
+          period: filterParams.period,
+          start_date: filterParams.start_date,
+          end_date: filterParams.end_date,
+        }
+      });
       if (res.data && res.data.metrics) {
         setMetrics(res.data.metrics);
         setRecentActivities(res.data.recent_activities || []);
@@ -127,6 +154,45 @@ export const BackOffice = () => {
       console.error("Dashboard SaaS error:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 1b. Charger le classement de performance des entreprises
+  const loadRankings = async (filterParams = dateFilter, currentSort = sortBy) => {
+    if (!token) return;
+    setRankingsLoading(true);
+    try {
+      const res = await axios.get('/v1/admin/performance-ranking', {
+        params: {
+          period: filterParams.period,
+          start_date: filterParams.start_date,
+          end_date: filterParams.end_date,
+          sort_by: currentSort
+        }
+      });
+      if (res.data && res.data.rankings) {
+        setRankings(res.data.rankings);
+      }
+    } catch (err) {
+      console.error("Rankings load error:", err);
+    } finally {
+      setRankingsLoading(false);
+    }
+  };
+
+  // 1c. Charger les entreprises à risque
+  const loadCompaniesAtRisk = async () => {
+    if (!token) return;
+    setAtRiskLoading(true);
+    try {
+      const res = await axios.get('/v1/admin/companies-at-risk');
+      if (res.data && res.data.at_risk_companies) {
+        setCompaniesAtRisk(res.data.at_risk_companies);
+      }
+    } catch (err) {
+      console.error("Companies at risk load error:", err);
+    } finally {
+      setAtRiskLoading(false);
     }
   };
 
@@ -198,13 +264,18 @@ export const BackOffice = () => {
     if (!token || !isSuperAdmin) return;
     loadPlans();
     loadCompanies();
-    if (activeSubTab === 'dashboard') loadDashboard();
+    if (activeSubTab === 'dashboard') {
+      loadDashboard(dateFilter);
+      loadCompaniesAtRisk();
+    }
     if (activeSubTab === 'plans') loadPlans();
     if (activeSubTab === 'companies') loadCompanies();
     if (activeSubTab === 'billing') loadBillingData();
     if (activeSubTab === 'users') loadUsers();
     if (activeSubTab === 'system') loadSystemInfo();
-  }, [token, activeSubTab]);
+    if (activeSubTab === 'ranking') loadRankings(dateFilter, sortBy);
+    if (activeSubTab === 'risk') loadCompaniesAtRisk();
+  }, [token, activeSubTab, dateFilter, sortBy]);
 
   // Action Handlers Abonnements & Facturation
   const handleCreateSubscriptionSubmit = async (e) => {
@@ -279,6 +350,77 @@ export const BackOffice = () => {
       setError(err.response?.data?.error || err.response?.data?.message || "Erreur lors de la transmission de la notification.");
     } finally {
       setActionSaving(false);
+    }
+  };
+
+  // ── FONCTIONS D'INTERACTIONS E-MAILS & SMTP ──
+  const loadEmailSettings = async () => {
+    if (!token) return;
+    try {
+      const res = await axios.get('/v1/admin/email-settings');
+      setEmailSettingsData(res.data || null);
+    } catch (err) {
+      console.error("Email settings load error:", err);
+    }
+  };
+
+  const loadEmailLogs = async () => {
+    if (!token) return;
+    setEmailLogsLoading(true);
+    try {
+      const res = await axios.get('/v1/admin/email-logs', {
+        params: {
+          status: emailLogFilterStatus,
+          search: emailLogSearchTerm,
+        }
+      });
+      setEmailLogsList(res.data.logs?.data || res.data.logs || []);
+    } catch (err) {
+      console.error("Email logs load error:", err);
+    } finally {
+      setEmailLogsLoading(false);
+    }
+  };
+
+  const handleTestConnection = async () => {
+    setTestConnecting(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await axios.post('/v1/admin/email-settings/test-connection');
+      setSuccess(res.data.message);
+    } catch (err) {
+      setError(err.response?.data?.error || "Échec de la connexion SMTP.");
+    } finally {
+      setTestConnecting(false);
+    }
+  };
+
+  const handleSendTestEmailSubmit = async (e) => {
+    e.preventDefault();
+    setTestSending(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await axios.post('/v1/admin/email-settings/test-email', { recipient: testRecipientEmail });
+      setSuccess(res.data.message);
+      loadEmailLogs();
+    } catch (err) {
+      setError(err.response?.data?.error || "Erreur lors de l'envoi de l'e-mail de test.");
+    } finally {
+      setTestSending(false);
+    }
+  };
+
+  const handleRetryEmailLog = async (logId) => {
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await axios.post(`/v1/admin/email-logs/${logId}/retry`);
+      setSuccess(res.data.message);
+      loadEmailLogs();
+    } catch (err) {
+      setError(err.response?.data?.error || "Erreur lors du renvoi de l'e-mail.");
     }
   };
 
@@ -530,6 +672,30 @@ export const BackOffice = () => {
     );
   }
 
+  // SI UNE ENTREPRISE EST SÉLECTIONNÉE POUR L'INSPECTION (DRILL-DOWN)
+  if (selectedCompanyForInspection) {
+    return (
+      <div className="admin-container">
+        <CompanyInspection
+          companyId={selectedCompanyForInspection}
+          onBack={() => setSelectedCompanyForInspection(null)}
+          onExportPdf={(id, name) => {
+            setExportType('company_inspection_report');
+            setExportTitle(`Inspection - ${name}`);
+            setShowExportModal(true);
+          }}
+        />
+        <ExportModal
+          isOpen={showExportModal}
+          onClose={() => setShowExportModal(false)}
+          documentType={exportType}
+          documentTitle={exportTitle}
+          defaultFilters={{ company_id: selectedCompanyForInspection }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="admin-container">
       <div className="admin-layout card">
@@ -540,18 +706,24 @@ export const BackOffice = () => {
             <h2><i className="fa-solid fa-gears text-primary me-2"></i> Console SaaS & Offres</h2>
             <p className="admin-subtitle">Portail de supervision, d'abonnements et de gestion des entreprises de la plateforme.</p>
           </div>
-          <div className="admin-subtabs">
+          <div className="admin-subtabs" style={{ flexWrap: 'wrap', gap: '6px' }}>
             <button className={`subtab-btn ${activeSubTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveSubTab('dashboard')}>
               <i className="fa-solid fa-chart-line me-1"></i> Supervision
             </button>
             <button className={`subtab-btn ${activeSubTab === 'companies' ? 'active' : ''}`} onClick={() => setActiveSubTab('companies')}>
               <i className="fa-solid fa-building me-1"></i> Entreprises ({companies.length})
             </button>
-            <button className={`subtab-btn ${activeSubTab === 'plans' ? 'active' : ''}`} onClick={() => setActiveSubTab('plans')}>
-              <i className="fa-solid fa-gem me-1"></i> Formules & Offres ({plans.length})
+            <button className={`subtab-btn ${activeSubTab === 'risk' ? 'active' : ''}`} onClick={() => setActiveSubTab('risk')} style={{ border: '1.5px solid #ef4444', color: activeSubTab === 'risk' ? '#fff' : '#ef4444', fontWeight: 800 }}>
+              <i className="fa-solid fa-triangle-exclamation me-1"></i> Entreprises à Risque ({companiesAtRisk.length})
             </button>
-            <button className={`subtab-btn ${activeSubTab === 'billing' ? 'active' : ''}`} onClick={() => setActiveSubTab('billing')}>
-              <i className="fa-solid fa-file-invoice-dollar me-1"></i> Abonnements & Factures
+            <button className={`subtab-btn ${activeSubTab === 'ranking' ? 'active' : ''}`} onClick={() => setActiveSubTab('ranking')}>
+              <i className="fa-solid fa-trophy me-1"></i> Classement Performance
+            </button>
+            <button className={`subtab-btn ${activeSubTab === 'billing' ? 'active' : ''}`} onClick={() => setActiveSubTab('billing')} style={{ border: '1.5px solid #10b981', color: activeSubTab === 'billing' ? '#fff' : '#10b981', fontWeight: 800 }}>
+              <i className="fa-solid fa-file-invoice-dollar me-1"></i> Abonnements &amp; Factures
+            </button>
+            <button className={`subtab-btn ${activeSubTab === 'plans' ? 'active' : ''}`} onClick={() => setActiveSubTab('plans')}>
+              <i className="fa-solid fa-gem me-1"></i> Formules &amp; Offres ({plans.length})
             </button>
             <button className={`subtab-btn ${activeSubTab === 'users' ? 'active' : ''}`} onClick={() => setActiveSubTab('users')}>
               <i className="fa-solid fa-users me-1"></i> Utilisateurs
@@ -561,6 +733,9 @@ export const BackOffice = () => {
             </button>
             <button className={`subtab-btn ${activeSubTab === 'system' ? 'active' : ''}`} onClick={() => setActiveSubTab('system')}>
               <i className="fa-solid fa-sliders me-1"></i> Maintenance
+            </button>
+            <button className={`subtab-btn ${activeSubTab === 'emails' ? 'active' : ''}`} onClick={() => { setActiveSubTab('emails'); loadEmailSettings(); loadEmailLogs(); }} style={{ border: '1.5px solid #0284c7', color: activeSubTab === 'emails' ? '#fff' : '#0284c7', fontWeight: 800 }}>
+              <i className="fa-solid fa-envelope me-1"></i> E-mails &amp; SMTP
             </button>
           </div>
         </div>
@@ -575,12 +750,65 @@ export const BackOffice = () => {
               <div className="loading-spinner">Calcul des indicateurs SaaS en cours...</div>
             ) : (
               <>
-                <div className="d-flex justify-content-end mb-3">
+                <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap" style={{ gap: '12px' }}>
+                  <GlobalDateRangeFilter onFilterChange={setDateFilter} />
                   <button onClick={() => { setExportType('saas_metrics'); setExportTitle('Supervision & Bilan SaaS'); setShowExportModal(true); }} className="btn btn-outline-secondary btn-sm" style={{ fontWeight: 700 }}>
-                    <i className="fa-solid fa-file-export me-1"></i> Exporter Bilan Supervision
+                    <i className="fa-solid fa-file-export me-1"></i> Exporter Bilan Supervision PDF
                   </button>
                 </div>
-                <div className="admin-metrics-grid animate-fade-in">
+
+                {/* BLOC KPI FINANCIERS SAAS (MRR, ARR, ARPU, CHURN) */}
+                <div className="mb-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                  <div className="metric-box" style={{ background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.02) 100%)', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                    <span className="metric-title" style={{ color: '#10b981', fontWeight: 800 }}>MRR (Revenu Mensuel)</span>
+                    <span className="metric-number" style={{ fontSize: '22px', color: '#10b981' }}>
+                      <CountUp end={metrics?.mrr || 0} format={true} /> FCFA
+                    </span>
+                    <span className="kpi-badge up">Récurrent / mois</span>
+                  </div>
+
+                  <div className="metric-box" style={{ background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, rgba(6, 182, 212, 0.02) 100%)', border: '1px solid rgba(6, 182, 212, 0.3)' }}>
+                    <span className="metric-title" style={{ color: '#06b6d4', fontWeight: 800 }}>ARR (Revenu Annuel)</span>
+                    <span className="metric-number" style={{ fontSize: '22px', color: '#06b6d4' }}>
+                      <CountUp end={metrics?.arr || 0} format={true} /> FCFA
+                    </span>
+                    <span className="kpi-badge up">Projeté / an</span>
+                  </div>
+
+                  <div className="metric-box" style={{ background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(168, 85, 247, 0.02) 100%)', border: '1px solid rgba(168, 85, 247, 0.3)' }}>
+                    <span className="metric-title" style={{ color: '#a855f7', fontWeight: 800 }}>ARPU (Revenu / Tenant)</span>
+                    <span className="metric-number" style={{ fontSize: '22px', color: '#a855f7' }}>
+                      <CountUp end={metrics?.arpu || 0} format={true} /> FCFA
+                    </span>
+                    <span className="kpi-badge neutral">Moyen par entreprise</span>
+                  </div>
+
+                  <div className="metric-box" style={{ background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.02) 100%)', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+                    <span className="metric-title" style={{ color: '#ef4444', fontWeight: 800 }}>Taux de Churn (Attrition)</span>
+                    <span className="metric-number" style={{ fontSize: '22px', color: '#ef4444' }}>
+                      {metrics?.churn_rate || 0}%
+                    </span>
+                    <span className="kpi-badge down">{metrics?.companies_suspended || 0} inactives</span>
+                  </div>
+
+                  <div className="metric-box">
+                    <span className="metric-title">Encaissements SaaS Période</span>
+                    <span className="metric-number" style={{ fontSize: '20px' }}>
+                      <CountUp end={metrics?.saas_revenue_period || 0} format={true} /> FCFA
+                    </span>
+                    <span className="kpi-badge up">{metrics?.period_label || 'Période'}</span>
+                  </div>
+
+                  <div className="metric-box">
+                    <span className="metric-title">CA Métier Réseau</span>
+                    <span className="metric-number" style={{ fontSize: '20px' }}>
+                      <CountUp end={metrics?.tenant_sales_ca || 0} format={true} /> FCFA
+                    </span>
+                    <span className="kpi-badge neutral">{metrics?.tenant_sales_count || 0} ventes faites</span>
+                  </div>
+                </div>
+
+                <div className="admin-metrics-grid animate-fade-in mb-4">
                   <div className="metric-box">
                     <span className="metric-title">Entreprises Enregistrées</span>
                     <span className="metric-number">
@@ -598,19 +826,19 @@ export const BackOffice = () => {
                   </div>
 
                   <div className="metric-box">
-                    <span className="metric-title">Inscriptions du Mois</span>
+                    <span className="metric-title">Nouveaux Abonnés</span>
                     <span className="metric-number">
                       <CountUp end={metrics?.new_signups_count || 0} format={false} />
                     </span>
-                    <span className="kpi-badge up">+ Ce mois</span>
+                    <span className="kpi-badge up">{metrics?.period_label || 'Période'}</span>
                   </div>
 
                   <div className="metric-box">
-                    <span className="metric-title">Formules Actives</span>
-                    <span className="metric-number">
-                      <CountUp end={plans.length} format={false} />
+                    <span className="metric-title">Entreprises à Risque</span>
+                    <span className="metric-number" style={{ color: '#ef4444' }}>
+                      <CountUp end={metrics?.at_risk_count || 0} format={false} />
                     </span>
-                    <span className="kpi-badge up">Offres SaaS</span>
+                    <span className="kpi-badge down cursor-pointer" onClick={() => setActiveSubTab('risk')}>Inspecter ➔</span>
                   </div>
                 </div>
 
@@ -733,6 +961,9 @@ export const BackOffice = () => {
                             )}
                           </td>
                           <td style={{ textAlign: 'right' }}>
+                            <button onClick={() => setSelectedCompanyForInspection(c.id)} className="btn btn-success me-2 btn-sm" style={{ padding: '8px 14px', fontWeight: 700, backgroundColor: '#10b981', borderColor: '#10b981', color: '#fff' }}>
+                              <i className="fa-solid fa-magnifying-glass me-1"></i> Inspecter
+                            </button>
                             <button onClick={() => openEditCompanyModal(c)} className="btn btn-secondary me-2 btn-sm" style={{ padding: '8px 14px' }}>
                               <i className="fa-solid fa-pen me-1"></i> Gérer
                             </button>
@@ -743,6 +974,171 @@ export const BackOffice = () => {
                         </tr>
                       );
                     })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 2b. SURVEILLANCE ET ENTREPRISES À RISQUE */}
+        {activeSubTab === 'risk' && (
+          <div>
+            <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap" style={{ gap: '16px' }}>
+              <div>
+                <h3 className="m-0" style={{ fontWeight: 800, color: '#ef4444' }}>
+                  <i className="fa-solid fa-triangle-exclamation me-2"></i> Entreprises à Surveiller & Signaux de Risque
+                </h3>
+                <p className="text-muted small m-0">Détection automatique des entreprises clientes présentant un risque de résiliation, d'expiration proche, ou d'inactivité prolongée.</p>
+              </div>
+              <button onClick={() => loadCompaniesAtRisk()} className="btn btn-outline-secondary btn-sm" style={{ fontWeight: 700 }}>
+                <i className="fa-solid fa-rotate me-1"></i> Actualiser l'Analyse
+              </button>
+            </div>
+
+            {atRiskLoading ? (
+              <div className="loading-spinner">Analyse des signaux de risque en cours...</div>
+            ) : companiesAtRisk.length === 0 ? (
+              <div className="empty-state p-5 text-center">
+                <h4>🟢 Aucune entreprise à risque critique détectée</h4>
+                <p className="text-muted">Toutes les entreprises clientes sont actives avec une souscription saine.</p>
+              </div>
+            ) : (
+              <div className="table-responsive">
+                <table className="saas-table">
+                  <thead>
+                    <tr>
+                      <th>Entreprise & Formule</th>
+                      <th>Niveau de Risque</th>
+                      <th>Facteurs & Signaux Détectés</th>
+                      <th>Dernière Activité</th>
+                      <th>Action Recommandée</th>
+                      <th style={{ textAlign: 'right' }}>Inspection</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {companiesAtRisk.map((item, idx) => (
+                      <tr key={idx} className="hover-row">
+                        <td>
+                          <strong style={{ fontSize: '15px' }}>{item.company_name}</strong>
+                          <div className="text-muted" style={{ fontSize: '12px', marginTop: '2px', fontFamily: 'monospace' }}>
+                            Code: <strong>{item.company_code}</strong> • Formule: <span className="badge bg-primary">{item.plan}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <span className={`badge ${
+                            item.level === 'critical' ? 'badge-error' : (item.level === 'high' ? 'bg-warning text-dark' : 'bg-secondary')
+                          }`} style={{ padding: '6px 12px', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase' }}>
+                            {item.level === 'critical' ? '🔴 Critique' : (item.level === 'high' ? '🟠 Élevé' : '🟡 Moyen')}
+                          </span>
+                        </td>
+                        <td>
+                          <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12px' }}>
+                            {item.reasons.map((r, rIdx) => (
+                              <li key={rIdx} style={{ color: '#f87171' }}>{r}</li>
+                            ))}
+                          </ul>
+                        </td>
+                        <td style={{ fontSize: '12px' }}>
+                          {item.last_activity_at ? new Date(item.last_activity_at).toLocaleString('fr-FR') : 'Non renseignée'}
+                        </td>
+                        <td>
+                          <span className="text-warning small font-bold" style={{ fontSize: '12px' }}>
+                            {item.recommended_action}
+                          </span>
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <button onClick={() => setSelectedCompanyForInspection(item.company_id)} className="btn btn-success btn-sm" style={{ padding: '8px 14px', fontWeight: 700, backgroundColor: '#10b981', borderColor: '#10b981', color: '#fff' }}>
+                            <i className="fa-solid fa-magnifying-glass me-1"></i> Inspecter
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 2c. CLASSEMENT ET PERFORMANCE DES ENTREPRISES */}
+        {activeSubTab === 'ranking' && (
+          <div>
+            <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap" style={{ gap: '16px' }}>
+              <div>
+                <h3 className="m-0" style={{ fontWeight: 800 }}>
+                  <i className="fa-solid fa-trophy text-warning me-2"></i> Performance & Classement des Entreprises
+                </h3>
+                <p className="text-muted small m-0">Classement comparatif des entreprises par chiffre d'affaires, volume de ventes, portefeuille clients et score global.</p>
+              </div>
+
+              <div className="d-flex items-center space-x-3">
+                <GlobalDateRangeFilter onFilterChange={setDateFilter} />
+
+                <select className="form-control form-control-sm" value={sortBy} onChange={(e) => setSortBy(e.target.value)} style={{ width: '160px' }}>
+                  <option value="ca">Trier par CA</option>
+                  <option value="sales">Trier par Ventes</option>
+                  <option value="customers">Trier par Clients</option>
+                  <option value="score">Trier par Score</option>
+                </select>
+              </div>
+            </div>
+
+            {rankingsLoading ? (
+              <div className="loading-spinner">Calcul du classement de performance...</div>
+            ) : (
+              <div className="table-responsive">
+                <table className="saas-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: '60px' }}>Rang</th>
+                      <th>Entreprise & Formule</th>
+                      <th style={{ textAlign: 'right' }}>CA Généré (FCFA)</th>
+                      <th style={{ textAlign: 'right' }}>Volume Ventes</th>
+                      <th style={{ textAlign: 'right' }}>Panier Moyen</th>
+                      <th style={{ textAlign: 'center' }}>Clients</th>
+                      <th style={{ textAlign: 'center' }}>Boutiques</th>
+                      <th style={{ textAlign: 'right' }}>Score SaaS</th>
+                      <th style={{ textAlign: 'right' }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rankings.map((r) => (
+                      <tr key={r.company_id} className="hover-row">
+                        <td style={{ fontWeight: 900, fontSize: '16px', color: r.rank === 1 ? '#eab308' : (r.rank === 2 ? '#94a3b8' : (r.rank === 3 ? '#b45309' : 'inherit')) }}>
+                          #{r.rank}
+                        </td>
+                        <td>
+                          <strong style={{ fontSize: '15px' }}>{r.company_name}</strong>
+                          <div className="text-muted" style={{ fontSize: '12px' }}>
+                            Code: <code>{r.company_code}</code> • Plan: <span className="badge bg-primary">{r.plan}</span>
+                          </div>
+                        </td>
+                        <td style={{ textAlign: 'right', fontWeight: 900, color: '#10b981', fontSize: '15px' }}>
+                          {r.ca.toLocaleString('fr-FR')} FCFA
+                        </td>
+                        <td style={{ textAlign: 'right', fontWeight: 700 }}>
+                          {r.sales_count} ventes
+                        </td>
+                        <td style={{ textAlign: 'right', fontWeight: 600 }}>
+                          {r.average_cart.toLocaleString('fr-FR')} FCFA
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          {r.customers_count}
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          {r.branches_count}
+                        </td>
+                        <td style={{ textAlign: 'right', fontWeight: 900, color: '#06b6d4' }}>
+                          {r.score} pts
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <button onClick={() => setSelectedCompanyForInspection(r.company_id)} className="btn btn-success btn-sm" style={{ padding: '6px 12px', fontWeight: 700, backgroundColor: '#10b981', borderColor: '#10b981', color: '#fff' }}>
+                            <i className="fa-solid fa-magnifying-glass me-1"></i> Inspecter
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -1244,6 +1640,171 @@ export const BackOffice = () => {
         {activeSubTab === 'audit' && (
           <div className="mt-3">
             <AuditLogs />
+          </div>
+        )}
+
+        {/* 7. CENTRE DE GESTION DES E-MAILS TRANSACTIONNELS & LOGS */}
+        {activeSubTab === 'emails' && (
+          <div>
+            <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap" style={{ gap: '16px' }}>
+              <div>
+                <h3 className="m-0" style={{ fontWeight: 800, color: '#0284c7' }}>
+                  <i className="fa-solid fa-envelope me-2"></i> Centre de Communication E-mails &amp; Configuration SMTP
+                </h3>
+                <p className="text-muted small m-0">Supervision en temps réel des envois d'e-mails transactionnels, état de connexion SMTP et historique des messages.</p>
+              </div>
+              <button onClick={() => { loadEmailSettings(); loadEmailLogs(); }} className="btn btn-outline-secondary btn-sm" style={{ fontWeight: 700 }}>
+                <i className="fa-solid fa-rotate me-1"></i> Actualiser les données
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '20px', marginBottom: '24px' }}>
+              {/* Carte 1 : Configuration SMTP */}
+              <div className="card p-4" style={{ borderRadius: '16px', background: 'var(--bg-card)', border: '1px solid var(--border-color)' }}>
+                <h4 style={{ fontWeight: 800, marginBottom: '16px', fontSize: '18px' }}>
+                  <i className="fa-solid fa-server text-primary me-2"></i> Paramètres du Serveur SMTP
+                </h4>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '14px' }}>
+                  <div className="d-flex justify-content-between border-bottom pb-2">
+                    <span className="text-muted">Serveur Hôte :</span>
+                    <strong>{emailSettingsData?.host || 'webmail.oxa.host'}</strong>
+                  </div>
+                  <div className="d-flex justify-content-between border-bottom pb-2">
+                    <span className="text-muted">Port &amp; Chiffrement :</span>
+                    <strong>{emailSettingsData?.port || 465} ({emailSettingsData?.encryption?.toUpperCase() || 'SSL/TLS'})</strong>
+                  </div>
+                  <div className="d-flex justify-content-between border-bottom pb-2">
+                    <span className="text-muted">Boîte Expéditrice :</span>
+                    <strong style={{ color: '#0284c7' }}>{emailSettingsData?.from_address || 'infos@dlscorporation.ci'}</strong>
+                  </div>
+                  <div className="d-flex justify-content-between border-bottom pb-2">
+                    <span className="text-muted">Nom de l'Expéditeur :</span>
+                    <strong>{emailSettingsData?.from_name || 'ApexPOS'}</strong>
+                  </div>
+                  <div className="d-flex justify-content-between border-bottom pb-2">
+                    <span className="text-muted">Mot de Passe SMTP :</span>
+                    <strong style={{ letterSpacing: '2px' }}>{emailSettingsData?.masked_password || '••••••••••••'}</strong>
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-2">
+                  <button onClick={handleTestConnection} disabled={testConnecting} className="btn btn-outline-primary w-100" style={{ fontWeight: 700 }}>
+                    {testConnecting ? <><i className="fa-solid fa-spinner fa-spin me-2"></i> Test de connexion TCP/SMTP...</> : <><i className="fa-solid fa-network-wired me-2"></i> Tester la connexion SMTP</>}
+                  </button>
+                </div>
+              </div>
+
+              {/* Carte 2 : Envoi d'E-mail de Test */}
+              <div className="card p-4" style={{ borderRadius: '16px', background: 'var(--bg-card)', border: '1px solid var(--border-color)' }}>
+                <h4 style={{ fontWeight: 800, marginBottom: '16px', fontSize: '18px' }}>
+                  <i className="fa-solid fa-paper-plane text-success me-2"></i> Envoyer un E-mail de Test Réel
+                </h4>
+                <p className="text-muted small">Saisissez une adresse e-mail destinataire pour valider la délivrabilité immédiate d'un message HTML avec le branding ApexPOS.</p>
+
+                <form onSubmit={handleSendTestEmailSubmit} className="mt-3">
+                  <div className="form-group mb-3">
+                    <label className="form-label" style={{ fontWeight: 600 }}>Adresse E-mail Destinataire *</label>
+                    <input 
+                      type="email" 
+                      className="form-control"
+                      value={testRecipientEmail}
+                      onChange={(e) => setTestRecipientEmail(e.target.value)}
+                      placeholder="ex: infos@dlscorporation.ci"
+                      required
+                    />
+                  </div>
+
+                  <button type="submit" disabled={testSending} className="btn btn-success w-100" style={{ fontWeight: 700, padding: '10px' }}>
+                    {testSending ? <><i className="fa-solid fa-spinner fa-spin me-2"></i> Envoi en cours via SMTP...</> : <><i className="fa-solid fa-paper-plane me-2"></i> Envoyer l'e-mail de test</>}
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            {/* Tableau du Journal des E-mails */}
+            <div className="card p-4" style={{ borderRadius: '16px', background: 'var(--bg-card)', border: '1px solid var(--border-color)' }}>
+              <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap" style={{ gap: '12px' }}>
+                <h4 style={{ fontWeight: 800, margin: 0, fontSize: '18px' }}>
+                  <i className="fa-solid fa-list-check me-2 text-primary"></i> Journal des E-mails Transactionnels (Email Logs)
+                </h4>
+
+                <div className="d-flex gap-2">
+                  <input 
+                    type="text"
+                    className="form-control form-control-sm"
+                    placeholder="Rechercher par destinataire..."
+                    value={emailLogSearchTerm}
+                    onChange={(e) => setEmailLogSearchTerm(e.target.value)}
+                    style={{ width: '220px' }}
+                  />
+                  <select 
+                    className="form-control form-control-sm"
+                    value={emailLogFilterStatus}
+                    onChange={(e) => setEmailLogFilterStatus(e.target.value)}
+                    style={{ width: '150px' }}
+                  >
+                    <option value="">Tous les statuts</option>
+                    <option value="sent">Envoyé (Sent)</option>
+                    <option value="queued">En attente (Queued)</option>
+                    <option value="failed">Échoué (Failed)</option>
+                  </select>
+                  <button onClick={loadEmailLogs} className="btn btn-secondary btn-sm" style={{ fontWeight: 700 }}>
+                    Filtrer
+                  </button>
+                </div>
+              </div>
+
+              {emailLogsLoading ? (
+                <div className="loading-spinner p-4">Chargement du journal des e-mails...</div>
+              ) : emailLogsList.length === 0 ? (
+                <div className="empty-state p-4 text-center">
+                  <p className="text-muted m-0">Aucun log d'e-mail correspondant n'a été trouvé.</p>
+                </div>
+              ) : (
+                <div className="table-responsive">
+                  <table className="saas-table">
+                    <thead>
+                      <tr>
+                        <th>Date / Horodatage</th>
+                        <th>Destinataire</th>
+                        <th>Type d'Événement</th>
+                        <th>Objet du Message</th>
+                        <th style={{ textAlign: 'center' }}>Tentatives</th>
+                        <th style={{ textAlign: 'center' }}>Statut</th>
+                        <th style={{ textAlign: 'right' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {emailLogsList.map((log) => (
+                        <tr key={log.id} className="hover-row">
+                          <td style={{ fontSize: '12px' }}>
+                            {new Date(log.created_at).toLocaleString('fr-FR')}
+                          </td>
+                          <td><strong>{log.recipient}</strong></td>
+                          <td><span className="badge bg-secondary" style={{ fontFamily: 'monospace' }}>{log.type}</span></td>
+                          <td style={{ fontSize: '13px' }}>{log.subject}</td>
+                          <td style={{ textAlign: 'center', fontWeight: 700 }}>{log.attempts}</td>
+                          <td style={{ textAlign: 'center' }}>
+                            {log.status === 'sent' && <span className="badge badge-success">ENVOYÉ</span>}
+                            {log.status === 'queued' && <span className="badge badge-warning">EN ATTENTE</span>}
+                            {log.status === 'sending' && <span className="badge badge-info">EN COURS</span>}
+                            {log.status === 'failed' && <span className="badge badge-error" title={log.error_message || ''}>ÉCHOUÉ</span>}
+                          </td>
+                          <td style={{ textAlign: 'right' }}>
+                            {log.status === 'failed' && (
+                              <button onClick={() => handleRetryEmailLog(log.id)} className="btn btn-warning btn-sm" style={{ fontWeight: 700, padding: '4px 10px' }}>
+                                <i className="fa-solid fa-rotate-right me-1"></i> Réessayer
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

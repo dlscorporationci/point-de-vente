@@ -7,6 +7,7 @@ use App\Events\CashSession\CashSessionClosed;
 use App\Events\CashSession\CashSessionValidated;
 use App\Events\CashSession\CashSessionTransactionAdded;
 use App\Services\NotificationService;
+use App\Services\RealtimeBroadcastService;
 
 /**
  * Listener pour tous les événements de session de caisse.
@@ -50,6 +51,22 @@ class NotifyCashSessionEvents
             data:               ['session_id' => $session->id, 'branch_id' => $branchId],
             actorId:            $actor->id,
             targetRoute:        'cash-sessions',
+        );
+
+        // SSE — Signal temps réel : caisse ouverte
+        RealtimeBroadcastService::push(
+            eventType: 'cash_session_opened',
+            companyId: $companyId,
+            branchId:  $branchId,
+            payload:   [
+                'session_id'       => $session->id,
+                'status'           => 'open',
+                'opened_at'        => $session->opened_at,
+                'opening_balance'  => $session->opening_balance,
+                'cashier_name'     => $actor->name,
+                'cashier_id'       => $actor->id,
+            ],
+            actorId: $actor->id
         );
     }
 
@@ -100,6 +117,21 @@ class NotifyCashSessionEvents
             ],
             actorId:            $actor->id,
             targetRoute:        'cash-sessions',
+        );
+
+        // SSE — Signal temps réel : caisse fermée
+        RealtimeBroadcastService::push(
+            eventType: 'cash_session_closed',
+            companyId: $companyId,
+            branchId:  $branchId,
+            payload:   [
+                'session_id'      => $session->id,
+                'status'          => 'closed',
+                'closed_at'       => $session->closed_at,
+                'cashier_name'    => $actor->name,
+                'cashier_id'      => $actor->id,
+            ],
+            actorId: $actor->id
         );
 
         // Notifier le propriétaire de la session (s'il n'est pas admin/gérant)
@@ -168,6 +200,15 @@ class NotifyCashSessionEvents
             actorId:            $actor->id,
             targetRoute:        'cash-sessions',
         );
+
+        // SSE — Signal temps réel : caisse validée
+        RealtimeBroadcastService::push(
+            eventType: 'cash_session_validated',
+            companyId: $companyId,
+            branchId:  $branchId,
+            payload:   ['session_id' => $session->id, 'validated_by' => $actor->name, 'validator_id' => $actor->id],
+            actorId: $actor->id
+        );
     }
 
     /**
@@ -202,6 +243,20 @@ class NotifyCashSessionEvents
             ],
             actorId:            $actor->id,
             targetRoute:        'cash-sessions',
+        );
+
+        // SSE — Signal temps réel : transaction caisse
+        RealtimeBroadcastService::push(
+            eventType: 'cash_session_transaction',
+            companyId: $companyId,
+            branchId:  $branchId,
+            payload:   [
+                'session_id'     => $session->id,
+                'transaction_id' => $transaction->id,
+                'type'           => $transaction->type,
+                'amount'         => $transaction->amount,
+            ],
+            actorId: $actor->id
         );
     }
 

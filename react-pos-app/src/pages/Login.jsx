@@ -118,9 +118,7 @@ export const Login = ({ setActiveTab }) => {
     try {
       const res = await axios.post('/v1/auth/forgot-password', { email: forgotEmail });
       setSuccessMsg(res.data.message);
-      if (res.data.code) {
-        setResetCode(res.data.code);
-      }
+      setResetCode('');
       setTimeout(() => setLoginMode('reset'), 2500);
     } catch (err) {
       setError(err.response?.data?.error || "Erreur lors de la demande.");

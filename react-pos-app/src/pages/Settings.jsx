@@ -13,17 +13,25 @@ export const Settings = () => {
                   user?.role?.slug === 'admin' || user?.role?.slug === 'super-admin';
 
   const [activeTab, setActiveTab] = useState('general');
+  const [loading, setLoading]     = useState(false);
+  const [error, setError]         = useState(null);
+  const [success, setSuccess]     = useState(null);
+  const [showRolesModal, setShowRolesModal] = useState(false);
+  const [showZonesModal, setShowZonesModal] = useState(false);
 
   // ─── États Entreprise ──────────────────────────────────────────────────────
   const [companyName, setCompanyName]       = useState('');
   const [companyEmail, setCompanyEmail]     = useState('');
   const [companyPhone, setCompanyPhone]     = useState('');
   const [companyAddress, setCompanyAddress] = useState('');
+  const [companySlogan, setCompanySlogan]   = useState('');
   const [currency, setCurrency]             = useState('XOF');
   const [timezone, setTimezone]             = useState('Africa/Dakar');
   const [language, setLanguage]             = useState('fr');
   const [companyLogo, setCompanyLogo]       = useState(null);
   const [logoPreview, setLogoPreview]       = useState(null);
+  const [companyFavicon, setCompanyFavicon] = useState(null);
+  const [faviconPreview, setFaviconPreview] = useState(null);
 
   // ─── États TVA ────────────────────────────────────────────────────────────
   const [taxRate, setTaxRate]         = useState(18);
@@ -82,12 +90,28 @@ export const Settings = () => {
     { id: 2, ip: '192.168.1.121', agent: 'Firefox (Windows)', current: false, date: 'Il y a 3 heures' }
   ]);
 
-  // ─── Global ───────────────────────────────────────────────────────────────
-  const [showRolesModal, setShowRolesModal] = useState(false);
-  const [showZonesModal, setShowZonesModal] = useState(false);
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState(null);
-  const [success, setSuccess]   = useState(null);
+  // ─── Abonnement & Factures de l'entreprise ───────────────────────────────
+  const [mySubData, setMySubData] = useState(null);
+  const [mySubLoading, setMySubLoading] = useState(false);
+
+  const loadMySubscription = useCallback(async () => {
+    if (!token) return;
+    setMySubLoading(true);
+    try {
+      const res = await axios.get('/v1/my-subscription');
+      setMySubData(res.data || null);
+    } catch (err) {
+      console.error("My Subscription load error:", err);
+    } finally {
+      setMySubLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (token && activeTab === 'subscription') {
+      loadMySubscription();
+    }
+  }, [token, activeTab, loadMySubscription]);
 
   // ═══════════════════════════════════════════════════════════════════════════
   // CHARGEMENT INITIAL
@@ -103,10 +127,14 @@ export const Settings = () => {
         setCompanyEmail(comp.email || '');
         setCompanyPhone(comp.phone || '');
         setCompanyAddress(comp.address || '');
+        setCompanySlogan(comp.slogan || '');
         setCurrency(comp.currency || 'XOF');
         setTimezone(comp.timezone || 'Africa/Dakar');
         if (comp.logo_path) {
           setLogoPreview(comp.logo_path);
+        }
+        if (comp.favicon_path) {
+          setFaviconPreview(comp.favicon_path);
         }
         // Charger les réglages TVA
         if (comp.tax_settings) {
@@ -186,20 +214,33 @@ export const Settings = () => {
     try {
       const formData = new FormData();
       formData.append('name', companyName);
+      formData.append('slogan', companySlogan);
       if (companyLogo) {
         formData.append('logo', companyLogo);
       }
-      const res = await axios.post(`/v1/company-settings`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      setSuccess("✅ Informations de l'entreprise et logo enregistrés avec succès.");
-      if (res.data.company && res.data.company.logo_path) {
-        setLogoPreview(res.data.company.logo_path);
+      if (companyFavicon) {
+        formData.append('favicon', companyFavicon);
+      }
+      const res = await axios.post(`/v1/company-settings`, formData);
+      setSuccess("✅ Informations de l'entreprise, logo et slogan enregistrés avec succès.");
+      if (res.data.company) {
+        if (res.data.company.logo_path) {
+          setLogoPreview(res.data.company.logo_path);
+        }
+        if (res.data.company.favicon_path) {
+          setFaviconPreview(res.data.company.favicon_path);
+        }
         if (typeof updateCompanyLogo === 'function') {
-          updateCompanyLogo(res.data.company.logo_path);
+          // Met à jour le user en mémoire avec le nouveau branding
+          updateCompanyLogo(res.data.company.logo_path, {
+            slogan: res.data.company.slogan,
+            favicon_path: res.data.company.favicon_path,
+            name: res.data.company.name,
+          });
         }
       }
       setCompanyLogo(null);
+      setCompanyFavicon(null);
     } catch (err) {
       setError(err.response?.data?.error || "Erreur lors de l'enregistrement des paramètres de l'entreprise.");
     } finally {
@@ -432,6 +473,9 @@ export const Settings = () => {
               </>
             )}
 
+            <button className={`settings-tab-btn ${activeTab === 'subscription' ? 'active' : ''}`} onClick={() => setActiveTab('subscription')}>
+              <i className="fa-solid fa-file-invoice-dollar me-2 text-success"></i> Abonnement &amp; Factures
+            </button>
             <button className={`settings-tab-btn ${activeTab === 'pos' ? 'active' : ''}`}       onClick={() => setActiveTab('pos')}>
               <i className="fa-solid fa-print me-2"></i> Terminal de caisse
             </button>
@@ -468,9 +512,23 @@ export const Settings = () => {
                   <button 
                     type="button" 
                     className="btn btn-secondary btn-sm"
-                    onClick={() => {
-                      navigator.clipboard.writeText(user?.company?.code || '');
-                      alert("Code entreprise copié dans le presse-papier !");
+                    onClick={async () => {
+                      try {
+                        const code = user?.company?.code || '';
+                        if (navigator?.clipboard?.writeText) {
+                          await navigator.clipboard.writeText(code);
+                        } else {
+                          const textArea = document.createElement('textarea');
+                          textArea.value = code;
+                          document.body.appendChild(textArea);
+                          textArea.select();
+                          document.execCommand('copy');
+                          document.body.removeChild(textArea);
+                        }
+                        setSuccess("✅ Code entreprise copié dans le presse-papier !");
+                      } catch (err) {
+                        alert(`Code entreprise : ${user?.company?.code || ''}`);
+                      }
                     }}
                   >
                     <i className="fa-solid fa-copy me-1"></i> Copier
@@ -499,12 +557,16 @@ export const Settings = () => {
                 </div>
                 <div className="form-group">
                   <label className="form-label">Logo officiel de l'entreprise</label>
+                  <small className="text-muted d-block mb-2">
+                    <i className="fa-solid fa-circle-info me-1"></i>
+                    S'affichera dans la barre de navigation, l'onglet navigateur et les tickets de caisse.
+                  </small>
                   {logoPreview && (
                     <div className="mb-2 p-2 rounded border d-flex align-items-center gap-3" style={{ background: 'var(--bg-input)', borderColor: 'var(--border-color)' }}>
                       <img src={logoPreview} alt="Logo Entreprise" style={{ maxHeight: '55px', maxWidth: '160px', borderRadius: '6px', objectFit: 'contain' }} />
                       <div>
                         <span className="text-success small fw-bold"><i className="fa-solid fa-circle-check me-1"></i> Logo Actif</span>
-                        <div className="text-muted style-xs">Sera affiché sur l'en-tête de l'application et les tickets de caisse.</div>
+                        <div className="text-muted style-xs">Afficha dans la navbar et les tickets.</div>
                       </div>
                     </div>
                   )}
@@ -512,6 +574,48 @@ export const Settings = () => {
                     const file = e.target.files[0];
                     setCompanyLogo(file);
                     if (file) setLogoPreview(URL.createObjectURL(file));
+                  }} />
+                </div>
+
+                {/* Slogan de l'entreprise */}
+                <div className="form-group mt-3">
+                  <label className="form-label">
+                    <i className="fa-solid fa-quote-left me-2 text-primary"></i>
+                    Slogan de l'entreprise
+                  </label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Ex: La qualité à votre service depuis 2010"
+                    maxLength={255}
+                    value={companySlogan}
+                    onChange={(e) => setCompanySlogan(e.target.value)}
+                  />
+                  <small className="text-muted">
+                    Afficha sous le nom de votre entreprise dans la barre de navigation et l'onglet du navigateur.
+                  </small>
+                </div>
+
+                {/* Favicon personnalisé */}
+                <div className="form-group mt-3">
+                  <label className="form-label">
+                    <i className="fa-solid fa-image me-2 text-primary"></i>
+                    Favicon de l'application (icône onglet navigateur)
+                  </label>
+                  <small className="text-muted d-block mb-2">
+                    Petite icône carrée (16×16 ou 32×32 px) qui s'affiche dans l'onglet du navigateur. PNG/ICO recommandé. Max 512 Ko.
+                    Si non renseigné, votre logo sera utilisé.
+                  </small>
+                  {faviconPreview && (
+                    <div className="mb-2 p-2 rounded border d-flex align-items-center gap-3" style={{ background: 'var(--bg-input)', borderColor: 'var(--border-color)' }}>
+                      <img src={faviconPreview} alt="Favicon" style={{ height: '32px', width: '32px', borderRadius: '4px', objectFit: 'contain' }} />
+                      <span className="text-success small fw-bold"><i className="fa-solid fa-circle-check me-1"></i> Favicon actif</span>
+                    </div>
+                  )}
+                  <input type="file" className="form-control" accept="image/png,image/ico,image/svg+xml,image/jpeg,image/webp" onChange={(e) => {
+                    const file = e.target.files[0];
+                    setCompanyFavicon(file);
+                    if (file) setFaviconPreview(URL.createObjectURL(file));
                   }} />
                 </div>
                 <div className="row">
@@ -837,6 +941,79 @@ export const Settings = () => {
                       </tbody>
                     </table>
                   </div>
+                )}
+              </div>
+            )}
+
+            {/* ══════════════ ONGLET : ABONNEMENT & FACTURES ══════════════ */}
+            {activeTab === 'subscription' && (
+              <div>
+                <h3>💳 Formule d'Abonnement &amp; Factures de l'Entreprise</h3>
+                <p className="text-muted mb-4">Consultez l'état de votre offre SaaS et la liste de toutes vos factures d'abonnement.</p>
+
+                {mySubLoading ? (
+                  <div className="loading-spinner">Chargement des détails d'abonnement et factures...</div>
+                ) : (
+                  <>
+                    {/* Carte Statut Abonnement */}
+                    <div className="card p-4 mb-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius)' }}>
+                      <div className="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                        <div>
+                          <span className="badge badge-primary mb-2" style={{ textTransform: 'uppercase', padding: '6px 12px', fontSize: '12px' }}>
+                            Formule Actuelle : {mySubData?.company?.subscription_plan || user?.company?.subscription_plan || 'Pro'}
+                          </span>
+                          <h4 className="m-0" style={{ fontWeight: 800 }}>{mySubData?.company?.name || user?.company?.name}</h4>
+                          <p className="text-muted mb-0 mt-1" style={{ fontSize: '13px' }}>
+                            Date d'échéance : <strong>{mySubData?.company?.subscription_expires_at ? new Date(mySubData.company.subscription_expires_at).toLocaleDateString('fr-FR') : 'Licence active'}</strong>
+                          </p>
+                        </div>
+                        <div>
+                          <span className={`badge ${mySubData?.company?.status === 'active' ? 'badge-success' : 'badge-danger'}`} style={{ fontSize: '14px', padding: '8px 16px' }}>
+                            <i className="fa-solid fa-circle-check me-1"></i> {mySubData?.company?.status === 'active' ? 'Abonnement Actif' : 'Compte Suspendu'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Tableau des Factures Reçues */}
+                    <h4 className="mb-3"><i className="fa-solid fa-file-invoice me-2 text-primary"></i> Historique de vos Factures d'Abonnement</h4>
+                    {!mySubData?.invoices || mySubData.invoices.length === 0 ? (
+                      <div className="alert alert-info">
+                        <i className="fa-solid fa-info-circle me-2"></i> Aucune facture d'abonnement émise pour le moment.
+                      </div>
+                    ) : (
+                      <div className="table-responsive">
+                        <table className="table table-hover">
+                          <thead>
+                            <tr>
+                              <th>N° Facture</th>
+                              <th>Période / Formule</th>
+                              <th>Montant Total</th>
+                              <th>Date d'émission</th>
+                              <th>Date limite</th>
+                              <th>Statut</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {mySubData.invoices.map(inv => (
+                              <tr key={inv.id}>
+                                <td><strong className="text-primary">{inv.invoice_number}</strong></td>
+                                <td>{inv.billing_period}</td>
+                                <td><strong>{new Intl.NumberFormat('fr-FR').format(inv.total_amount)} FCFA</strong></td>
+                                <td>{inv.issue_date ? new Date(inv.issue_date).toLocaleDateString('fr-FR') : '—'}</td>
+                                <td>{inv.due_date ? new Date(inv.due_date).toLocaleDateString('fr-FR') : '—'}</td>
+                                <td>
+                                  <span className={`badge ${inv.status === 'paid' ? 'badge-success' : (inv.status === 'issued' ? 'badge-warning' : 'badge-secondary')}`}>
+                                    {inv.status === 'paid' ? 'Payée' : (inv.status === 'issued' ? 'À Régler / Émise' : inv.status)}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             )}

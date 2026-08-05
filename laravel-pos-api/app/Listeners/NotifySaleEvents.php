@@ -6,6 +6,7 @@ use App\Events\Sale\SaleCreated;
 use App\Events\Sale\SaleCancelled;
 use App\Events\Stock\StockLow;
 use App\Services\NotificationService;
+use App\Services\RealtimeBroadcastService;
 
 /**
  * Listener pour les événements de vente.
@@ -49,6 +50,22 @@ class NotifySaleEvents
             actorId:            $actor->id,
             targetRoute:        'sales',
         );
+
+        // SSE — Signal temps réel : vente créée
+        RealtimeBroadcastService::push(
+            eventType: 'sale_created',
+            companyId: $companyId,
+            branchId:  $branchId,
+            payload:   [
+                'sale_id'     => $sale->id,
+                'sale_number' => $sale->sale_number,
+                'total'       => $sale->total,
+                'client_name' => $clientName,
+                'cashier_id'  => $actor->id,
+                'cashier_name'=> $actor->name,
+            ],
+            actorId: $actor->id
+        );
     }
 
     /**
@@ -75,6 +92,20 @@ class NotifySaleEvents
             data:               ['sale_id' => $sale->id, 'sale_number' => $sale->sale_number],
             actorId:            $actor->id,
             targetRoute:        'sales',
+        );
+
+        // SSE — Signal temps réel : vente annulée
+        RealtimeBroadcastService::push(
+            eventType: 'sale_cancelled',
+            companyId: $companyId,
+            branchId:  $branchId,
+            payload:   [
+                'sale_id'     => $sale->id,
+                'sale_number' => $sale->sale_number,
+                'total'       => $sale->total,
+                'actor_name'  => $actor->name,
+            ],
+            actorId: $actor->id
         );
     }
 

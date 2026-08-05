@@ -20,6 +20,8 @@ class Company extends Model
         'subscription_plan',
         'subscription_expires_at',
         'logo_path',
+        'slogan',
+        'favicon_path',
     ];
 
     protected $casts = [

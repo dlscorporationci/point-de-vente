@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Events\Sale\SaleCreated;
 use App\Events\Stock\StockLow;
+use App\Services\AuthorizationService;
 
 class SaleController extends Controller
 {
@@ -121,6 +122,24 @@ class SaleController extends Controller
         $customer = null;
         if ($request->customer_id) {
             $customer = \App\Models\Customer::find($request->customer_id);
+        }
+
+        // Vérification backend stricte de la permission de remise (sales.discount)
+        $hasDiscount = floatval($request->global_discount ?? 0) > 0;
+        if (!$hasDiscount && is_array($request->items)) {
+            foreach ($request->items as $item) {
+                if (floatval($item['discount'] ?? 0) > 0) {
+                    $hasDiscount = true;
+                    break;
+                }
+            }
+        }
+
+        $authService = app(AuthorizationService::class);
+        if ($hasDiscount && !$authService->hasPermission($user, 'sales.discount')) {
+            return response()->json([
+                'error' => "Accès refusé. La permission 'sales.discount' est requise pour appliquer une remise sur la vente."
+            ], 403);
         }
 
         // Récupérer les paramètres de TVA de l'entreprise
@@ -333,5 +352,78 @@ class SaleController extends Controller
     {
         $sale = Sale::with(['details.product', 'user', 'branch', 'customer'])->findOrFail($id);
         return response()->json($sale);
+    }
+
+    /**
+     * Annuler une vente avec restitution des stocks (sales.cancel).
+     */
+    public function cancel(Request $request, $id)
+    {
+        $user = $request->user();
+        $authService = app(AuthorizationService::class);
+        if (!$authService->hasPermission($user, 'sales.cancel')) {
+            return response()->json([
+                'error' => "Accès refusé. La permission 'sales.cancel' est obligatoire pour annuler une vente."
+            ], 403);
+        }
+
+        $sale = Sale::with('details')->findOrFail($id);
+        if ($sale->payment_status === 'cancelled') {
+            return response()->json(['error' => 'Cette vente est déjà annulée.'], 422);
+        }
+
+        return DB::transaction(function () use ($sale, $user) {
+            $sale->payment_status = 'cancelled';
+            $sale->save();
+
+            // Re-créditer les stocks
+            foreach ($sale->details as $detail) {
+                $bp = \App\Models\BranchProduct::where('branch_id', $sale->branch_id)
+                    ->where('product_id', $detail->product_id)
+                    ->first();
+                if ($bp) {
+                    $bp->quantity = floatval($bp->quantity) + floatval($detail->quantity);
+                    $bp->save();
+                }
+
+                \App\Models\StockMovement::create([
+                    'company_id'   => $sale->company_id,
+                    'branch_id'    => $sale->branch_id,
+                    'product_id'   => $detail->product_id,
+                    'type'         => 'cancel_sale',
+                    'quantity'     => $detail->quantity,
+                    'reference_id' => $sale->id,
+                    'description'  => "Annulation vente #{$sale->sale_number} par {$user->name}",
+                    'created_at'   => now(),
+                    'updated_at'   => now(),
+                ]);
+            }
+
+            return response()->json(['message' => "La vente #{$sale->sale_number} a été annulée avec succès.", 'sale' => $sale]);
+        });
+    }
+
+    /**
+     * Rembourser une vente (sales.refund).
+     */
+    public function refund(Request $request, $id)
+    {
+        $user = $request->user();
+        $authService = app(AuthorizationService::class);
+        if (!$authService->hasPermission($user, 'sales.refund')) {
+            return response()->json([
+                'error' => "Accès refusé. La permission 'sales.refund' est obligatoire pour effectuer un remboursement."
+            ], 403);
+        }
+
+        $sale = Sale::findOrFail($id);
+        if ($sale->payment_status === 'refunded') {
+            return response()->json(['error' => 'Cette vente a déjà été remboursée.'], 422);
+        }
+
+        $sale->payment_status = 'refunded';
+        $sale->save();
+
+        return response()->json(['message' => "La vente #{$sale->sale_number} a été marquée comme remboursée.", 'sale' => $sale]);
     }
 }

@@ -32,22 +32,68 @@ trait Auditable
     /**
      * Enregistrer l'événement d'audit.
      */
-    protected static function logAuditEvent(Model $model, string $action): void
+    /**
+     * Enregistrer l'événement d'audit (Supporte les Modèles Eloquent et les Actions Manuelles).
+     */
+    protected static function logAuditEvent($modelOrAction, $actionOrDetails = 'updated', $extraDetails = null): void
     {
         try {
             $tenantManager = app(TenantManager::class);
-            $companyId = $tenantManager->getCompanyId() ?: $model->company_id;
+            $user = auth('sanctum')->user() ?: auth()->user();
 
-            if (!$companyId) {
-                return; // Impossible de logger sans compagnie
+            if ($modelOrAction instanceof Model) {
+                $model = $modelOrAction;
+                $action = is_string($actionOrDetails) ? $actionOrDetails : 'updated';
+                $companyId = $tenantManager->getCompanyId() ?: ($model->company_id ?? ($user ? $user->company_id : null));
+                $branchId = $tenantManager->getBranchId() ?: ($model->branch_id ?? ($user ? $user->branch_id : null));
+                $module = class_basename($model);
+                $auditableType = get_class($model);
+                $auditableId = $model->getKey();
+
+                $oldValues = null;
+                $newValues = null;
+
+                if ($action === 'updated') {
+                    $changes = $model->getChanges();
+                    $original = $model->getOriginal();
+                    $oldValues = [];
+                    $newValues = [];
+                    foreach ($changes as $key => $value) {
+                        if (in_array($key, ['updated_at', 'created_at'])) {
+                            continue;
+                        }
+                        $oldValues[$key] = $original[$key] ?? null;
+                        $newValues[$key] = $value;
+                    }
+                    if (empty($newValues)) {
+                        return; // Pas de modifications significatives
+                    }
+                } elseif ($action === 'created') {
+                    $newValues = $model->toArray();
+                    unset($newValues['created_at'], $newValues['updated_at']);
+                } elseif ($action === 'deleted') {
+                    $oldValues = $model->toArray();
+                    unset($oldValues['created_at'], $oldValues['updated_at']);
+                }
+            } else {
+                // Événement d'audit manuel personnalisé avec action chaîne
+                $action = (string) $modelOrAction;
+                $companyId = $tenantManager->getCompanyId() ?: ($user ? $user->company_id : null);
+                $branchId = $tenantManager->getBranchId() ?: ($user ? $user->branch_id : null);
+                $module = 'System';
+                $auditableType = 'CustomAction';
+                $auditableId = 0;
+                $oldValues = null;
+                $newValues = is_array($actionOrDetails) ? $actionOrDetails : (is_array($extraDetails) ? $extraDetails : null);
             }
 
-            $userId = auth()->id();
-            $user = auth()->user();
-            $userRole = ($user && $user->role) ? $user->role->slug : null;
-            $branchId = $tenantManager->getBranchId() ?: ($model->branch_id ?? ($user ? $user->branch_id : null));
+            if (!$companyId) {
+                return; // Impossible de logger sans identifiant de compagnie
+            }
 
-            $module = class_basename($model);
+            $userId = $user ? $user->id : null;
+            $userRole = ($user && $user->role) ? (is_object($user->role) ? $user->role->slug : $user->role) : null;
+
             $userAgent = request()->userAgent();
             $device = 'Web App';
             if ($userAgent) {
@@ -57,44 +103,14 @@ trait Auditable
                     $device = 'API Client';
                 }
             }
-            
-            $oldValues = null;
-            $newValues = null;
 
-            if ($action === 'updated') {
-                $changes = $model->getChanges();
-                $original = $model->getOriginal();
-
-                $oldValues = [];
-                $newValues = [];
-
-                foreach ($changes as $key => $value) {
-                    if (in_array($key, ['updated_at', 'created_at'])) {
-                        continue;
-                    }
-                    $oldValues[$key] = $original[$key] ?? null;
-                    $newValues[$key] = $value;
-                }
-
-                if (empty($newValues)) {
-                    return; // Pas de vraies modifications d'attributs
-                }
-            } elseif ($action === 'created') {
-                $newValues = $model->toArray();
-                unset($newValues['created_at'], $newValues['updated_at']);
-            } elseif ($action === 'deleted') {
-                $oldValues = $model->toArray();
-                unset($oldValues['created_at'], $oldValues['updated_at']);
-            }
-
-            // Écriture directe en désactivant temporairement tout risque de boucle d'observateur
             AuditLog::create([
                 'company_id'     => $companyId,
                 'branch_id'      => $branchId,
                 'user_id'        => $userId,
                 'user_role'      => $userRole,
-                'auditable_type' => get_class($model),
-                'auditable_id'   => $model->getKey(),
+                'auditable_type' => $auditableType,
+                'auditable_id'   => $auditableId,
                 'action'         => $action,
                 'module'         => $module,
                 'old_values'     => $oldValues,

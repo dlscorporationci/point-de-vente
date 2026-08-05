@@ -14,7 +14,12 @@ class BranchController extends Controller
      */
     public function index(Request $request)
     {
-        $branches = Branch::withCount('users')->orderBy('name')->get();
+        $currentUser = $request->user();
+        if ($currentUser && $currentUser->accessZone && !empty($currentUser->accessZone->branch_ids)) {
+            $branches = $currentUser->assignedBranches();
+        } else {
+            $branches = Branch::withCount('users')->orderBy('name')->get();
+        }
 
         return response()->json($branches);
     }

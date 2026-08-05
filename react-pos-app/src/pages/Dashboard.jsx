@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
 import { offlineStorage } from '../services/offlineStorage';
+import { useRealtime } from '../hooks/useRealtime';
 
 export const Dashboard = ({ setActiveTab }) => {
   const { user, activeBranch, assignedBranches, logout } = useApp();
@@ -74,6 +75,23 @@ export const Dashboard = ({ setActiveTab }) => {
     }
   }, []);
 
+  // Abonnement temps réel pour actualiser les métriques du tableau de bord sans F5
+  useRealtime(
+    [
+      'sale_created',
+      'sale_cancelled',
+      'stock_updated',
+      'cash_session_opened',
+      'cash_session_closed',
+      'transfer_created',
+      'transfer_received'
+    ],
+    useCallback(() => {
+      fetchDashboardStats();
+    }, [fetchDashboardStats]),
+    { pullOnEvent: true }
+  );
+
   useEffect(() => {
     fetchDashboardStats();
   }, [fetchDashboardStats, activeBranch?.id]);
@@ -84,6 +102,15 @@ export const Dashboard = ({ setActiveTab }) => {
   const isGerant = role === 'gerant';
   const isCashierOrSeller = role === 'caissier' || role === 'vendeur';
   const isStockKeeper = role === 'magasinier';
+
+  const allowedModulesList = user?.access_zone?.allowed_modules;
+  const canAccessModule = (tabKey) => {
+    if (isAdmin) return true;
+    if (!allowedModulesList || !Array.isArray(allowedModulesList) || allowedModulesList.length === 0) return true;
+    const alwaysAllowed = ['home', 'dashboard', 'auth', 'userguide', 'notifications', 'sync-center', 'select-branch'];
+    if (alwaysAllowed.includes(tabKey)) return true;
+    return allowedModulesList.includes(tabKey);
+  };
 
   const formatMoney = (amount) => {
     return (amount || 0).toLocaleString('fr-FR') + ' XOF';
@@ -125,12 +152,14 @@ export const Dashboard = ({ setActiveTab }) => {
               <i className="fa-solid fa-right-left me-1"></i> Changer d'espace
             </button>
           )}
-          <button 
-            className="btn btn-primary btn-sm ms-2"
-            onClick={() => setActiveTab('pos')}
-          >
-            <i className="fa-solid fa-cash-register me-1"></i> Ouvrir le POS
-          </button>
+          {canAccessModule('pos') && (
+            <button 
+              className="btn btn-primary btn-sm ms-2"
+              onClick={() => setActiveTab('pos')}
+            >
+              <i className="fa-solid fa-cash-register me-1"></i> Ouvrir le POS
+            </button>
+          )}
           <button 
             className="btn btn-outline-danger btn-sm ms-2"
             onClick={() => {
@@ -248,33 +277,49 @@ export const Dashboard = ({ setActiveTab }) => {
             </div>
           </div>
 
-          {/* ── ACCÈS RAPIDES SELON RÔLE ── */}
+          {/* ── ACCÈS RAPIDES SELON RÔLE ET ZONE D'ACCÈS ── */}
           <div className="quick-actions-bar card mb-4">
             <h4 className="quick-title">
               <i className="fa-solid fa-bolt text-warning me-2"></i> Raccourcis Opérationnels
             </h4>
             <div className="quick-buttons">
-              <button className="quick-btn" onClick={() => setActiveTab('pos')}>
-                <i className="fa-solid fa-cash-register text-primary"></i>
-                <span>Caisse Tactile</span>
-              </button>
-              <button className="quick-btn" onClick={() => setActiveTab('catalog')}>
-                <i className="fa-solid fa-box text-success"></i>
-                <span>Catalogue</span>
-              </button>
-              <button className="quick-btn" onClick={() => setActiveTab('stocks')}>
-                <i className="fa-solid fa-boxes-stacked text-warning"></i>
-                <span>Gestion Stocks</span>
-              </button>
-              <button className="quick-btn" onClick={() => setActiveTab('transfers')}>
-                <i className="fa-solid fa-right-left text-info"></i>
-                <span>Transferts</span>
-              </button>
-              <button className="quick-btn" onClick={() => setActiveTab('sales')}>
-                <i className="fa-solid fa-receipt text-purple"></i>
-                <span>Historique Ventes</span>
-              </button>
-              {(isAdmin || isGerant) && (
+              {canAccessModule('pos') && (
+                <button className="quick-btn" onClick={() => setActiveTab('pos')}>
+                  <i className="fa-solid fa-cash-register text-primary"></i>
+                  <span>Caisse Tactile</span>
+                </button>
+              )}
+              {canAccessModule('catalog') && (
+                <button className="quick-btn" onClick={() => setActiveTab('catalog')}>
+                  <i className="fa-solid fa-box text-success"></i>
+                  <span>Catalogue</span>
+                </button>
+              )}
+              {canAccessModule('stocks') && (
+                <>
+                  <button className="quick-btn" onClick={() => setActiveTab('stocks')}>
+                    <i className="fa-solid fa-boxes-stacked text-warning"></i>
+                    <span>Gestion Stocks</span>
+                  </button>
+                  <button className="quick-btn" onClick={() => setActiveTab('stocks')}>
+                    <i className="fa-solid fa-screwdriver-wrench text-danger"></i>
+                    <span>Ajuster le Stock</span>
+                  </button>
+                </>
+              )}
+              {canAccessModule('transfers') && (
+                <button className="quick-btn" onClick={() => setActiveTab('transfers')}>
+                  <i className="fa-solid fa-right-left text-info"></i>
+                  <span>Transferts Stocks</span>
+                </button>
+              )}
+              {canAccessModule('sales') && (
+                <button className="quick-btn" onClick={() => setActiveTab('sales')}>
+                  <i className="fa-solid fa-receipt text-purple"></i>
+                  <span>Historique Ventes</span>
+                </button>
+              )}
+              {(isAdmin || isGerant) && canAccessModule('reports') && (
                 <button className="quick-btn" onClick={() => setActiveTab('reports')}>
                   <i className="fa-solid fa-chart-pie text-danger"></i>
                   <span>Rapports CA</span>

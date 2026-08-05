@@ -47,8 +47,9 @@ class TransferController extends Controller
      */
     public function store(Request $request)
     {
-        if (!$request->user()->hasPermission('transfers.create')) {
-            return response()->json(['error' => 'Action non autorisée.'], 403);
+        $user = $request->user();
+        if (!$user->hasPermission('stock.transfer') && !$user->hasPermission('transfers.create')) {
+            return response()->json(['error' => "Accès refusé. La permission 'stock.transfer' est obligatoire pour initier un transfert de stock."], 403);
         }
 
         $validated = $request->validate([
@@ -114,8 +115,9 @@ class TransferController extends Controller
      */
     public function approve(Request $request, string $id)
     {
-        if (!$request->user()->hasPermission('transfers.manage')) {
-            return response()->json(['error' => 'Action non autorisée.'], 403);
+        $user = $request->user();
+        if (!$user->hasPermission('stock.approve_transfer') && !$user->hasPermission('transfers.manage')) {
+            return response()->json(['error' => "Accès refusé. La permission 'stock.approve_transfer' est obligatoire pour valider un transfert."], 403);
         }
 
         $transfer = StockTransfer::findOrFail($id);
@@ -144,8 +146,9 @@ class TransferController extends Controller
      */
     public function ship(Request $request, string $id)
     {
-        if (!$request->user()->hasPermission('transfers.manage')) {
-            return response()->json(['error' => 'Action non autorisée.'], 403);
+        $user = $request->user();
+        if (!$user->hasPermission('stock.approve_transfer') && !$user->hasPermission('stock.transfer') && !$user->hasPermission('transfers.manage')) {
+            return response()->json(['error' => "Accès refusé. La permission 'stock.transfer' est obligatoire pour expédier un transfert."], 403);
         }
 
         $transfer = StockTransfer::with('details.product')->findOrFail($id);

@@ -58,9 +58,33 @@ class SyncController extends Controller
             $branchId = $op['branch_id'] ?? $user->branch_id;
 
             // 1. Vérification d'Idempotence (Anti-Doublons)
-            $existingIdempotency = DB::table('sync_idempotency')->where('uuid', $uuid)->first();
             if ($existingIdempotency) {
                 $syncedUuids[] = $uuid;
+                continue;
+            }
+
+            // Vérification de la validité des autorisations réseau lors de la re-connexion (Offline-First Authorization)
+            $authService = app(\App\Services\AuthorizationService::class);
+            if (!$authService->canAccessModule($user, $entityType) || !$authService->canAccessBranch($user, $branchId)) {
+                DB::table('sync_idempotency')->insert([
+                    'uuid'       => $uuid,
+                    'company_id' => $companyId,
+                    'status'     => 'authorization_rejected',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                \App\Services\AccessControlLogger::log('sync.authorization_rejected', $user, null, [
+                    'uuid'        => $uuid,
+                    'entity_type' => $entityType,
+                    'action'      => $action,
+                ]);
+
+                $failed[] = [
+                    'uuid'   => $uuid,
+                    'status' => 'authorization_rejected',
+                    'error'  => "Accès refusé lors de la synchronisation. Vos droits d'accès au module '{$entityType}' ou à la boutique ont été révoqués."
+                ];
                 continue;
             }
 

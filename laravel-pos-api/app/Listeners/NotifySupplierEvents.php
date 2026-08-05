@@ -2,6 +2,7 @@
 namespace App\Listeners;
 use App\Events\Supplier\SupplierCreated;
 use App\Services\NotificationService;
+use App\Services\RealtimeBroadcastService;
 
 class NotifySupplierEvents
 {
@@ -23,6 +24,15 @@ class NotifySupplierEvents
             data: ['supplier_id' => $supplier->id, 'supplier_name' => $supplier->name],
             actorId: $actor->id,
             targetRoute: 'suppliers',
+        );
+
+        // SSE — Signal temps réel : nouveau fournisseur
+        RealtimeBroadcastService::push(
+            eventType: 'supplier_created',
+            companyId: $supplier->company_id,
+            branchId:  $branchId,
+            payload:   ['supplier_id' => $supplier->id, 'supplier_name' => $supplier->name],
+            actorId: $actor->id
         );
     }
 

@@ -27,7 +27,9 @@ export const CustomRolesModal = ({ isOpen, onClose, onSuccess }) => {
         axios.get('/v1/custom-roles'),
         axios.get('/v1/permissions'),
       ]);
-      setRoles(rolesRes.data || []);
+      const rawRoles = Array.isArray(rolesRes.data) ? rolesRes.data : [];
+      const cleanRoles = rawRoles.filter(r => !['super-admin', 'superadmin'].includes(r.slug));
+      setRoles(cleanRoles);
       setPermissionModules(permRes.data.modules || {});
     } catch (err) {
       setError('Impossible de charger les rôles et permissions.');
@@ -39,7 +41,10 @@ export const CustomRolesModal = ({ isOpen, onClose, onSuccess }) => {
   const openForm = (r = null) => {
     setEditingRole(r);
     setRoleName(r ? r.name : '');
-    setSelectedPermissions(r && r.permissions ? r.permissions.map(p => p.slug) : []);
+    const initialPerms = r && Array.isArray(r.permissions)
+      ? r.permissions.map(p => (typeof p === 'string' ? p : (p.slug || p)))
+      : [];
+    setSelectedPermissions(initialPerms);
     setShowForm(true);
     setError(null);
   };
@@ -79,8 +84,9 @@ export const CustomRolesModal = ({ isOpen, onClose, onSuccess }) => {
           permissions: selectedPermissions
         });
       }
+      // Attendre que la liste des rôles soit à jour avant de fermer
+      await loadData();
       setShowForm(false);
-      loadData();
       if (onSuccess) onSuccess('Rôle enregistré avec succès.');
     } catch (err) {
       setError(err.response?.data?.error || err.response?.data?.message || 'Erreur lors de la sauvegarde du rôle.');
@@ -196,7 +202,27 @@ export const CustomRolesModal = ({ isOpen, onClose, onSuccess }) => {
                 />
               </div>
 
-              <h4 className="mb-2" style={{ fontWeight: 800 }}>Sélection des Permissions Granulaires</h4>
+              <div className="d-flex justify-content-between align-items-center mb-1">
+                <h4 className="m-0" style={{ fontWeight: 800 }}>Sélection des Permissions Granulaires</h4>
+                {(!editingRole || editingRole.company_id) && (
+                  <button 
+                    type="button" 
+                    className="btn btn-link btn-sm p-0 text-decoration-none fw-bold"
+                    onClick={() => {
+                      const allSlugs = Object.values(permissionModules).flatMap(m => Object.keys(m.permissions));
+                      if (allSlugs.every(s => selectedPermissions.includes(s))) {
+                        setSelectedPermissions([]);
+                      } else {
+                        setSelectedPermissions(Array.from(new Set(allSlugs)));
+                      }
+                    }}
+                  >
+                    {Object.values(permissionModules).flatMap(m => Object.keys(m.permissions)).every(s => selectedPermissions.includes(s))
+                      ? '❌ Tout décocher (Global)' 
+                      : '✅ Tout cocher (Global)'}
+                  </button>
+                )}
+              </div>
               <p className="text-muted small mb-3">Cochez les modules et actions autorisés pour les utilisateurs ayant ce rôle.</p>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '420px', overflowY: 'auto', paddingRight: '4px' }}>

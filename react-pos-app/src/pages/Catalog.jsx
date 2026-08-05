@@ -443,7 +443,11 @@ export const Catalog = () => {
     );
   }
 
-  const hasCreatePermission = user?.permissions?.includes('products.create') || user?.role === 'admin';
+  const userRoleSlug = user?.role?.slug || user?.role?.name || user?.role || '';
+  const hasCreatePermission = user?.permissions?.includes('products.create') || 
+                              userRoleSlug === 'admin' || 
+                              userRoleSlug === 'super-admin' || 
+                              userRoleSlug === 'gerant';
 
   return (
     <div className="catalog-container">

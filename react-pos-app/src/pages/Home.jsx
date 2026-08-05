@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import axios from 'axios';
 import logo from '../assets/logo.jpg';
 import { useApp } from '../context/AppContext';
 import { Navbar } from '../components/Navbar';
@@ -37,6 +38,32 @@ export const Home = ({ setActiveTab }) => {
   const [activeFeature, setActiveFeature] = useState(0);
   const [billingCycle, setBillingCycle] = useState('monthly');
   const [contactState, setContactState] = useState({ name: '', email: '', phone: '', message: '', loading: false, success: false });
+  const [plans, setPlans] = useState([]);
+  const [plansLoading, setPlansLoading] = useState(true);
+
+  // Chargement dynamique des formules d'abonnement depuis l'API (sans authentification)
+  useEffect(() => {
+    const apiBase = (typeof window !== 'undefined' &&
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') &&
+      (window.location.port === '5173' || window.location.port === '3000'))
+      ? 'http://127.0.0.1:8000/api'
+      : '/api';
+
+    axios.get(`${apiBase}/v1/public/plans`)
+      .then(res => {
+        setPlans(res.data);
+        setPlansLoading(false);
+      })
+      .catch(() => {
+        setPlansLoading(false);
+      });
+  }, []);
+
+  // Formater un prix XOF (ex: 25000 → "25 000")
+  const formatXOF = (amount) => {
+    if (!amount || amount === 0) return 'Gratuit';
+    return Number(amount).toLocaleString('fr-FR');
+  };
 
   const handleContactSubmit = (e) => {
     e.preventDefault();
@@ -395,81 +422,98 @@ export const Home = ({ setActiveTab }) => {
         </div>
 
         <div className="pricing-grid">
-          {/* Card 1: Starter */}
-          <div className="pricing-card">
-            <div className="pricing-card-header">
-              <h3 className="plan-name">Formule Starter</h3>
-              <p className="plan-desc">Idéal pour démarrer une première boutique</p>
-              <div className="plan-price">
-                <span className="price-num">{billingCycle === 'annual' ? '12 000' : '15 000'}</span>
-                <span className="price-currency">XOF</span>
-                <span className="price-period">/ mois</span>
+          {plansLoading ? (
+            /* Squelette de chargement */
+            [1, 2, 3].map(i => (
+              <div key={i} className="pricing-card" style={{ opacity: 0.5, minHeight: '320px' }}>
+                <div className="pricing-card-header">
+                  <div style={{ height: '24px', background: 'rgba(255,255,255,0.1)', borderRadius: '8px', marginBottom: '12px' }} />
+                  <div style={{ height: '16px', background: 'rgba(255,255,255,0.07)', borderRadius: '8px', marginBottom: '20px', width: '70%' }} />
+                  <div style={{ height: '40px', background: 'rgba(255,255,255,0.1)', borderRadius: '8px', width: '60%' }} />
+                </div>
               </div>
+            ))
+          ) : plans.length === 0 ? (
+            <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px', color: 'var(--text-muted, #aaa)' }}>
+              <i className="fa-solid fa-triangle-exclamation fa-2x mb-3" style={{ color: '#f59e0b' }}></i>
+              <p>Impossible de charger les offres. Veuillez réessayer plus tard.</p>
             </div>
-            <ul className="plan-features">
-              <li><i className="fa-solid fa-check text-success me-2"></i> <strong>1 Boutique</strong> &amp; 1 Point de vente</li>
-              <li><i className="fa-solid fa-check text-success me-2"></i> 1 Caisse tactile ultra-rapide</li>
-              <li><i className="fa-solid fa-check text-success me-2"></i> 2 Comptes utilisateurs (Admin + Caissier)</li>
-              <li><i className="fa-solid fa-check text-success me-2"></i> Gestion des stocks &amp; Code-barres</li>
-              <li><i className="fa-solid fa-check text-success me-2"></i> Support par email &amp; Documentation</li>
-            </ul>
-            <button onClick={() => setActiveTab('register')} className="btn-pricing-outline">
-              Démarrer gratuitement
-            </button>
-          </div>
+          ) : (
+            plans.map((plan) => {
+              const isPopular = !!plan.is_popular;
+              const isMonthly = billingCycle === 'monthly';
+              const price = isMonthly ? plan.price_monthly : plan.price_yearly;
+              const isFree = !price || price === 0;
 
-          {/* Card 2: Pro (Populaire) */}
-          <div className="pricing-card popular">
-            <div className="popular-ribbon">⭐ Plus populaire</div>
-            <div className="pricing-card-header">
-              <h3 className="plan-name">Formule Pro</h3>
-              <p className="plan-desc">Pour les commerces en pleine expansion</p>
-              <div className="plan-price">
-                <span className="price-num">{billingCycle === 'annual' ? '28 000' : '35 000'}</span>
-                <span className="price-currency">XOF</span>
-                <span className="price-period">/ mois</span>
-              </div>
-            </div>
-            <ul className="plan-features">
-              <li><i className="fa-solid fa-check text-success me-2"></i> <strong>Jusqu'à 3 Boutiques</strong> rattachées</li>
-              <li><i className="fa-solid fa-check text-success me-2"></i> Caisses tactiles illimitées</li>
-              <li><i className="fa-solid fa-check text-success me-2"></i> 5 Comptes utilisateurs granulaires</li>
-              <li><i className="fa-solid fa-check text-success me-2"></i> Stocks temps réel &amp; Recalcul PAMP</li>
-              <li><i className="fa-solid fa-check text-success me-2"></i> Transferts de stock inter-boutiques</li>
-              <li><i className="fa-solid fa-check text-success me-2"></i> Rapports avancés (PDF &amp; Excel)</li>
-              <li><i className="fa-solid fa-check text-success me-2"></i> Support prioritaire WhatsApp 7j/7</li>
-            </ul>
-            <button onClick={() => setActiveTab('register')} className="btn-pricing-primary">
-              Essayer la formule Pro
-            </button>
-          </div>
+              // Libellé du bouton CTA
+              const ctaLabel = isFree ? 'Démarrer gratuitement' :
+                isPopular ? `Essayer ${plan.name}` : 'Contacter notre équipe';
 
-          {/* Card 3: Enterprise */}
-          <div className="pricing-card">
-            <div className="pricing-card-header">
-              <h3 className="plan-name">Formule Entreprise</h3>
-              <p className="plan-desc">Pour les réseaux et grandes enseignes</p>
-              <div className="plan-price">
-                <span className="price-num">{billingCycle === 'annual' ? '60 000' : '75 000'}</span>
-                <span className="price-currency">XOF</span>
-                <span className="price-period">/ mois</span>
-              </div>
-            </div>
-            <ul className="plan-features">
-              <li><i className="fa-solid fa-check text-success me-2"></i> <strong>Boutiques &amp; Caisses illimitées</strong></li>
-              <li><i className="fa-solid fa-check text-success me-2"></i> Utilisateurs &amp; Rôles sur mesure</li>
-              <li><i className="fa-solid fa-check text-success me-2"></i> Sauvegarde automatique quotidienne</li>
-              <li><i className="fa-solid fa-check text-success me-2"></i> Intégration sur-mesure &amp; API</li>
-              <li><i className="fa-solid fa-check text-success me-2"></i> Account Manager dédié + Formation</li>
-              <li><i className="fa-solid fa-check text-success me-2"></i> Support VIP 24h/24 7j/7</li>
-            </ul>
-            <button onClick={() => {
-              const el = document.getElementById('contact');
-              if (el) el.scrollIntoView({ behavior: 'smooth' });
-            }} className="btn-pricing-outline">
-              Contacter notre équipe
-            </button>
-          </div>
+              return (
+                <div key={plan.id} className={`pricing-card${isPopular ? ' popular' : ''}`}>
+                  {isPopular && <div className="popular-ribbon">⭐ Plus populaire</div>}
+                  <div className="pricing-card-header">
+                    <h3 className="plan-name">{plan.name}</h3>
+                    {plan.description && <p className="plan-desc">{plan.description}</p>}
+                    <div className="plan-price">
+                      {isFree ? (
+                        <>
+                          <span className="price-num">Gratuit</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="price-num">{formatXOF(price)}</span>
+                          <span className="price-currency">XOF</span>
+                          <span className="price-period">
+                            {isMonthly ? '/ mois' : '/ an'}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    {/* Affichage économies annuelles */}
+                    {!isFree && !isMonthly && plan.price_monthly > 0 && (
+                      <div style={{ marginTop: '8px', fontSize: '0.78rem', color: '#34d399', fontWeight: 600 }}>
+                        💰 Économisez {formatXOF((plan.price_monthly * 12) - plan.price_yearly)} XOF / an
+                      </div>
+                    )}
+                    {/* Infos limites */}
+                    <div style={{ marginTop: '10px', fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                      {plan.max_branches < 999 ?
+                        <span><i className="fa-solid fa-store me-1"></i>{plan.max_branches} boutique{plan.max_branches > 1 ? 's' : ''}</span> :
+                        <span><i className="fa-solid fa-store me-1"></i>Boutiques illimitées</span>}
+                      {plan.max_users < 999 ?
+                        <span><i className="fa-solid fa-users me-1"></i>{plan.max_users} utilisateurs</span> :
+                        <span><i className="fa-solid fa-users me-1"></i>Utilisateurs illimités</span>}
+                    </div>
+                  </div>
+                  {/* Features list */}
+                  {plan.features && Array.isArray(plan.features) && plan.features.length > 0 && (
+                    <ul className="plan-features">
+                      {plan.features.map((feat, idx) => (
+                        <li key={idx}>
+                          <i className="fa-solid fa-check text-success me-2"></i>
+                          {feat}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <button
+                    onClick={() => {
+                      if (!isFree && !isPopular) {
+                        const el = document.getElementById('contact');
+                        if (el) el.scrollIntoView({ behavior: 'smooth' });
+                      } else {
+                        setActiveTab('register');
+                      }
+                    }}
+                    className={isPopular ? 'btn-pricing-primary' : 'btn-pricing-outline'}
+                  >
+                    {ctaLabel}
+                  </button>
+                </div>
+              );
+            })
+          )}
         </div>
       </section>
 
@@ -495,21 +539,21 @@ export const Home = ({ setActiveTab }) => {
                 <div className="info-icon"><i className="fa-solid fa-phone"></i></div>
                 <div>
                   <strong>Téléphone &amp; WhatsApp</strong>
-                  <p>+225 07 00 00 00 00 / +225 05 00 00 00 00</p>
+                  <p>+225 07 08 74 41 15 / +225 05 66 28 93 94</p>
                 </div>
               </div>
               <div className="info-item">
                 <div className="info-icon"><i className="fa-solid fa-envelope"></i></div>
                 <div>
                   <strong>Adresse E-mail</strong>
-                  <p>contact@apexpos.ci — support@dls.ci</p>
+                  <p>dlscorporation2020@gmail.com</p>
                 </div>
               </div>
               <div className="info-item">
                 <div className="info-icon"><i className="fa-solid fa-location-dot"></i></div>
                 <div>
                   <strong>Siège social</strong>
-                  <p>Plateau, Avenue Chardy, Abidjan, Côte d'Ivoire</p>
+                  <p>Angré-CHU, Abidjan, Côte d'Ivoire</p>
                 </div>
               </div>
             </div>

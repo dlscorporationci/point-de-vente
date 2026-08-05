@@ -10,6 +10,7 @@ use App\Events\Transfer\TransferRejected;
 use App\Events\Transfer\TransferCancelled;
 use App\Models\Branch;
 use App\Services\NotificationService;
+use App\Services\RealtimeBroadcastService;
 
 /**
  * Listener pour tous les événements de transfert inter-boutiques.
@@ -71,6 +72,23 @@ class NotifyTransferEvents
                 ],
             ]
         );
+
+        // SSE — Signal temps réel : transfert créé (les 2 boutiques)
+        RealtimeBroadcastService::pushMultiBranch(
+            eventType: 'transfer_created',
+            companyId: $companyId,
+            branchIds: [$transfer->from_branch_id, $transfer->to_branch_id],
+            payload:   [
+                'transfer_id'     => $transfer->id,
+                'transfer_number' => $transfer->transfer_number,
+                'status'          => 'created',
+                'from_branch_id'  => $transfer->from_branch_id,
+                'to_branch_id'    => $transfer->to_branch_id,
+                'from_branch'     => $fromBranchName,
+                'to_branch'       => $toBranchName,
+            ],
+            actorId: $actor->id
+        );
     }
 
     /**
@@ -114,6 +132,21 @@ class NotifyTransferEvents
                     'message'    => "Le transfert #{$transfer->transfer_number} de {$fromBranchName} a été approuvé. Expédition en cours de préparation.",
                 ],
             ]
+        );
+
+        // SSE — Signal temps réel : transfert approuvé (les 2 boutiques)
+        RealtimeBroadcastService::pushMultiBranch(
+            eventType: 'transfer_approved',
+            companyId: $companyId,
+            branchIds: [$transfer->from_branch_id, $transfer->to_branch_id],
+            payload:   [
+                'transfer_id'     => $transfer->id,
+                'transfer_number' => $transfer->transfer_number,
+                'status'          => 'approved',
+                'from_branch_id'  => $transfer->from_branch_id,
+                'to_branch_id'    => $transfer->to_branch_id,
+            ],
+            actorId: $actor->id
         );
     }
 
@@ -165,6 +198,22 @@ class NotifyTransferEvents
                 ],
             ]
         );
+
+        // SSE — Signal temps réel : transfert expédié (les 2 boutiques)
+        RealtimeBroadcastService::pushMultiBranch(
+            eventType: 'transfer_shipped',
+            companyId: $companyId,
+            branchIds: [$transfer->from_branch_id, $transfer->to_branch_id],
+            payload:   [
+                'transfer_id'     => $transfer->id,
+                'transfer_number' => $transfer->transfer_number,
+                'status'          => 'shipped',
+                'from_branch_id'  => $transfer->from_branch_id,
+                'to_branch_id'    => $transfer->to_branch_id,
+                'item_count'      => $itemCount,
+            ],
+            actorId: $actor->id
+        );
     }
 
     /**
@@ -211,6 +260,23 @@ class NotifyTransferEvents
                     'message'    => "{$actor->name} a réceptionné le transfert #{$transfer->transfer_number} ({$itemCount} article(s)) de {$fromBranchName}. Stock crédité.",
                 ],
             ]
+        );
+
+        // SSE — Signal temps réel : transfert réceptionné (les 2 boutiques)
+        // NOTE : Le stock est mis à jour par le serveur, jamais par le SSE lui-même
+        RealtimeBroadcastService::pushMultiBranch(
+            eventType: 'transfer_received',
+            companyId: $companyId,
+            branchIds: [$transfer->from_branch_id, $transfer->to_branch_id],
+            payload:   [
+                'transfer_id'     => $transfer->id,
+                'transfer_number' => $transfer->transfer_number,
+                'status'          => 'received',
+                'from_branch_id'  => $transfer->from_branch_id,
+                'to_branch_id'    => $transfer->to_branch_id,
+                'item_count'      => $itemCount,
+            ],
+            actorId: $actor->id
         );
     }
 

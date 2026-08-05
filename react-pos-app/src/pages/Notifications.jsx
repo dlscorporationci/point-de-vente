@@ -17,20 +17,32 @@ export const Notifications = ({ setActiveTab }) => {
   // Modal de détail
   const [selectedNotification, setSelectedNotification] = useState(null);
 
-  const fetchNotifications = useCallback(async () => {
-    if (!token) return;
-    setLoading(true);
+  const fetchNotifications = useCallback(async (isRetry = false) => {
+    const currentToken = token || localStorage.getItem('token');
+    if (!currentToken) return;
+    if (!isRetry) setLoading(true);
     setError(null);
     try {
       let url = '/v1/notifications?limit=100';
       if (statusFilter === 'unread') url += '&unread_only=true';
       if (priorityFilter !== 'all') url += `&priority=${priorityFilter}`;
 
-      const res = await axios.get(url);
+      const res = await axios.get(url, {
+        headers: { Authorization: `Bearer ${currentToken}` }
+      });
       const list = res.data.data || res.data.notifications || (Array.isArray(res.data) ? res.data : []);
       setNotifications(list);
+      setError(null);
     } catch (err) {
-      setError("Impossible de charger l'historique des notifications.");
+      const status = err?.response?.status;
+      if (status === 401 || status === 403) {
+        setError('Session expirée. Veuillez vous reconnecter.');
+      } else if (!isRetry) {
+        // Réessai automatique après 2 secondes en cas d'erreur réseau
+        setTimeout(() => fetchNotifications(true), 2000);
+      } else {
+        setError("Impossible de charger les notifications. Vérifiez votre connexion.");
+      }
     } finally {
       setLoading(false);
     }

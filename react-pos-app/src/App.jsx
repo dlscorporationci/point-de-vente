@@ -13,6 +13,7 @@ import { Transfers } from './pages/Transfers'
 import { CashSessions } from './pages/CashSessions'
 import { PointDeVente } from './pages/PointDeVente'
 import { AuditLogs } from './pages/AuditLogs'
+import { AccessControlAuditPage } from './pages/AccessControlAuditPage'
 import { Reports } from './pages/Reports'
 import { Home } from './pages/Home'
 import { Register } from './pages/Register'
@@ -78,7 +79,7 @@ function MainContent() {
   
   const role = getRoleSlug(user?.role);
   const isSuperAdmin = role === 'super-admin' || role === 'Super Admin' || role === 'superadmin' || user?.email === 'superadmin@dls.com' || !!user?.is_superadmin;
-  const isAdminOrGerant = role === 'admin' || role === 'gerant' || isSuperAdmin;
+  const isAdminOrGerant = role === 'admin' || isSuperAdmin;
   const isAdmin = role === 'admin' || isSuperAdmin;
 
   const [activeTab, setActiveTabState] = useState(() => {
@@ -119,6 +120,38 @@ function MainContent() {
     if (!logoPath) return logo;
     return getAssetUrl(logoPath);
   };
+
+  // ── Mise à jour dynamique du titre de l'onglet et du favicon selon l'entreprise connectée ──
+  useEffect(() => {
+    const companyName = user?.company?.name;
+    const slogan = user?.company?.slogan;
+    const faviconPath = user?.company?.favicon_path;
+    const logoPath = user?.company?.logo_path;
+
+    // Titre de l'onglet
+    if (companyName) {
+      document.title = slogan
+        ? `${companyName} — ${slogan}`
+        : `${companyName} — ApexPOS`;
+    } else {
+      document.title = 'ApexPOS — Gestion Commerciale';
+    }
+
+    // Favicon dynamique : favicon personnalisé > logo entreprise > favicon par défaut
+    const faviconUrl = faviconPath
+      ? getAssetUrl(faviconPath)
+      : (logoPath ? getAssetUrl(logoPath) : null);
+
+    if (faviconUrl) {
+      let link = document.querySelector("link[rel~='icon']");
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.head.appendChild(link);
+      }
+      link.href = faviconUrl;
+    }
+  }, [user?.company?.name, user?.company?.slogan, user?.company?.favicon_path, user?.company?.logo_path]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -213,8 +246,45 @@ function MainContent() {
     }
 
     // Si l'utilisateur est connecté mais doit choisir sa boutique (uniquement pour les utilisateurs non Super-Admin)
-    if (!activeBranch && activeTab !== 'select-branch' && !isSuperAdmin && (assignedBranches?.length > 1 || isAdmin || role === 'gerant')) {
+    if (!activeBranch && activeTab !== 'select-branch' && !isSuperAdmin && (assignedBranches?.length > 1 || !user?.branch_id)) {
       return <BranchSelectionPage onSelectBranch={() => navigate('dashboard')} />
+    }
+
+    // Controler la permission par Zone d'Accès
+    const allowedModules = user?.access_zone?.allowed_modules;
+    const isModulePermitted = (tabKey) => {
+      if (isSuperAdmin || role === 'admin') return true;
+      if (!allowedModules || !Array.isArray(allowedModules) || allowedModules.length === 0) return true;
+      const alwaysAllowed = ['home', 'dashboard', 'auth', 'userguide', 'notifications', 'sync-center', 'select-branch'];
+      if (alwaysAllowed.includes(tabKey)) return true;
+      if (allowedModules.includes(tabKey)) return true;
+      // Compatibilité des alias étendus
+      if (tabKey === 'stocks' && allowedModules.includes('catalog')) return true;
+      if (tabKey === 'catalog' && allowedModules.includes('stocks')) return true;
+      if (['sales', 'cash-sessions'].includes(tabKey) && allowedModules.includes('pos')) return true;
+      if (tabKey === 'pos' && (allowedModules.includes('sales') || allowedModules.includes('cash-sessions'))) return true;
+      if (tabKey === 'suppliers' && allowedModules.includes('purchases')) return true;
+      if (tabKey === 'purchases' && allowedModules.includes('suppliers')) return true;
+      if (tabKey === 'customers' && (allowedModules.includes('pos') || allowedModules.includes('sales'))) return true;
+      return false;
+    };
+
+    // Bloquer l'affichage si le module est restreint par la zone d'accès
+    if (!isModulePermitted(activeTab)) {
+      return (
+        <div className="container py-5 text-center" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="card p-5 shadow-lg border-danger" style={{ maxWidth: '520px', borderRadius: '16px' }}>
+            <div style={{ fontSize: '3.5rem', marginBottom: '16px' }}>🚫</div>
+            <h3 className="fw-bold text-danger mb-2">Accès Restreint</h3>
+            <p className="text-muted mb-4" style={{ fontSize: '14px', lineHeight: 1.6 }}>
+              Votre zone d'accès actuelle (<strong>{user?.access_zone?.name || "Zone Restreinte"}</strong>) ne vous autorise pas à accéder au module <strong>{activeTab.toUpperCase()}</strong>.
+            </p>
+            <button onClick={() => navigate('dashboard')} className="btn btn-primary fw-bold py-2 px-4">
+              Retour au Dashboard
+            </button>
+          </div>
+        </div>
+      );
     }
 
     // Utilisateur connecté : Rendu des pages selon le profil
@@ -234,7 +304,7 @@ function MainContent() {
       case 'cash-sessions': return <CashSessions />
       case 'sales':         return <Sales />
       case 'pos':           return <PointDeVente />
-      case 'audit':         return <AuditLogs />
+      case 'audit':         return <AccessControlAuditPage />
       case 'reports':       return <Reports />
       case 'documents':     return <DocumentCenter />
       case 'communication': return <CommunicationCenter />
@@ -249,24 +319,42 @@ function MainContent() {
     }
   }
 
-  // Carte des liens de navigation avec contrôle des permissions d'accès
+  // Carte des liens de navigation avec contrôle des permissions d'accès et zones d'accès
+  const allowedModulesList = user?.access_zone?.allowed_modules;
+  const canAccessModule = (tabKey) => {
+    if (isSuperAdmin || role === 'admin') return true;
+    if (!allowedModulesList || !Array.isArray(allowedModulesList) || allowedModulesList.length === 0) return true;
+    const alwaysAllowed = ['home', 'dashboard', 'auth', 'userguide', 'notifications', 'sync-center', 'select-branch'];
+    if (alwaysAllowed.includes(tabKey)) return true;
+    if (allowedModulesList.includes(tabKey)) return true;
+    // Compatibilité des alias étendus
+    if (tabKey === 'stocks' && allowedModulesList.includes('catalog')) return true;
+    if (tabKey === 'catalog' && allowedModulesList.includes('stocks')) return true;
+    if (['sales', 'cash-sessions'].includes(tabKey) && allowedModulesList.includes('pos')) return true;
+    if (tabKey === 'pos' && (allowedModulesList.includes('sales') || allowedModulesList.includes('cash-sessions'))) return true;
+    if (tabKey === 'suppliers' && allowedModulesList.includes('purchases')) return true;
+    if (tabKey === 'purchases' && allowedModulesList.includes('suppliers')) return true;
+    if (tabKey === 'customers' && (allowedModulesList.includes('pos') || allowedModulesList.includes('sales'))) return true;
+    return false;
+  };
+
   const navLinksMap = {
     home:          { icon: 'fa-house',           label: 'Accueil',       show: true },
     backoffice:    { icon: 'fa-gears',           label: 'Console SaaS',  show: !!(user && isSuperAdmin) },
     dashboard:     { icon: 'fa-gauge-high',      label: 'Dashboard',     show: !!(user && !isSuperAdmin) },
-    pos:           { icon: 'fa-cash-register',   label: 'POS (Caisse)',  show: !!(user && !isSuperAdmin) },
-    catalog:       { icon: 'fa-box',             label: 'Catalogue',     show: !!(user && !isSuperAdmin) },
-    customers:     { icon: 'fa-users',           label: 'Clients',       show: !!(user && !isSuperAdmin) },
-    suppliers:     { icon: 'fa-handshake',       label: 'Fournisseurs',  show: !!(user && !isSuperAdmin) },
-    sales:         { icon: 'fa-receipt',         label: 'Ventes',        show: !!(user && !isSuperAdmin) },
-    'cash-sessions': { icon: 'fa-money-bill-wave', label: 'Caisses',       show: !!(user && !isSuperAdmin) },
-    purchases:     { icon: 'fa-truck-ramp-box',  label: 'Achats & Appro', show: !!(user && !isSuperAdmin) },
-    stocks:        { icon: 'fa-layer-group',     label: 'Stocks',        show: !!(user && !isSuperAdmin) },
-    transfers:     { icon: 'fa-right-left',      label: 'Transferts',    show: !!(user && !isSuperAdmin) },
-    branches:      { icon: 'fa-store',           label: 'Boutiques',     show: !!(user && !isSuperAdmin && (role === 'admin' || role === 'gerant')) },
-    'users-mgmt':  { icon: 'fa-users-gear',      label: 'Personnel & Rôles', show: !!(user && !isSuperAdmin && (role === 'admin' || role === 'gerant')) },
-    settings:      { icon: 'fa-sliders',         label: 'Paramètres',    show: !!(user && !isSuperAdmin && isAdminOrGerant) },
-    reports:       { icon: 'fa-chart-line',      label: 'Rapports',      show: !!(user && !isSuperAdmin && isAdminOrGerant) },
+    pos:           { icon: 'fa-cash-register',   label: 'POS (Caisse)',  show: !!(user && !isSuperAdmin && canAccessModule('pos')) },
+    catalog:       { icon: 'fa-box',             label: 'Catalogue',     show: !!(user && !isSuperAdmin && canAccessModule('catalog')) },
+    customers:     { icon: 'fa-users',           label: 'Clients',       show: !!(user && !isSuperAdmin && canAccessModule('customers')) },
+    suppliers:     { icon: 'fa-handshake',       label: 'Fournisseurs',  show: !!(user && !isSuperAdmin && canAccessModule('suppliers')) },
+    sales:         { icon: 'fa-receipt',         label: 'Ventes',        show: !!(user && !isSuperAdmin && canAccessModule('sales')) },
+    'cash-sessions': { icon: 'fa-money-bill-wave', label: 'Caisses',       show: !!(user && !isSuperAdmin && canAccessModule('cash-sessions')) },
+    purchases:     { icon: 'fa-truck-ramp-box',  label: 'Achats & Appro', show: !!(user && !isSuperAdmin && canAccessModule('purchases')) },
+    stocks:        { icon: 'fa-layer-group',     label: 'Stocks',        show: !!(user && !isSuperAdmin && canAccessModule('stocks')) },
+    transfers:     { icon: 'fa-right-left',      label: 'Transferts',    show: !!(user && !isSuperAdmin && canAccessModule('transfers')) },
+    branches:      { icon: 'fa-store',           label: 'Boutiques',     show: !!(user && !isSuperAdmin && canAccessModule('branches')) },
+    'users-mgmt':  { icon: 'fa-users-gear',      label: 'Personnel & Rôles', show: !!(user && !isSuperAdmin && canAccessModule('users-mgmt')) },
+    settings:      { icon: 'fa-sliders',         label: 'Paramètres',    show: !!(user && !isSuperAdmin && canAccessModule('settings')) },
+    reports:       { icon: 'fa-chart-line',      label: 'Rapports',      show: !!(user && !isSuperAdmin && canAccessModule('reports')) },
     documents:     { icon: 'fa-folder-open',     label: 'Centre Documents', show: !!user },
     communication: { icon: 'fa-paper-plane',     label: 'Communication SA', show: !!(user && isSuperAdmin) },
     maintenance:   { icon: 'fa-screwdriver-wrench', label: 'Console Maintenance', show: !!(user && isSuperAdmin) },
@@ -476,12 +564,27 @@ function MainContent() {
               </button>
             )}
 
-            {/* Logo & Titre ApexPOS */}
+            {/* Logo & Nom Entreprise */}
             <div className="navbar-logo" onClick={() => navigate('home')} style={{ cursor: 'pointer' }}>
               <img src={getCompanyLogoUrl(user?.company?.logo_path)} alt="Logo" className="navbar-logo-img" />
-              <span>
-                <span className="logo-text-apex">Apex</span>
-                <span className="logo-text-pos">POS</span>
+              <span style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
+                {user?.company?.name ? (
+                  <>
+                    <span className="logo-text-apex" style={{ fontSize: '0.95rem', fontWeight: 800 }}>
+                      {user.company.name}
+                    </span>
+                    {user.company.slogan && (
+                      <span style={{ fontSize: '0.6rem', color: 'var(--color-primary-light, #a78bfa)', fontWeight: 500, letterSpacing: '0.02em', opacity: 0.85 }}>
+                        {user.company.slogan}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <span className="logo-text-apex">Apex</span>
+                    <span className="logo-text-pos">POS</span>
+                  </>
+                )}
               </span>
             </div>
 
@@ -632,7 +735,22 @@ function MainContent() {
           <div className="drawer-header">
             <div className="drawer-logo">
               <img src={getCompanyLogoUrl(user?.company?.logo_path)} alt="Logo" className="navbar-logo-img" />
-              <span><span className="logo-text-apex">Apex</span><span className="logo-text-pos">POS</span></span>
+              <span style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
+                {user?.company?.name ? (
+                  <>
+                    <span className="logo-text-apex" style={{ fontSize: '0.95rem', fontWeight: 800 }}>
+                      {user.company.name}
+                    </span>
+                    {user.company.slogan && (
+                      <span style={{ fontSize: '0.62rem', color: 'var(--color-primary-light, #a78bfa)', fontWeight: 500, opacity: 0.85 }}>
+                        {user.company.slogan}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <span><span className="logo-text-apex">Apex</span><span className="logo-text-pos">POS</span></span>
+                )}
+              </span>
             </div>
             <button className="drawer-close-btn" onClick={() => setMenuOpen(false)} aria-label="Fermer">
               <i className="fa-solid fa-xmark"></i>

@@ -89,6 +89,15 @@ class BusinessRuleService
                 'value'       => false,
                 'type'        => 'boolean',
             ],
+
+            // Sécurité & Verrouillage
+            'inactivity_lock_timeout' => [
+                'name'        => 'Délai de verrouillage d\'inactivité (minutes)',
+                'category'    => '🛡️ Sécurité & Verrouillage',
+                'description' => 'Temps d\'inactivité utilisateur en minutes avant affichage automatique du masque de verrouillage par code PIN.',
+                'value'       => 15,
+                'type'        => 'integer',
+            ],
         ];
     }
 

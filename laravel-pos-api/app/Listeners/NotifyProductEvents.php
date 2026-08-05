@@ -3,6 +3,7 @@ namespace App\Listeners;
 use App\Events\Product\ProductCreated;
 use App\Events\Product\ProductUpdated;
 use App\Services\NotificationService;
+use App\Services\RealtimeBroadcastService;
 
 class NotifyProductEvents
 {
@@ -26,6 +27,18 @@ class NotifyProductEvents
             data: ['product_id' => $product->id, 'product_name' => $product->name],
             actorId: $actor->id,
             targetRoute: 'products',
+        );
+
+        // SSE — Signal temps réel : produit créé (company-wide, tous les branches)
+        RealtimeBroadcastService::pushCompanyWide(
+            eventType: 'product_created',
+            companyId: $product->company_id,
+            payload:   [
+                'product_id'   => $product->id,
+                'product_name' => $product->name,
+                'sku'          => $product->sku,
+            ],
+            actorId: $actor->id
         );
     }
 
@@ -54,6 +67,20 @@ class NotifyProductEvents
             data: ['product_id' => $product->id, 'changed' => $changed],
             actorId: $actor->id,
             targetRoute: 'products',
+        );
+
+        // SSE — Signal temps réel : produit modifié (company-wide)
+        RealtimeBroadcastService::pushCompanyWide(
+            eventType: 'product_updated',
+            companyId: $product->company_id,
+            payload:   [
+                'product_id'    => $product->id,
+                'product_name'  => $product->name,
+                'selling_price' => $product->selling_price,
+                'changed_fields'=> $changed,
+                'price_changed' => $priceChanged,
+            ],
+            actorId: $actor->id
         );
     }
 

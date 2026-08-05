@@ -5,6 +5,7 @@ namespace App\Listeners;
 use App\Events\Purchase\PurchaseCreated;
 use App\Events\Purchase\PurchaseReceived;
 use App\Services\NotificationService;
+use App\Services\RealtimeBroadcastService;
 
 /**
  * Listener pour les événements d'achat/approvisionnement.
@@ -44,6 +45,19 @@ class NotifyPurchaseEvents
             actorId:            $actor->id,
             targetRoute:        'purchases',
         );
+
+        // SSE — Signal temps réel : achat créé
+        RealtimeBroadcastService::push(
+            eventType: 'purchase_created',
+            companyId: $companyId,
+            branchId:  $branchId,
+            payload:   [
+                'purchase_id' => $purchase->id,
+                'reference'   => $purchase->reference_number,
+                'total'       => $purchase->total_amount ?? $purchase->total,
+            ],
+            actorId: $actor->id
+        );
     }
 
     public function handlePurchaseReceived(PurchaseReceived $event): void
@@ -73,6 +87,19 @@ class NotifyPurchaseEvents
             ],
             actorId:            $actor->id,
             targetRoute:        'purchases',
+        );
+
+        // SSE — Signal temps réel : achat réceptionné (stock mis à jour par serveur)
+        RealtimeBroadcastService::push(
+            eventType: 'purchase_received',
+            companyId: $companyId,
+            branchId:  $branchId,
+            payload:   [
+                'purchase_id' => $purchase->id,
+                'reference'   => $purchase->reference_number,
+                'item_count'  => $itemCount,
+            ],
+            actorId: $actor->id
         );
     }
 

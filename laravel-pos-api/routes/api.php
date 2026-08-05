@@ -47,6 +47,13 @@ Route::prefix('v1')->middleware('tenant')->group(function () {
         Route::get('/sync/pull',   [\App\Http\Controllers\API\V1\SyncController::class, 'pull']);
 
         // -----------------------------------------------------------------------
+        // Realtime — Server-Sent Events (SSE) — Temps Réel Multi-Utilisateurs
+        // Middleware : auth:sanctum (déjà appliqué au groupe parent)
+        // SÉCURITÉ : company_id déterminé depuis auth()->user(), jamais depuis le client
+        // -----------------------------------------------------------------------
+        Route::get('/sse/stream', [\App\Http\Controllers\API\V1\SseController::class, 'stream']);
+
+        // -----------------------------------------------------------------------
         // Notifications Système
         // -----------------------------------------------------------------------
         Route::get('/notifications',              [\App\Http\Controllers\API\V1\NotificationController::class, 'index']);
@@ -73,6 +80,25 @@ Route::prefix('v1')->middleware('tenant')->group(function () {
             Route::put('/users/{id}',                   [AuthController::class, 'updateUser']);
             Route::post('/users/{id}/toggle-status',    [AuthController::class, 'toggleUserStatus']);
             Route::post('/users/{id}/reset-pin',        [AuthController::class, 'resetUserPin']);
+        });
+
+        // -----------------------------------------------------------------------
+        // Abonnement & Factures de l'entreprise
+        // -----------------------------------------------------------------------
+        Route::get('/my-subscription', function (Request $request) {
+            $user = $request->user();
+            $companyId = $user ? $user->company_id : null;
+            $company = $companyId ? \App\Models\Company::find($companyId) : null;
+            $subscription = $companyId ? \App\Models\CompanySubscription::with('plan')->where('company_id', $companyId)->latest()->first() : null;
+            $invoices = $companyId ? \App\Models\SubscriptionInvoice::where('company_id', $companyId)->orderByDesc('issue_date')->get() : [];
+            $payments = $companyId ? \App\Models\SubscriptionPayment::where('company_id', $companyId)->orderByDesc('payment_date')->get() : [];
+
+            return response()->json([
+                'company' => $company,
+                'subscription' => $subscription,
+                'invoices' => $invoices,
+                'payments' => $payments,
+            ]);
         });
 
         // -----------------------------------------------------------------------
@@ -121,6 +147,7 @@ Route::prefix('v1')->middleware('tenant')->group(function () {
         Route::delete('/custom-roles/{id}', [\App\Http\Controllers\API\V1\RoleController::class, 'destroy']);
 
         Route::apiResource('access-zones', \App\Http\Controllers\API\V1\AccessZoneController::class);
+        Route::get('/access-control-logs', [\App\Http\Controllers\API\V1\AccessControlLogController::class, 'index']);
 
         // -----------------------------------------------------------------------
         // Règles de Gestion Configurables (Business Rules)
@@ -182,6 +209,8 @@ Route::prefix('v1')->middleware('tenant')->group(function () {
         Route::get('/sales',        [\App\Http\Controllers\API\V1\SaleController::class, 'index']);
         Route::post('/sales',       [\App\Http\Controllers\API\V1\SaleController::class, 'store']);
         Route::get('/sales/{id}',   [\App\Http\Controllers\API\V1\SaleController::class, 'show']);
+        Route::post('/sales/{id}/cancel', [\App\Http\Controllers\API\V1\SaleController::class, 'cancel']);
+        Route::post('/sales/{id}/refund', [\App\Http\Controllers\API\V1\SaleController::class, 'refund']);
 
         // -----------------------------------------------------------------------
         // Journal d'Audit
@@ -242,6 +271,32 @@ Route::prefix('v1')->middleware('tenant')->group(function () {
             Route::get('/admin/invoices',                     [\App\Http\Controllers\API\V1\SuperAdminController::class, 'invoicesList']);
             Route::post('/admin/invoices/generate',           [\App\Http\Controllers\API\V1\SuperAdminController::class, 'generateInvoice']);
             Route::post('/admin/notifications/send',           [\App\Http\Controllers\API\V1\SuperAdminController::class, 'sendNotification']);
+            // -----------------------------------------------------------------------
+            // Centre de Gestion des E-mails Transactionnels SMTP & Logs
+            // -----------------------------------------------------------------------
+            Route::get('/admin/email-settings',                 [\App\Http\Controllers\API\V1\SuperAdminController::class, 'emailSettings']);
+            Route::post('/admin/email-settings/test-connection', [\App\Http\Controllers\API\V1\SuperAdminController::class, 'testEmailConnection']);
+            Route::post('/admin/email-settings/test-email',      [\App\Http\Controllers\API\V1\SuperAdminController::class, 'testEmailSend']);
+            Route::get('/admin/email-logs',                     [\App\Http\Controllers\API\V1\SuperAdminController::class, 'emailLogs']);
+            Route::post('/admin/email-logs/{id}/retry',          [\App\Http\Controllers\API\V1\SuperAdminController::class, 'retryEmail']);
+            // -----------------------------------------------------------------------
+            // Performance SaaS & Surveillance des Entreprises à Risque
+            // -----------------------------------------------------------------------
+            Route::get('/admin/performance-ranking',          [\App\Http\Controllers\API\V1\SuperAdminController::class, 'performanceRanking']);
+            Route::get('/admin/companies-at-risk',            [\App\Http\Controllers\API\V1\SuperAdminController::class, 'companiesAtRisk']);
+
+            // -----------------------------------------------------------------------
+            // Espace de Supervision & Drill-Down d'une Entreprise (Lecture Seule)
+            // -----------------------------------------------------------------------
+            Route::get('/admin/companies/{company}/overview',      [\App\Http\Controllers\API\V1\SuperAdminController::class, 'companyOverview']);
+            Route::get('/admin/companies/{company}/sales',         [\App\Http\Controllers\API\V1\SuperAdminController::class, 'companySales']);
+            Route::get('/admin/companies/{company}/customers',     [\App\Http\Controllers\API\V1\SuperAdminController::class, 'companyCustomers']);
+            Route::get('/admin/companies/{company}/suppliers',     [\App\Http\Controllers\API\V1\SuperAdminController::class, 'companySuppliers']);
+            Route::get('/admin/companies/{company}/products',      [\App\Http\Controllers\API\V1\SuperAdminController::class, 'companyProducts']);
+            Route::get('/admin/companies/{company}/purchases',     [\App\Http\Controllers\API\V1\SuperAdminController::class, 'companyPurchases']);
+            Route::get('/admin/companies/{company}/cash-sessions',[\App\Http\Controllers\API\V1\SuperAdminController::class, 'companyCashSessions']);
+            Route::get('/admin/companies/{company}/transfers',    [\App\Http\Controllers\API\V1\SuperAdminController::class, 'companyTransfers']);
+            Route::get('/admin/companies/{company}/users',        [\App\Http\Controllers\API\V1\SuperAdminController::class, 'companyUsers']);
 
             // Mode Maintenance Applicatif (Console SuperAdmin)
             Route::get('/maintenance',        [\App\Http\Controllers\API\V1\MaintenanceController::class, 'index']);
@@ -268,4 +323,12 @@ Route::prefix('v1')->middleware('tenant')->group(function () {
             return response()->json($roles);
         });
     });
+});
+
+// ---------------------------------------------------------------------------
+// Routes publiques globales (aucun middleware tenant requis)
+// Accessibles depuis la landing page sans X-Company-ID
+// ---------------------------------------------------------------------------
+Route::prefix('v1')->middleware('throttle:60,1')->group(function () {
+    Route::get('/public/plans', [\App\Http\Controllers\API\V1\SuperAdminController::class, 'publicPlans']);
 });

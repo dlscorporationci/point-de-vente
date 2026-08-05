@@ -5,6 +5,7 @@ namespace App\Listeners;
 use App\Events\Stock\StockLow;
 use App\Events\Stock\StockAdjusted;
 use App\Services\NotificationService;
+use App\Services\RealtimeBroadcastService;
 
 /**
  * Listener pour les événements de stock.
@@ -44,6 +45,19 @@ class NotifyStockEvents
             actorId:            null,
             targetRoute:        'stocks',
         );
+
+        // SSE — Signal temps réel : stock faible
+        RealtimeBroadcastService::push(
+            eventType: 'stock_low',
+            companyId: $event->companyId,
+            branchId:  $event->branchId,
+            payload:   [
+                'product_id'       => $event->productId,
+                'product_name'     => $event->productName,
+                'current_quantity' => $event->currentQuantity,
+                'alert_quantity'   => $event->alertQuantity,
+            ]
+        );
     }
 
     /**
@@ -72,6 +86,20 @@ class NotifyStockEvents
             ],
             actorId:            $event->actor->id,
             targetRoute:        'stocks',
+        );
+
+        // SSE — Signal temps réel : stock ajusté
+        RealtimeBroadcastService::push(
+            eventType: 'stock_adjusted',
+            companyId: $event->companyId,
+            branchId:  $event->branchId,
+            payload:   [
+                'product_id'   => $event->productId,
+                'product_name' => $event->productName,
+                'quantity'     => $event->quantity,
+                'actor_name'   => $event->actor->name,
+            ],
+            actorId: $event->actor->id
         );
     }
 

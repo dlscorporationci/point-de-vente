@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\Role;
 use App\Models\Permission;
 use App\Services\TenantManager;
+use App\Services\AccessControlLogger;
 use Illuminate\Support\Str;
 use App\Traits\Auditable;
 
@@ -105,8 +106,11 @@ class RoleController extends Controller
         $tenantManager = app(TenantManager::class);
         $companyId = $tenantManager->getCompanyId() ?: $request->user()->company_id;
 
-        $roles = Role::whereNull('company_id')
-            ->orWhere('company_id', $companyId)
+        $roles = Role::where(function($q) use ($companyId) {
+                $q->whereNull('company_id')
+                  ->orWhere('company_id', $companyId);
+            })
+            ->whereNotIn('slug', ['super-admin', 'superadmin'])
             ->with('permissions:id,name,slug')
             ->get();
 
@@ -137,7 +141,13 @@ class RoleController extends Controller
         ]);
 
         if (!empty($request->permissions)) {
-            $permissionIds = Permission::whereIn('slug', $request->permissions)->pluck('id');
+            $permissionIds = [];
+            foreach ($request->permissions as $permSlug) {
+                $perm = Permission::firstOrCreate(['slug' => $permSlug], [
+                    'name' => ucfirst(str_replace(['.', '_'], ' ', $permSlug))
+                ]);
+                $permissionIds[] = $perm->id;
+            }
             $role->permissions()->sync($permissionIds);
         }
 
@@ -145,6 +155,11 @@ class RoleController extends Controller
             'role_name' => $role->name,
             'permissions' => $request->permissions,
         ], $currentUser);
+
+        AccessControlLogger::log('role.created', $currentUser, null, [
+            'new_role_id' => $role->id,
+            'new_permissions' => $request->permissions ?? [],
+        ]);
 
         return response()->json([
             'message' => "Le rôle personnalisé \"{$role->name}\" a été créé avec succès.",
@@ -172,15 +187,30 @@ class RoleController extends Controller
         $role->update(['name' => $request->name]);
 
         if (isset($request->permissions)) {
-            $permissionIds = Permission::whereIn('slug', $request->permissions)->pluck('id');
+            $permissionIds = [];
+            foreach ($request->permissions as $permSlug) {
+                $perm = Permission::firstOrCreate(['slug' => $permSlug], [
+                    'name' => ucfirst(str_replace(['.', '_'], ' ', $permSlug))
+                ]);
+                $permissionIds[] = $perm->id;
+            }
             $role->permissions()->sync($permissionIds);
         }
+
+        $oldPermissions = $role->permissions->pluck('slug')->toArray();
 
         $this->logAuditEvent('CUSTOM_ROLE_UPDATED', [
             'role_id' => $role->id,
             'role_name' => $role->name,
             'permissions' => $request->permissions,
         ], $currentUser);
+
+        AccessControlLogger::log('role.updated', $currentUser, null, [
+            'old_role_id' => $role->id,
+            'new_role_id' => $role->id,
+            'old_permissions' => $oldPermissions,
+            'new_permissions' => $request->permissions ?? [],
+        ]);
 
         return response()->json([
             'message' => "Rôle \"{$role->name}\" mis à jour.",
@@ -212,6 +242,10 @@ class RoleController extends Controller
         $this->logAuditEvent('CUSTOM_ROLE_DELETED', [
             'role_name' => $roleName,
         ], $currentUser);
+
+        AccessControlLogger::log('role.deleted', $currentUser, null, [
+            'old_role_id' => $role->id,
+        ]);
 
         return response()->json(['message' => "Le rôle \"{$roleName}\" a été supprimé."]);
     }

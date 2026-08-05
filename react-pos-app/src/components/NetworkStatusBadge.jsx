@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 
 export const NetworkStatusBadge = () => {
-  const { isOnline, pendingSalesCount, isSyncing, syncOfflineSales } = useApp();
+  const { isOnline, pendingSalesCount, isSyncing, syncOfflineSales, realtimeStatus } = useApp();
   const [deferredPrompt, setDeferredPrompt] = useState(null);
 
   useEffect(() => {
@@ -24,6 +24,14 @@ export const NetworkStatusBadge = () => {
     }
   };
 
+  const getTooltipText = () => {
+    if (!isOnline) return "Mode Hors-Ligne actif. Vos opérations sont conservées en local.";
+    if (isSyncing) return "Synchronisation des données en cours...";
+    if (realtimeStatus === 'connected') return "Connexion réseau & temps réel SSE établies avec le serveur.";
+    if (realtimeStatus === 'connecting') return "Reconnexion au flux temps réel en cours...";
+    return "Connexion réseau active. Canal temps réel déconnecté.";
+  };
+
   return (
     <div className="d-flex align-items-center gap-2">
       {deferredPrompt && (
@@ -43,6 +51,7 @@ export const NetworkStatusBadge = () => {
         <div 
           className="badge bg-primary text-white d-flex align-items-center gap-2 px-3 py-2" 
           style={{ borderRadius: '20px', fontSize: '12px', fontWeight: 600, boxShadow: '0 2px 8px rgba(15,74,134,0.3)' }}
+          title={getTooltipText()}
         >
           <i className="fa-solid fa-arrows-rotate fa-spin"></i>
           <span>Synchronisation...</span>
@@ -51,7 +60,7 @@ export const NetworkStatusBadge = () => {
         <div 
           className="badge bg-danger text-white d-flex align-items-center gap-2 px-3 py-2" 
           style={{ borderRadius: '20px', fontSize: '12px', fontWeight: 600, boxShadow: '0 2px 8px rgba(220,53,69,0.3)' }}
-          title="Mode Hors-Ligne actif. Vos ventes sont enregistrées localement."
+          title={getTooltipText()}
         >
           <span className="spinner-grow spinner-grow-sm" role="status" style={{ width: '8px', height: '8px' }}></span>
           <span>🔴 Hors ligne {pendingSalesCount > 0 && `(${pendingSalesCount} vente${pendingSalesCount > 1 ? 's' : ''})`}</span>
@@ -67,14 +76,23 @@ export const NetworkStatusBadge = () => {
           <i className="fa-solid fa-cloud-arrow-up"></i>
           <span>Sync {pendingSalesCount} vente{pendingSalesCount > 1 ? 's' : ''}</span>
         </button>
+      ) : realtimeStatus === 'connecting' ? (
+        <div 
+          className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle d-flex align-items-center gap-2 px-3 py-2" 
+          style={{ borderRadius: '20px', fontSize: '12px', fontWeight: 600 }}
+          title={getTooltipText()}
+        >
+          <i className="fa-solid fa-sync fa-spin"></i>
+          <span>🟡 En ligne · Sync...</span>
+        </div>
       ) : (
         <div 
           className="badge bg-success-subtle text-success border border-success-subtle d-flex align-items-center gap-2 px-3 py-2" 
           style={{ borderRadius: '20px', fontSize: '12px', fontWeight: 600 }}
-          title="Connexion réseau établie. Système connecté en direct à l'API."
+          title={getTooltipText()}
         >
           <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#198754', display: 'inline-block' }}></span>
-          <span>🟢 En ligne</span>
+          <span>🟢 En ligne · Synchronisé</span>
         </div>
       )}
     </div>

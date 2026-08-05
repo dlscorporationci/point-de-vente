@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Company;
 use App\Models\Branch;
+use App\Services\AccessControlLogger;
 use App\Models\Role;
 use App\Models\AuditLog;
 use Illuminate\Http\Request;
@@ -13,6 +14,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
+use App\Rules\RealEmailRule;
 
 class AuthController extends Controller
 {
@@ -130,6 +132,8 @@ class AuthController extends Controller
                     'subscription_plan'       => $company->subscription_plan ?: 'pro',
                     'subscription_expires_at' => $company->subscription_expires_at,
                     'logo_path'               => $company->logo_path,
+                    'slogan'                  => $company->slogan,
+                    'favicon_path'            => $company->favicon_path,
                     'tax_settings'            => $company->tax_settings ?? ['tax_rate' => 18, 'enable_tax' => true],
                     'pos_settings'            => $company->pos_settings ?? [],
                 ] : null,
@@ -144,6 +148,13 @@ class AuthController extends Controller
                     'type' => $activeBranchObj->type,
                     'status' => $activeBranchObj->status,
                     'settings' => $activeBranchObj->settings,
+                ] : null,
+                'access_zone_id' => $user->access_zone_id,
+                'access_zone' => $user->accessZone ? [
+                    'id'              => $user->accessZone->id,
+                    'name'            => $user->accessZone->name,
+                    'allowed_modules' => $user->accessZone->allowed_modules ?? [],
+                    'branch_ids'      => $user->accessZone->branch_ids ?? [],
                 ] : null,
             ]
         ]);
@@ -317,6 +328,8 @@ class AuthController extends Controller
                 'code'                    => $company->code,
                 'status'                  => $company->status,
                 'logo_path'               => $company->logo_path,
+                'slogan'                  => $company->slogan,
+                'favicon_path'            => $company->favicon_path,
                 'tax_settings'            => $company->tax_settings ?? ['tax_rate' => 18, 'enable_tax' => true],
                 'pos_settings'            => $company->pos_settings ?? [],
                 'subscription_plan'       => $company->subscription_plan ?: 'pro',
@@ -333,6 +346,13 @@ class AuthController extends Controller
                 'type' => $activeBranch->type,
                 'status' => $activeBranch->status,
                 'settings' => $activeBranch->settings,
+            ] : null,
+            'access_zone_id' => $user->access_zone_id,
+            'access_zone' => $user->accessZone ? [
+                'id'              => $user->accessZone->id,
+                'name'            => $user->accessZone->name,
+                'allowed_modules' => $user->accessZone->allowed_modules ?? [],
+                'branch_ids'      => $user->accessZone->branch_ids ?? [],
             ] : null,
         ]);
     }
@@ -381,15 +401,21 @@ class AuthController extends Controller
 
         $request->validate([
             'name'         => 'nullable|string|max:255',
+            'slogan'       => 'nullable|string|max:255',
             'tax_rate'     => 'nullable|numeric|min:0|max:100',
             'enable_tax'   => 'nullable|boolean',
             'logo'         => 'nullable|image|mimes:jpeg,png,jpg,svg,webp|max:4096',
             'logo_url'     => 'nullable|string',
+            'favicon'      => 'nullable|image|mimes:jpeg,png,jpg,ico,svg,webp|max:512',
             'pos_settings' => 'nullable',
         ]);
 
         if ($request->filled('name')) {
             $company->name = $request->name;
+        }
+
+        if ($request->has('slogan')) {
+            $company->slogan = $request->slogan; // null accepté pour effacer
         }
 
         // 1. Réglages TVA
@@ -412,6 +438,14 @@ class AuthController extends Controller
             $company->logo_path = $request->logo_url;
         }
 
+        // 2b. Favicon de l'entreprise (optionnel)
+        if ($request->hasFile('favicon')) {
+            $favFile = $request->file('favicon');
+            $favName = 'favicon_' . $company->id . '_' . time() . '.' . $favFile->getClientOriginalExtension();
+            $favPath = $favFile->storeAs('favicons', $favName, 'public');
+            $company->favicon_path = '/storage/' . $favPath;
+        }
+
         // 3. Paramètres Caisse, Reçu & Factures
         if ($request->has('pos_settings')) {
             $existingPos = $company->pos_settings ?? [];
@@ -432,7 +466,9 @@ class AuthController extends Controller
                 'id'           => $company->id,
                 'name'         => $company->name,
                 'code'         => $company->code,
+                'slogan'       => $company->slogan,
                 'logo_path'    => $company->logo_path,
+                'favicon_path' => $company->favicon_path,
                 'tax_settings' => $company->tax_settings,
                 'pos_settings' => $company->pos_settings,
             ]
@@ -447,7 +483,7 @@ class AuthController extends Controller
         $request->validate([
             'company_name' => 'required|string|max:255',
             'name'         => 'required|string|max:255',
-            'email'        => 'required|email|max:255|unique:users,email',
+            'email'        => ['required', 'string', 'email', 'max:255', 'unique:users,email', new RealEmailRule()],
             'password'     => 'required|string|min:6|confirmed',
         ]);
 
@@ -483,6 +519,13 @@ class AuthController extends Controller
 
             $user->load(['role.permissions', 'branch']);
             $token = $user->createToken('pos-auth-token')->plainTextToken;
+
+            // Déclenchement de l'e-mail de bienvenue centralisé
+            try {
+                (new \App\Services\EmailService())->sendWelcomeEmail($user, $company);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning("Échec envoi mail de bienvenue : " . $e->getMessage());
+            }
 
             return response()->json([
                 'token' => $token,
@@ -532,7 +575,7 @@ class AuthController extends Controller
     public function forgotPassword(Request $request)
     {
         $request->validate([
-            'email' => 'required|email',
+            'email' => ['required', 'email', new RealEmailRule()],
         ]);
 
         $user = User::withoutGlobalScopes()->where('email', $request->email)->first();
@@ -553,33 +596,9 @@ class AuthController extends Controller
             // Loguer le code de réinitialisation pour le développement
             \Illuminate\Support\Facades\Log::info("Code de récupération de mot de passe généré pour {$user->email} : {$code}");
             
-            // Envoi réel du mail via la configuration SMTP
+            // Envoi réel du mail via EmailService centralisé
             try {
-                $htmlContent = "
-                <div style='font-family: Arial, sans-serif; max-width: 550px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px; background-color: #ffffff;'>
-                    <div style='background-color: #4f46e5; color: #ffffff; padding: 15px 20px; border-top-left-radius: 8px; border-top-right-radius: 8px; text-align: center;'>
-                        <h2 style='margin: 0; font-size: 20px;'>🔑 ApexPOS - Récupération de Mot de Passe</h2>
-                    </div>
-                    <div style='padding: 25px 20px;'>
-                        <p style='font-size: 15px; color: #334155; margin-bottom: 20px;'>Bonjour <strong>{$user->name}</strong>,</p>
-                        <p style='font-size: 14px; color: #475569;'>Vous avez demandé la réinitialisation de votre mot de passe ApexPOS.</p>
-                        <div style='background-color: #f1f5f9; padding: 18px; text-align: center; border-radius: 6px; margin: 25px 0;'>
-                            <span style='font-size: 30px; font-weight: bold; letter-spacing: 6px; color: #0f172a;'>{$code}</span>
-                        </div>
-                        <p style='font-size: 13px; color: #64748b;'>Ce code est valide pendant <strong>15 minutes</strong>. Si vous n'avez pas demandé cette réinitialisation, veuillez ignorer cet e-mail.</p>
-                    </div>
-                    <div style='border-top: 1px solid #f1f5f9; padding-top: 15px; text-align: center; font-size: 12px; color: #94a3b8;'>
-                        <p>ApexPOS &copy; " . date('Y') . " - Système de Gestion de Caisse</p>
-                    </div>
-                </div>";
-
-                \Illuminate\Support\Facades\Mail::html(
-                    $htmlContent,
-                    function ($message) use ($user, $code) {
-                        $message->to($user->email, $user->name)
-                                ->subject("🔑 [Code {$code}] Récupération de mot de passe ApexPOS");
-                    }
-                );
+                (new \App\Services\EmailService())->sendPasswordResetEmail($user, $code);
             } catch (\Exception $e) {
                 \Illuminate\Support\Facades\Log::error("Erreur lors de l'envoi du mail de réinitialisation : " . $e->getMessage());
             }
@@ -588,8 +607,7 @@ class AuthController extends Controller
             $this->logAuthEvent($user, 'password_reset_requested', $request);
 
             return response()->json([
-                'message' => "Un e-mail contenant votre code de récupération à 6 chiffres a été envoyé à l'adresse : {$user->email}. Veuillez consulter votre boîte de réception (ou spams).",
-                'code' => $code
+                'message' => "Un e-mail contenant votre code de récupération à 6 chiffres a été envoyé à l'adresse : {$user->email}. Veuillez consulter votre boîte de réception (ou spams)."
             ]);
         }
 
@@ -642,8 +660,13 @@ class AuthController extends Controller
         // Supprimer le token utilisé
         DB::table('password_reset_tokens')->where('email', $request->email)->delete();
 
-        // Log d'audit
+        // Log d'audit & E-mail de confirmation
         $this->logAuthEvent($user, 'password_reset_completed', $request);
+        try {
+            (new \App\Services\EmailService())->sendPasswordChangedEmail($user);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Échec envoi mail confirmation mot de passe : " . $e->getMessage());
+        }
 
         return response()->json([
             'message' => 'Votre mot de passe a été modifié avec succès. Vous pouvez maintenant vous connecter.'
@@ -707,8 +730,8 @@ class AuthController extends Controller
      */
     public function getTenantUsers(Request $request)
     {
-        $users = User::with(['role:id,name,slug', 'branch:id,name'])
-            ->select('id', 'name', 'email', 'status', 'role_id', 'branch_id', 'created_at')
+        $users = User::with(['role:id,name,slug', 'branch:id,name', 'accessZone:id,name,allowed_modules,branch_ids'])
+            ->select('id', 'name', 'email', 'status', 'role_id', 'branch_id', 'access_zone_id', 'created_at')
             ->whereHas('role', function ($q) {
                 // Exclure le super-admin de la liste des utilisateurs d'entreprise
                 $q->where('slug', '!=', 'super-admin');
@@ -717,13 +740,15 @@ class AuthController extends Controller
             ->get()
             ->map(function ($u) {
                 return [
-                    'id'         => $u->id,
-                    'name'       => $u->name,
-                    'email'      => $u->email,
-                    'status'     => $u->status,
-                    'role'       => $u->role ? ['id' => $u->role->id, 'name' => $u->role->name, 'slug' => $u->role->slug] : null,
-                    'branch'     => $u->branch ? ['id' => $u->branch->id, 'name' => $u->branch->name] : null,
-                    'created_at' => $u->created_at,
+                    'id'             => $u->id,
+                    'name'           => $u->name,
+                    'email'          => $u->email,
+                    'status'         => $u->status,
+                    'role'           => $u->role ? ['id' => $u->role->id, 'name' => $u->role->name, 'slug' => $u->role->slug] : null,
+                    'branch'         => $u->branch ? ['id' => $u->branch->id, 'name' => $u->branch->name] : null,
+                    'access_zone_id' => $u->access_zone_id,
+                    'access_zone'    => $u->accessZone ? ['id' => $u->accessZone->id, 'name' => $u->accessZone->name, 'allowed_modules' => $u->accessZone->allowed_modules, 'branch_ids' => $u->accessZone->branch_ids] : null,
+                    'created_at'     => $u->created_at,
                 ];
             });
 
@@ -741,15 +766,16 @@ class AuthController extends Controller
         $companyId = $tenantManager->getCompanyId() ?: $currentUser->company_id;
 
         $request->validate([
-            'name'       => 'required|string|max:255',
-            'email'      => 'required|email|max:255|unique:users,email',
-            'password'   => 'required|string|min:6',
-            'pin_code'   => 'required|string|size:4',
-            'role_id'    => 'required|integer|exists:roles,id',
-            'branch_id'  => 'nullable|integer|exists:branches,id',
-            'branch_ids' => 'nullable|array',
-            'branch_ids.*' => 'integer|exists:branches,id',
-            'status'     => 'nullable|in:active,inactive',
+            'name'           => 'required|string|max:255',
+            'email'          => ['required', 'string', 'email', 'max:255', 'unique:users,email', new RealEmailRule()],
+            'password'       => 'required|string|min:6',
+            'pin_code'       => 'required|string|size:4',
+            'role_id'        => 'required|integer|exists:roles,id',
+            'branch_id'      => 'nullable|integer|exists:branches,id',
+            'access_zone_id' => 'nullable|integer|exists:access_zones,id',
+            'branch_ids'     => 'nullable|array',
+            'branch_ids.*'   => 'integer|exists:branches,id',
+            'status'         => 'nullable|in:active,inactive',
         ]);
 
         // Vérification automatique des quotas d'utilisateurs selon le plan
@@ -772,14 +798,15 @@ class AuthController extends Controller
         }
 
         $user = User::create([
-            'company_id' => $companyId,
-            'branch_id'  => $primaryBranchId,
-            'role_id'    => $request->role_id,
-            'name'       => $request->name,
-            'email'      => strtolower(trim($request->email)),
-            'password'   => Hash::make($request->password),
-            'pin_code'   => $request->pin_code,
-            'status'     => $request->status ?? 'active',
+            'company_id'     => $companyId,
+            'branch_id'      => $primaryBranchId,
+            'access_zone_id' => $request->access_zone_id ?? null,
+            'role_id'        => $request->role_id,
+            'name'           => $request->name,
+            'email'          => strtolower(trim($request->email)),
+            'password'       => Hash::make($request->password),
+            'pin_code'       => $request->pin_code,
+            'status'         => $request->status ?? 'active',
         ]);
 
         if (!empty($request->branch_ids)) {
@@ -789,7 +816,13 @@ class AuthController extends Controller
         }
 
         $this->logAuthEvent($currentUser, 'user_created', $request);
-        $user->load(['role:id,name,slug', 'branch:id,name', 'branches:id,name']);
+
+        AccessControlLogger::log('user.created', $currentUser, $user, [
+            'new_role_id'        => $user->role_id,
+            'new_access_zone_id' => $user->access_zone_id,
+        ]);
+
+        $user->load(['role:id,name,slug', 'branch:id,name', 'branches:id,name', 'accessZone:id,name,allowed_modules,branch_ids']);
 
         return response()->json([
             'message' => 'Utilisateur créé avec succès.',
@@ -800,6 +833,8 @@ class AuthController extends Controller
                 'status'            => $user->status,
                 'role'              => $user->role ? ['id' => $user->role->id, 'name' => $user->role->name, 'slug' => $user->role->slug] : null,
                 'branch'            => $user->branch ? ['id' => $user->branch->id, 'name' => $user->branch->name] : null,
+                'access_zone_id'    => $user->access_zone_id,
+                'access_zone'       => $user->accessZone ? ['id' => $user->accessZone->id, 'name' => $user->accessZone->name, 'allowed_modules' => $user->accessZone->allowed_modules, 'branch_ids' => $user->accessZone->branch_ids] : null,
                 'assigned_branches' => $user->branches->map(fn($b) => ['id' => $b->id, 'name' => $b->name]),
             ]
         ], 201);
@@ -817,15 +852,16 @@ class AuthController extends Controller
         $user = User::findOrFail($id);
 
         $request->validate([
-            'name'         => 'sometimes|required|string|max:255',
-            'email'        => 'sometimes|required|email|max:255|unique:users,email,' . $user->id,
-            'pin_code'     => 'nullable|string|size:4',
-            'password'     => 'nullable|string|min:6',
-            'role_id'      => 'sometimes|required|integer|exists:roles,id',
-            'branch_id'    => 'nullable|integer|exists:branches,id',
-            'branch_ids'   => 'nullable|array',
-            'branch_ids.*' => 'integer|exists:branches,id',
-            'status'       => 'nullable|in:active,inactive',
+            'name'           => 'sometimes|required|string|max:255',
+            'email'          => ['sometimes', 'required', 'string', 'email', 'max:255', 'unique:users,email,' . $user->id, new RealEmailRule()],
+            'pin_code'       => 'nullable|string|size:4',
+            'password'       => 'nullable|string|min:6',
+            'role_id'        => 'sometimes|required|integer|exists:roles,id',
+            'branch_id'      => 'nullable|integer|exists:branches,id',
+            'access_zone_id' => 'nullable|integer|exists:access_zones,id',
+            'branch_ids'     => 'nullable|array',
+            'branch_ids.*'   => 'integer|exists:branches,id',
+            'status'         => 'nullable|in:active,inactive',
         ]);
 
         if ($request->filled('password')) {
@@ -835,15 +871,26 @@ class AuthController extends Controller
             $user->pin_code = $request->pin_code;
         }
 
-        $user->fill($request->only(['name', 'email', 'role_id', 'branch_id', 'status']));
+        $user->fill($request->only(['name', 'email', 'role_id', 'branch_id', 'access_zone_id', 'status']));
         $user->save();
 
         if ($request->has('branch_ids')) {
             $user->branches()->sync($request->branch_ids ?? []);
         }
 
+        $oldRoleId = $user->getOriginal('role_id');
+        $oldAccessZoneId = $user->getOriginal('access_zone_id');
+
         $this->logAuthEvent($currentUser, 'user_updated', $request);
-        $user->load(['role:id,name,slug', 'branch:id,name', 'branches:id,name']);
+
+        AccessControlLogger::log('user.updated', $currentUser, $user, [
+            'old_role_id'        => $oldRoleId,
+            'new_role_id'        => $user->role_id,
+            'old_access_zone_id' => $oldAccessZoneId,
+            'new_access_zone_id' => $user->access_zone_id,
+        ]);
+
+        $user->load(['role:id,name,slug', 'branch:id,name', 'branches:id,name', 'accessZone:id,name,allowed_modules,branch_ids']);
 
         return response()->json([
             'message' => 'Utilisateur mis à jour avec succès.',
@@ -854,6 +901,8 @@ class AuthController extends Controller
                 'status'            => $user->status,
                 'role'              => $user->role ? ['id' => $user->role->id, 'name' => $user->role->name, 'slug' => $user->role->slug] : null,
                 'branch'            => $user->branch ? ['id' => $user->branch->id, 'name' => $user->branch->name] : null,
+                'access_zone_id'    => $user->access_zone_id,
+                'access_zone'       => $user->accessZone ? ['id' => $user->accessZone->id, 'name' => $user->accessZone->name, 'allowed_modules' => $user->accessZone->allowed_modules, 'branch_ids' => $user->accessZone->branch_ids] : null,
                 'assigned_branches' => $user->branches->map(fn($b) => ['id' => $b->id, 'name' => $b->name]),
             ]
         ]);
@@ -875,13 +924,17 @@ class AuthController extends Controller
             ], 422);
         }
 
-        $newStatus = $user->status === 'active' ? 'inactive' : 'active';
-        $user->update(['status' => $newStatus]);
+        $user->status = $user->status === 'active' ? 'inactive' : 'active';
+        $user->save();
+
+        AccessControlLogger::log('user.status_toggled', $currentUser, $user, [
+            'status' => $user->status,
+        ]);
 
         $this->logAuthEvent($currentUser, 'user_status_toggled', $request);
 
         return response()->json([
-            'message' => "Compte " . ($newStatus === 'active' ? 'activé' : 'désactivé') . " avec succès.",
+            'message' => "Compte " . ($user->status === 'active' ? 'activé' : 'désactivé') . " avec succès.",
             'user'    => ['id' => $user->id, 'status' => $user->status],
         ]);
     }
