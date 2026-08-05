@@ -206,7 +206,7 @@ class SuperAdminController extends Controller
     public function publicPlans(Request $request)
     {
         $plans = \App\Models\SubscriptionPlan::where('is_active', true)
-            ->orderBy('price_monthly', 'asc')
+            ->orderBy('id', 'asc')
             ->get();
         return response()->json($plans);
     }
@@ -227,10 +227,17 @@ class SuperAdminController extends Controller
             'max_branches'  => 'required|integer|min:1',
             'max_users'     => 'required|integer|min:1',
             'max_products'  => 'required|integer|min:1',
-            'features'      => 'nullable|array',
-            'is_active'     => 'boolean',
-            'is_popular'    => 'boolean',
+            'features'      => 'nullable',
+            'is_active'     => 'nullable',
+            'is_popular'    => 'nullable',
         ]);
+
+        $validated['is_active'] = $request->has('is_active') ? $request->boolean('is_active') : true;
+        $validated['is_popular'] = $request->boolean('is_popular');
+
+        if (is_string($request->input('features'))) {
+            $validated['features'] = json_decode($request->input('features'), true) ?: array_map('trim', explode(',', $request->input('features')));
+        }
 
         $plan = \App\Models\SubscriptionPlan::create($validated);
 
@@ -258,10 +265,20 @@ class SuperAdminController extends Controller
             'max_branches'  => 'sometimes|required|integer|min:1',
             'max_users'     => 'sometimes|required|integer|min:1',
             'max_products'  => 'sometimes|required|integer|min:1',
-            'features'      => 'nullable|array',
-            'is_active'     => 'boolean',
-            'is_popular'    => 'boolean',
+            'features'      => 'nullable',
+            'is_active'     => 'nullable',
+            'is_popular'    => 'nullable',
         ]);
+
+        if ($request->has('is_active')) {
+            $validated['is_active'] = $request->boolean('is_active');
+        }
+        if ($request->has('is_popular')) {
+            $validated['is_popular'] = $request->boolean('is_popular');
+        }
+        if ($request->has('features') && is_string($request->input('features'))) {
+            $validated['features'] = json_decode($request->input('features'), true) ?: array_map('trim', explode(',', $request->input('features')));
+        }
 
         $plan->update($validated);
 
