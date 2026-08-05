@@ -94,7 +94,7 @@ export const Home = ({ setActiveTab }) => {
       ? 'http://127.0.0.1:8000/api'
       : '/api';
 
-    axios.get(`${apiBase}/v1/public/plans`)
+    axios.get(`${apiBase}/v1/public/plans?t=${Date.now()}`)
       .then(res => {
         const fetchedPlans = Array.isArray(res.data) ? res.data : (res.data?.data || []);
         if (fetchedPlans && fetchedPlans.length > 0) {

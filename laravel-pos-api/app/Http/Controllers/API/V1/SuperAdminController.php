@@ -208,7 +208,10 @@ class SuperAdminController extends Controller
         $plans = \App\Models\SubscriptionPlan::where('is_active', true)
             ->orderBy('id', 'asc')
             ->get();
-        return response()->json($plans);
+        return response()->json($plans)
+            ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0');
     }
 
     /**
