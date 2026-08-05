@@ -538,16 +538,25 @@ export const Home = ({ setActiveTab }) => {
                     </div>
                   </div>
                   {/* Features list */}
-                  {plan.features && Array.isArray(plan.features) && plan.features.length > 0 && (
-                    <ul className="plan-features">
-                      {plan.features.map((feat, idx) => (
-                        <li key={idx}>
-                          <i className="fa-solid fa-check text-success me-2"></i>
-                          {feat}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                  {(() => {
+                    let feats = [];
+                    if (Array.isArray(plan.features)) {
+                      feats = plan.features;
+                    } else if (typeof plan.features === 'string') {
+                      try { feats = JSON.parse(plan.features); } catch (e) { feats = [plan.features]; }
+                    }
+                    if (!Array.isArray(feats) || feats.length === 0) return null;
+                    return (
+                      <ul className="plan-features">
+                        {feats.map((feat, idx) => (
+                          <li key={idx}>
+                            <i className="fa-solid fa-check text-success me-2"></i>
+                            {feat}
+                          </li>
+                        ))}
+                      </ul>
+                    );
+                  })()}
                   <button
                     onClick={() => {
                       if (!isFree && !isPopular) {
