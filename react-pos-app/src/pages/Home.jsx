@@ -41,6 +41,51 @@ export const Home = ({ setActiveTab }) => {
   const [plans, setPlans] = useState([]);
   const [plansLoading, setPlansLoading] = useState(true);
 
+  const DEFAULT_PLANS = [
+    {
+      id: 1,
+      name: '🚀 Starter / TPE',
+      slug: 'starter',
+      description: 'Parfait pour les petits commerces, boutiques uniques et vendeurs indépendants.',
+      price_monthly: 15000,
+      price_yearly: 150000,
+      max_branches: 1,
+      max_users: 3,
+      max_products: 1000,
+      is_active: true,
+      is_popular: false,
+      features: ['1 Boutique active', '3 Comptes utilisateurs / caissiers', 'Jusqu\'à 1 000 références produits', 'Gestion de caisse tactile & tickets', 'Historique des ventes & rapports de base', 'Support par email']
+    },
+    {
+      id: 2,
+      name: '⭐ Business Pro',
+      slug: 'pro',
+      description: 'Idéal pour les PME en croissance avec plusieurs points de vente et gestion de stock avancée.',
+      price_monthly: 35000,
+      price_yearly: 350000,
+      max_branches: 5,
+      max_users: 15,
+      max_products: 10000,
+      is_active: true,
+      is_popular: true,
+      features: ['Jusqu\'à 5 Boutiques / Succursales', '15 Utilisateurs avec rôles personnalisés (RBAC/ABAC)', '10 000 Produits & catégories', 'Transferts de stock inter-boutiques', 'Module d\'approvisionnement & fournisseurs', 'Plages horaires d\'accès & Audit de sécurité', 'Support prioritaire 7j/7']
+    },
+    {
+      id: 3,
+      name: '🏢 Enterprise Multi-Boutiques',
+      slug: 'enterprise',
+      description: 'Solution sur-mesure illimitée pour grands réseaux de distribution, franchises et grossistes.',
+      price_monthly: 75000,
+      price_yearly: 750000,
+      max_branches: 99,
+      max_users: 999,
+      max_products: 999999,
+      is_active: true,
+      is_popular: false,
+      features: ['Nombre de boutiques illimité', 'Utilisateurs illimités', 'Base produits & inventaire illimités', 'Synchronisation Offline-First avancée', 'API dédiée & intégrations Webhooks', 'Gestionnaire de compte dédié & SLA 99.9%']
+    }
+  ];
+
   // Chargement dynamique des formules d'abonnement depuis l'API (sans authentification)
   useEffect(() => {
     const apiBase = (typeof window !== 'undefined' &&
@@ -51,10 +96,16 @@ export const Home = ({ setActiveTab }) => {
 
     axios.get(`${apiBase}/v1/public/plans`)
       .then(res => {
-        setPlans(res.data);
+        const fetchedPlans = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+        if (fetchedPlans && fetchedPlans.length > 0) {
+          setPlans(fetchedPlans);
+        } else {
+          setPlans(DEFAULT_PLANS);
+        }
         setPlansLoading(false);
       })
       .catch(() => {
+        setPlans(DEFAULT_PLANS);
         setPlansLoading(false);
       });
   }, []);
