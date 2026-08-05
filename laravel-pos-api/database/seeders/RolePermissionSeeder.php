@@ -20,8 +20,7 @@ class RolePermissionSeeder extends Seeder
     public function run(): void
     {
         // 1. Création de la Company test
-        $company = Company::create([
-            'id' => 1,
+        $company = Company::firstOrCreate(['id' => 1], [
             'name' => 'DLS Corporation',
             'timezone' => 'Africa/Dakar',
             'currency' => 'XOF',
@@ -29,20 +28,19 @@ class RolePermissionSeeder extends Seeder
         ]);
 
         // 2. Création des Branches tests
-        $branch = Branch::create([
-            'id' => 1,
+        $branch = Branch::firstOrCreate(['id' => 1], [
             'company_id' => $company->id,
             'name' => 'Boutique Centrale',
+            'code' => 'BTC-01',
+            'status' => 'active',
             'address' => 'Dakar Plateau',
             'phone' => '+221338000000',
         ]);
 
-        $branch2 = Branch::create([
-            'id' => 2,
+        $branch2 = Branch::firstOrCreate(['id' => 2], [
             'company_id' => $company->id,
             'name' => 'Boutique Rufisque',
             'address' => 'Route de Rufisque, Rufisque',
-            'phone' => '+221338991122',
         ]);
 
         // 3. Définition des permissions initiales
@@ -79,37 +77,37 @@ class RolePermissionSeeder extends Seeder
 
         $createdPermissions = [];
         foreach ($permissionsList as $perm) {
-            $createdPermissions[$perm['slug']] = Permission::create($perm);
+            $createdPermissions[$perm['slug']] = Permission::firstOrCreate(['slug' => $perm['slug']], $perm);
         }
 
         // 4. Définition des Rôles
         // Rôle Super-Admin (SaaS Global - pas lié à une entreprise en particulier)
-        $superAdminRole = Role::create([
+        $superAdminRole = Role::firstOrCreate(['slug' => 'super-admin'], [
             'name' => 'Super-Administrateur SaaS',
             'slug' => 'super-admin',
             'company_id' => null,
         ]);
 
         // Rôles liés à l'entreprise
-        $adminRole = Role::create([
+        $adminRole = Role::firstOrCreate(['slug' => 'admin'], [
             'name' => 'Administrateur Entreprise',
             'slug' => 'admin',
             'company_id' => $company->id,
         ]);
 
-        $managerRole = Role::create([
+        $managerRole = Role::firstOrCreate(['slug' => 'gerant'], [
             'name' => 'Gérant de Boutique',
             'slug' => 'gerant',
             'company_id' => $company->id,
         ]);
 
-        $cashierRole = Role::create([
+        $cashierRole = Role::firstOrCreate(['slug' => 'caissier'], [
             'name' => 'Caissier',
             'slug' => 'caissier',
             'company_id' => $company->id,
         ]);
 
-        $accountantRole = Role::create([
+        $accountantRole = Role::firstOrCreate(['slug' => 'comptable'], [
             'name' => 'Comptable',
             'slug' => 'comptable',
             'company_id' => $company->id,
@@ -149,7 +147,7 @@ class RolePermissionSeeder extends Seeder
         $tenantManager->setCompany($company);
 
         // 7. Création de l'utilisateur Admin
-        User::create([
+        User::firstOrCreate(['email' => 'admin@dls.com'], [
             'company_id' => $company->id,
             'branch_id' => $branch->id,
             'role_id' => $adminRole->id,
@@ -161,7 +159,7 @@ class RolePermissionSeeder extends Seeder
         ]);
 
         // 8. Création de l'utilisateur Caissier
-        User::create([
+        User::firstOrCreate(['email' => 'caissier@dls.com'], [
             'company_id' => $company->id,
             'branch_id' => $branch->id,
             'role_id' => $cashierRole->id,
@@ -173,36 +171,30 @@ class RolePermissionSeeder extends Seeder
         ]);
 
         // 8.5. Création de l'utilisateur Gérant
-        User::create([
+        User::firstOrCreate(['email' => 'gerant@dls.com'], [
             'company_id' => $company->id,
             'branch_id' => $branch->id,
             'role_id' => $managerRole->id,
             'name' => 'Gérant DLS',
             'email' => 'gerant@dls.com',
             'password' => 'password',
-            'pin_code' => '5678',
+            'pin_code' => '1111',
             'status' => 'active',
         ]);
 
         // 9. Création des Catégories de produits
-        $catConstruction = Category::create([
-            'company_id' => $company->id,
+        $catConstruction = Category::firstOrCreate(['company_id' => $company->id, 'slug' => 'materiaux-de-construction'], [
             'name' => 'Matériaux de construction',
-            'slug' => 'materiaux-de-construction',
         ]);
 
-        $catOutillage = Category::create([
-            'company_id' => $company->id,
+        $catOutillage = Category::firstOrCreate(['company_id' => $company->id, 'slug' => 'outillage'], [
             'name' => 'Outillage',
-            'slug' => 'outillage',
         ]);
 
         // 10. Création des Produits
-        Product::create([
-            'company_id' => $company->id,
+        Product::firstOrCreate(['company_id' => $company->id, 'sku' => 'CIM-SOCO-50'], [
             'category_id' => $catConstruction->id,
             'name' => 'Ciment SOCOCIM 50kg',
-            'sku' => 'CIM-SOCO-50',
             'barcode' => '3700021300051',
             'description' => 'Sac de ciment de haute résistance 50kg',
             'selling_price' => 3500.00,
@@ -211,11 +203,9 @@ class RolePermissionSeeder extends Seeder
             'status' => 'active',
         ]);
 
-        Product::create([
-            'company_id' => $company->id,
+        Product::firstOrCreate(['company_id' => $company->id, 'sku' => 'MART-ARR-CLO'], [
             'category_id' => $catOutillage->id,
             'name' => 'Marteau arrache-clous',
-            'sku' => 'MART-ARR-CLO',
             'barcode' => '3700021300068',
             'description' => 'Marteau arrache-clous en acier trempé',
             'selling_price' => 2500.00,
@@ -224,11 +214,9 @@ class RolePermissionSeeder extends Seeder
             'status' => 'active',
         ]);
 
-        Product::create([
-            'company_id' => $company->id,
+        Product::firstOrCreate(['company_id' => $company->id, 'sku' => 'BROU-STD'], [
             'category_id' => $catConstruction->id,
             'name' => 'Brouette Standard',
-            'sku' => 'BROU-STD',
             'barcode' => '3700021300075',
             'description' => 'Brouette de chantier renforcée 80L',
             'selling_price' => 15000.00,
@@ -238,18 +226,14 @@ class RolePermissionSeeder extends Seeder
         ]);
 
         // 11. Création des Fournisseurs
-        Supplier::create([
-            'company_id' => $company->id,
-            'name' => 'Quincaillerie Al-Azhar',
+        Supplier::firstOrCreate(['company_id' => $company->id, 'name' => 'Quincaillerie Al-Azhar'], [
             'email' => 'contact@alazhar.sn',
             'phone' => '+221 33 824 55 66',
             'address' => 'Avenue Blaise Diagne, Dakar',
-            'debt_balance' => 150000.00, // Nous leur devons 150k
+            'debt_balance' => 150000.00,
         ]);
 
-        Supplier::create([
-            'company_id' => $company->id,
-            'name' => 'Sénégal Matériaux',
+        Supplier::firstOrCreate(['company_id' => $company->id, 'name' => 'Sénégal Matériaux'], [
             'email' => 'sales@senegalmateriaux.com',
             'phone' => '+221 33 897 12 34',
             'address' => 'Zone Industrielle de Hann, Dakar',
