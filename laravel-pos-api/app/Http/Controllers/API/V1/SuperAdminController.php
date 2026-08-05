@@ -1822,7 +1822,87 @@ class SuperAdminController extends Controller
 
         $users = $query->orderBy('id', 'asc')->paginate($request->input('per_page', 20));
 
-        return response()->json(['success' => true, 'users' => $users]);
+    /**
+     * Liste de toutes les formules & offres d'abonnement SaaS.
+     */
+    public function plans(Request $request)
+    {
+        $plans = \App\Models\SubscriptionPlan::orderBy('id', 'asc')->get();
+        return response()->json($plans);
+    }
+
+    /**
+     * Création & Publication d'une nouvelle formule d'abonnement SaaS.
+     */
+    public function storePlan(Request $request)
+    {
+        $validated = $request->validate([
+            'name'          => 'required|string|max:100',
+            'slug'          => 'nullable|string|max:50',
+            'description'   => 'nullable|string',
+            'price_monthly' => 'required|numeric|min:0',
+            'price_yearly'  => 'required|numeric|min:0',
+            'max_branches'  => 'nullable|integer|min:1',
+            'max_users'     => 'nullable|integer|min:1',
+            'max_products'  => 'nullable|integer|min:1',
+            'features'      => 'nullable',
+            'is_active'     => 'nullable|boolean',
+            'is_popular'    => 'nullable|boolean',
+        ]);
+
+        if (empty($validated['slug'])) {
+            $validated['slug'] = \Illuminate\Support\Str::slug($validated['name']);
+        }
+
+        if (is_string($request->input('features'))) {
+            $validated['features'] = json_decode($request->input('features'), true) ?: array_map('trim', explode(',', $request->input('features')));
+        }
+
+        $plan = \App\Models\SubscriptionPlan::create($validated);
+        return response()->json(['message' => 'Offre d\'abonnement créée et publiée avec succès', 'plan' => $plan], 201);
+    }
+
+    /**
+     * Modification d'une formule d'abonnement SaaS.
+     */
+    public function updatePlan(Request $request, $id)
+    {
+        $plan = \App\Models\SubscriptionPlan::findOrFail($id);
+
+        $validated = $request->validate([
+            'name'          => 'sometimes|string|max:100',
+            'slug'          => 'sometimes|string|max:50',
+            'description'   => 'nullable|string',
+            'price_monthly' => 'sometimes|numeric|min:0',
+            'price_yearly'  => 'sometimes|numeric|min:0',
+            'max_branches'  => 'nullable|integer|min:1',
+            'max_users'     => 'nullable|integer|min:1',
+            'max_products'  => 'nullable|integer|min:1',
+            'features'      => 'nullable',
+            'is_active'     => 'nullable|boolean',
+            'is_popular'    => 'nullable|boolean',
+        ]);
+
+        if (isset($validated['name']) && empty($validated['slug'])) {
+            $validated['slug'] = \Illuminate\Support\Str::slug($validated['name']);
+        }
+
+        if ($request->has('features') && is_string($request->input('features'))) {
+            $validated['features'] = json_decode($request->input('features'), true) ?: array_map('trim', explode(',', $request->input('features')));
+        }
+
+        $plan->update($validated);
+        return response()->json(['message' => 'Offre mise à jour avec succès', 'plan' => $plan]);
+    }
+
+    /**
+     * Suppression d'une formule d'abonnement.
+     */
+    public function deletePlan($id)
+    {
+        $plan = \App\Models\SubscriptionPlan::findOrFail($id);
+        $plan->delete();
+        return response()->json(['message' => 'Offre supprimée avec succès']);
     }
 
     /**

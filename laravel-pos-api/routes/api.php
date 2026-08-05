@@ -24,6 +24,9 @@ Route::prefix('v1')->middleware('tenant')->group(function () {
         Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
         Route::get('/auth/companies',       [AuthController::class, 'getPublicCompanies']);
         Route::get('/auth/companies/{id}/users', [AuthController::class, 'getPublicUsers']);
+        Route::get('/public/plans',         function () {
+            return response()->json(\App\Models\SubscriptionPlan::where('is_active', true)->orderBy('id', 'asc')->get());
+        });
         Route::get('/maintenance/status',   [\App\Http\Controllers\API\V1\MaintenanceController::class, 'status']);
     });
 
