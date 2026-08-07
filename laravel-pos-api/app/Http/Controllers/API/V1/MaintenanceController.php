@@ -36,6 +36,10 @@ class MaintenanceController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
+        if (!$user) {
+            return response()->json(['error' => 'Utilisateur non authentifié.'], 401);
+        }
+
         $userRoleSlug = is_object($user->role) ? $user->role->slug : (string)$user->role;
         $isAuthorized = in_array($userRoleSlug, ['super-admin', 'admin']) || ($user->email === 'superadmin@dls.com');
         if (!$isAuthorized) {
@@ -58,6 +62,10 @@ class MaintenanceController extends Controller
     public function toggle(Request $request)
     {
         $user = $request->user();
+        if (!$user) {
+            return response()->json(['error' => 'Utilisateur non authentifié.'], 401);
+        }
+
         $userRoleSlug = is_object($user->role) ? $user->role->slug : (string)$user->role;
         $isAuthorized = in_array($userRoleSlug, ['super-admin', 'admin']) || ($user->email === 'superadmin@dls.com');
         if (!$isAuthorized) {
@@ -70,12 +78,19 @@ class MaintenanceController extends Controller
             'message' => 'nullable|string',
         ]);
 
-        $maint = $this->maintenanceService->setMaintenanceMode($request->all(), $user);
+        try {
+            $maint = $this->maintenanceService->setMaintenanceMode($request->all(), $user);
 
-        return response()->json([
-            'success'     => true,
-            'message'     => $maint->enabled ? "Mode maintenance activé avec succès." : "Mode maintenance désactivé.",
-            'maintenance' => $maint,
-        ]);
+            return response()->json([
+                'success'     => true,
+                'message'     => $maint->enabled ? "Mode maintenance activé avec succès." : "Mode maintenance désactivé.",
+                'maintenance' => $maint,
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Erreur toggle maintenance : " . $e->getMessage());
+            return response()->json([
+                'error' => 'Échec de la modification du mode maintenance : ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

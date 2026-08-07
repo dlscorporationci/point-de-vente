@@ -36,38 +36,56 @@ class MaintenanceService
     /**
      * Activer ou mettre à jour le mode maintenance.
      */
-    public function setMaintenanceMode(array $data, User $user): MaintenanceMode
+    public function setMaintenanceMode(array $data, ?User $user = null): MaintenanceMode
     {
         $type       = $data['type'] ?? 'global';
-        $companyId  = $data['company_id'] ?? null;
-        $branchId   = $data['branch_id'] ?? null;
+        $companyId  = !empty($data['company_id']) ? intval($data['company_id']) : null;
+        $branchId   = !empty($data['branch_id']) ? intval($data['branch_id']) : null;
         $enabled    = filter_var($data['enabled'], FILTER_VALIDATE_BOOLEAN);
         $message    = $data['message'] ?? 'L\'application est temporairement en maintenance pour optimisation.';
         $startedAt  = $enabled ? now() : null;
         $endedAt    = !$enabled ? now() : null;
 
-        $maint = MaintenanceMode::updateOrCreate(
-            ['type' => $type, 'company_id' => $companyId, 'branch_id' => $branchId],
-            [
-                'enabled'          => $enabled,
-                'message'          => $message,
-                'started_at'       => $startedAt,
-                'estimated_end_at' => !empty($data['estimated_end_at']) ? $data['estimated_end_at'] : null,
-                'ended_at'         => $endedAt,
-                'created_by'       => $user->id,
-            ]
-        );
+        $maintQuery = MaintenanceMode::where('type', $type);
+        if ($companyId) {
+            $maintQuery->where('company_id', $companyId);
+        } else {
+            $maintQuery->whereNull('company_id');
+        }
+        if ($branchId) {
+            $maintQuery->where('branch_id', $branchId);
+        } else {
+            $maintQuery->whereNull('branch_id');
+        }
+
+        $maint = $maintQuery->first();
+        if (!$maint) {
+            $maint = new MaintenanceMode();
+            $maint->type = $type;
+            $maint->company_id = $companyId;
+            $maint->branch_id = $branchId;
+        }
+
+        $maint->enabled          = $enabled;
+        $maint->message          = $message;
+        $maint->started_at       = $startedAt;
+        $maint->estimated_end_at = !empty($data['estimated_end_at']) ? $data['estimated_end_at'] : null;
+        $maint->ended_at         = $endedAt;
+        if ($user) {
+            $maint->created_by   = $user->id;
+        }
+        $maint->save();
 
         // Enregistrer l'événement dans le journal d'audit
         try {
             $userRoleStr = 'SuperAdmin';
-            if ($user->role) {
+            if ($user && $user->role) {
                 $userRoleStr = is_object($user->role) ? ($user->role->name ?? $user->role->slug ?? 'SuperAdmin') : (string)$user->role;
             }
 
             AuditLog::create([
                 'company_id'     => $companyId ?: 1,
-                'user_id'        => $user->id,
+                'user_id'        => $user?->id,
                 'user_role'      => $userRoleStr,
                 'auditable_type' => MaintenanceMode::class,
                 'auditable_id'   => $maint->id,
@@ -100,7 +118,7 @@ class MaintenanceService
                 'message'    => $notifMessage,
                 'type'       => $enabled ? 'warning' : 'system',
                 'priority'   => $enabled ? 'warning' : 'normal',
-                'actor_id'   => $user->id,
+                'actor_id'   => $user?->id,
                 'data'       => json_encode(['source' => 'maintenance_toggle', 'enabled' => $enabled])
             ]);
         } catch (\Throwable $e) {
