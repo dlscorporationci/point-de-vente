@@ -169,34 +169,36 @@ class NotificationController extends Controller
         $userRole = is_object($user->role) ? $user->role->slug : $user->role;
         $isSuperAdmin = ($userRole === 'super-admin') || ($user->email === 'superadmin@dls.com');
 
-        $accessibleBranchIds = $user->assignedBranches()->pluck('id')->toArray();
-        if ($user->branch_id && !in_array($user->branch_id, $accessibleBranchIds)) {
-            $accessibleBranchIds[] = $user->branch_id;
-        }
-
         $query = Notification::withoutGlobalScopes()->whereNull('read_at');
 
         if (!$isSuperAdmin) {
-            $query->where('company_id', $user->company_id);
+            $accessibleBranchIds = $user->assignedBranches()->pluck('id')->toArray();
+            if ($user->branch_id && !in_array($user->branch_id, $accessibleBranchIds)) {
+                $accessibleBranchIds[] = $user->branch_id;
+            }
+
+            $query->where(function ($q) use ($user) {
+                $q->where('company_id', $user->company_id)
+                  ->orWhereNull('company_id');
+            });
+
+            $query->where(function ($q) use ($user, $accessibleBranchIds) {
+                $q->where('user_id', $user->id)
+                  ->orWhere(function ($sub) use ($accessibleBranchIds) {
+                      $sub->whereNull('user_id')
+                          ->where(function ($b) use ($accessibleBranchIds) {
+                              $b->whereNull('branch_id')
+                                ->orWhereIn('branch_id', $accessibleBranchIds);
+                          });
+                  });
+            });
         }
 
-        $query->where(function ($q) use ($user, $accessibleBranchIds, $isSuperAdmin) {
-            $q->where('user_id', $user->id);
-            if ($isSuperAdmin) {
-                $q->orWhereNull('user_id');
-            } else {
-                $q->orWhere(function ($sub) use ($accessibleBranchIds) {
-                    $sub->whereNull('user_id')
-                        ->where(function ($b) use ($accessibleBranchIds) {
-                            $b->whereNull('branch_id')
-                              ->orWhereIn('branch_id', $accessibleBranchIds);
-                        });
-                });
-            }
-        });
+        $countUpdated = $query->update(['read_at' => now()]);
 
-        $query->update(['read_at' => now()]);
-
-        return response()->json(['message' => 'Toutes les notifications ont été marquées comme lues.']);
+        return response()->json([
+            'message' => 'Toutes les notifications ont été marquées comme lues.',
+            'updated_count' => $countUpdated
+        ]);
     }
 }

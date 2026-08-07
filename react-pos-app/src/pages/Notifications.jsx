@@ -69,6 +69,7 @@ export const Notifications = ({ setActiveTab }) => {
       await axios.post('/v1/notifications/read-all');
       setNotifications(prev => prev.map(n => ({ ...n, read_at: new Date().toISOString() })));
       setSuccess("Toutes vos notifications ont été marquées comme lues.");
+      window.dispatchEvent(new Event('notification-refresh'));
       setTimeout(() => setSuccess(null), 3000);
     } catch {
       setError("Erreur lors du traitement de l'action.");

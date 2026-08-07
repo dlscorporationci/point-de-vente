@@ -123,6 +123,8 @@ export const NotificationBell = ({ onNavigate }) => {
       await axios.post('/v1/notifications/read-all');
       setNotifications(prev => prev.map(n => ({ ...n, read_at: new Date().toISOString() })));
       setUnreadCount(0);
+      setLatestNotice(null);
+      window.dispatchEvent(new Event('notification-refresh'));
     } catch {
       /* Silencieux */
     }
