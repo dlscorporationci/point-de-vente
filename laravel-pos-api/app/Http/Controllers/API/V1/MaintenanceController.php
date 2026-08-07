@@ -36,7 +36,9 @@ class MaintenanceController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        if ($user->role && !in_array($user->role->slug, ['super-admin', 'admin'])) {
+        $userRoleSlug = is_object($user->role) ? $user->role->slug : (string)$user->role;
+        $isAuthorized = in_array($userRoleSlug, ['super-admin', 'admin']) || ($user->email === 'superadmin@dls.com');
+        if (!$isAuthorized) {
             return response()->json(['error' => 'Accès refusé.'], 403);
         }
 
@@ -56,7 +58,9 @@ class MaintenanceController extends Controller
     public function toggle(Request $request)
     {
         $user = $request->user();
-        if ($user->role && !in_array($user->role->slug, ['super-admin', 'admin'])) {
+        $userRoleSlug = is_object($user->role) ? $user->role->slug : (string)$user->role;
+        $isAuthorized = in_array($userRoleSlug, ['super-admin', 'admin']) || ($user->email === 'superadmin@dls.com');
+        if (!$isAuthorized) {
             return response()->json(['error' => 'Accès refusé.'], 403);
         }
 
