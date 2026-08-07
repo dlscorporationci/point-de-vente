@@ -35,6 +35,80 @@ class CommunicationService
             'sent_at'    => now(),
         ]);
 
+        // 1. Création de la notification in-app pour alimenter la cloche de notification des utilisateurs
+        try {
+            \App\Models\Notification::create([
+                'company_id' => $companyId,
+                'branch_id'  => $branchId,
+                'user_id'    => $userId,
+                'title'      => $subject,
+                'message'    => $message,
+                'type'       => ($channel === 'email' || $channel === 'courriel') ? 'system' : (($channel === 'notification') ? 'info' : 'system'),
+                'priority'   => 'normal',
+                'actor_id'   => $sender->id,
+                'data'       => json_encode(['source' => 'communication_center', 'channel' => $channel])
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Échec création Notification in-app dans CommunicationService : " . $e->getMessage());
+        }
+
+        // 2. Expédition de l'email si le canal sélectionné contient 'email' ou 'courriel'
+        if (in_array(strtolower($channel), ['email', 'courriel', 'mail'])) {
+            try {
+                $emailService = new \App\Services\EmailService();
+
+                if ($userId) {
+                    $targetUser = User::find($userId);
+                    if ($targetUser && $targetUser->email) {
+                        $emailService->sendMaintenanceNotificationEmail(
+                            recipient: $targetUser->email,
+                            title: $subject,
+                            messageBody: $message,
+                            status: 'announcement',
+                            companyId: $companyId
+                        );
+                    }
+                } elseif ($companyId) {
+                    $targetCompany = Company::find($companyId);
+                    if ($targetCompany) {
+                        $adminUser = User::withoutGlobalScopes()
+                            ->where('company_id', $companyId)
+                            ->where('status', 'active')
+                            ->first();
+                        $recipient = $adminUser?->email ?: ($targetCompany->email ?: 'infos@dlscorporation.ci');
+                        $emailService->sendMaintenanceNotificationEmail(
+                            recipient: $recipient,
+                            title: $subject,
+                            messageBody: $message,
+                            status: 'announcement',
+                            companyId: $companyId
+                        );
+                    }
+                } else {
+                    // Message global diffusé à toutes les entreprises
+                    $companies = Company::all();
+                    foreach ($companies as $comp) {
+                        $adminUser = User::withoutGlobalScopes()
+                            ->where('company_id', $comp->id)
+                            ->where('status', 'active')
+                            ->first();
+                        $recipient = $adminUser?->email ?: ($comp->email ?: null);
+                        if ($recipient) {
+                            $emailService->sendMaintenanceNotificationEmail(
+                                recipient: $recipient,
+                                title: $subject,
+                                messageBody: $message,
+                                status: 'announcement',
+                                companyId: $comp->id
+                            );
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning("Échec expédition mail dans CommunicationService : " . $e->getMessage());
+            }
+        }
+
         // Audit Log de l'envoi de la communication
         AuditLog::create([
             'company_id'     => $companyId ?: 1,

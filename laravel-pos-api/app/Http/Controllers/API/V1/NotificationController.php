@@ -26,33 +26,31 @@ class NotificationController extends Controller
         $query = Notification::withoutGlobalScopes()
             ->with(['branch:id,name', 'actor:id,name,email']);
 
-        // 1. Filtrage par entreprise
+        // 1. Filtrage par entreprise (autorise les annonces globales company_id IS NULL)
         if (!$isSuperAdmin) {
-            $query->where('company_id', $user->company_id);
+            $query->where(function ($q) use ($user) {
+                $q->where('company_id', $user->company_id)
+                  ->orWhereNull('company_id');
+            });
+
+            // Exclut uniquement les messages qu'un utilisateur ordinaire s'est émis à lui-même pour des tiers
+            $query->where(function ($q) use ($user) {
+                $q->whereNull('actor_id')
+                  ->orWhere('actor_id', '!=', $user->id)
+                  ->orWhere('user_id', $user->id);
+            });
+
+            $query->where(function ($q) use ($user, $accessibleBranchIds) {
+                $q->where('user_id', $user->id)
+                  ->orWhere(function ($sub) use ($accessibleBranchIds) {
+                      $sub->whereNull('user_id')
+                          ->where(function ($b) use ($accessibleBranchIds) {
+                              $b->whereNull('branch_id')
+                                ->orWhereIn('branch_id', $accessibleBranchIds);
+                          });
+                  });
+            });
         }
-
-        // 2. Filtrage par boutique & utilisateur destinataire (exclut les messages émis par soi-même pour des tiers)
-        $query->where(function ($q) use ($user) {
-            $q->whereNull('actor_id')
-              ->orWhere('actor_id', '!=', $user->id)
-              ->orWhere('user_id', $user->id);
-        });
-
-        $query->where(function ($q) use ($user, $accessibleBranchIds, $isSuperAdmin) {
-            $q->where('user_id', $user->id);
-
-            if ($isSuperAdmin) {
-                $q->orWhereNull('user_id');
-            } else {
-                $q->orWhere(function ($sub) use ($accessibleBranchIds) {
-                    $sub->whereNull('user_id')
-                        ->where(function ($b) use ($accessibleBranchIds) {
-                            $b->whereNull('branch_id')
-                              ->orWhereIn('branch_id', $accessibleBranchIds);
-                        });
-                });
-            }
-        });
 
         // 3. Filtrage par statut de lecture (optionnel)
         if ($request->input('unread_only') === 'true' || $request->boolean('unread_only')) {
@@ -110,29 +108,28 @@ class NotificationController extends Controller
         $query = Notification::withoutGlobalScopes()->whereNull('read_at');
 
         if (!$isSuperAdmin) {
-            $query->where('company_id', $user->company_id);
+            $query->where(function ($q) use ($user) {
+                $q->where('company_id', $user->company_id)
+                  ->orWhereNull('company_id');
+            });
+
+            $query->where(function ($q) use ($user) {
+                $q->whereNull('actor_id')
+                  ->orWhere('actor_id', '!=', $user->id)
+                  ->orWhere('user_id', $user->id);
+            });
+
+            $query->where(function ($q) use ($user, $accessibleBranchIds) {
+                $q->where('user_id', $user->id)
+                  ->orWhere(function ($sub) use ($accessibleBranchIds) {
+                      $sub->whereNull('user_id')
+                          ->where(function ($b) use ($accessibleBranchIds) {
+                              $b->whereNull('branch_id')
+                                ->orWhereIn('branch_id', $accessibleBranchIds);
+                          });
+                  });
+            });
         }
-
-        $query->where(function ($q) use ($user) {
-            $q->whereNull('actor_id')
-              ->orWhere('actor_id', '!=', $user->id)
-              ->orWhere('user_id', $user->id);
-        });
-
-        $query->where(function ($q) use ($user, $accessibleBranchIds, $isSuperAdmin) {
-            $q->where('user_id', $user->id);
-            if ($isSuperAdmin) {
-                $q->orWhereNull('user_id');
-            } else {
-                $q->orWhere(function ($sub) use ($accessibleBranchIds) {
-                    $sub->whereNull('user_id')
-                        ->where(function ($b) use ($accessibleBranchIds) {
-                            $b->whereNull('branch_id')
-                              ->orWhereIn('branch_id', $accessibleBranchIds);
-                        });
-                });
-            }
-        });
 
         $unreadList = $query->get()->filter(function ($n) use ($user, $isSuperAdmin) {
             if ($isSuperAdmin) return true;
