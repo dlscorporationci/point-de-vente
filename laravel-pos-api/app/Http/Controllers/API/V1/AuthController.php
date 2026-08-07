@@ -477,6 +477,7 @@ class AuthController extends Controller
 
     /**
      * Inscription d'une nouvelle entreprise et de son premier administrateur.
+     */
     public function register(Request $request)
     {
         $cleanEmail = strtolower(trim((string)$request->email));
