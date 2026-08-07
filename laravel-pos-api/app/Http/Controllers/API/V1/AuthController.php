@@ -477,15 +477,47 @@ class AuthController extends Controller
 
     /**
      * Inscription d'une nouvelle entreprise et de son premier administrateur.
-     */
     public function register(Request $request)
     {
-        $request->validate([
+        $cleanEmail = strtolower(trim((string)$request->email));
+
+        // 1. Contrôle d'unicité d'e-mail strict et insensible à la casse
+        $existingUser = User::withoutGlobalScopes()
+            ->whereRaw('LOWER(TRIM(email)) = ?', [$cleanEmail])
+            ->first();
+
+        if ($existingUser) {
+            return response()->json([
+                'message' => 'Cette adresse e-mail est déjà associée à un compte.',
+                'errors'  => [
+                    'email' => ['Cette adresse e-mail est déjà associée à un compte. Veuillez vous connecter ou utiliser une autre adresse e-mail.']
+                ]
+            ], 422);
+        }
+
+        // 2. Validation stricte des données & contrôle de la robustesse du mot de passe
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'company_name' => 'required|string|max:255',
             'name'         => 'required|string|max:255',
-            'email'        => ['required', 'string', 'email', 'max:255', 'unique:users,email', new RealEmailRule()],
-            'password'     => 'required|string|min:6|confirmed',
+            'email'        => ['required', 'string', 'email', 'max:255', new RealEmailRule()],
+            'password'     => ['required', 'string', 'min:8', 'regex:/[a-z]/', 'regex:/[A-Z]/', 'regex:/[0-9]/', 'confirmed'],
+        ], [
+            'company_name.required' => 'Le nom de l\'entreprise est obligatoire.',
+            'name.required'         => 'Le nom du gestionnaire principal est obligatoire.',
+            'email.required'        => 'L\'adresse e-mail est obligatoire.',
+            'email.email'           => 'Veuillez saisir une adresse e-mail valide (ex: contact@domaine.com).',
+            'password.required'      => 'Le mot de passe est obligatoire.',
+            'password.min'           => 'Le mot de passe est trop court. Il doit contenir au moins 8 caractères.',
+            'password.regex'         => 'Le mot de passe est trop faible. Il doit inclure au moins une majuscule, une minuscule et un chiffre (ex: Pass2026!).',
+            'password.confirmed'     => 'La confirmation du mot de passe ne correspond pas.',
         ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => $validator->errors()->first(),
+                'errors'  => $validator->errors()
+            ], 422);
+        }
 
         return DB::transaction(function () use ($request) {
             // 1. Créer la compagnie

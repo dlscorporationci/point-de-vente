@@ -20,13 +20,50 @@ export const Register = ({ setActiveTab }) => {
   const [registeredData, setRegisteredData] = useState(null);
   const [copied, setCopied] = useState(false);
 
+  // Calcul de la robustesse du mot de passe
+  const getPasswordStrength = (pwd) => {
+    if (!pwd) return { score: 0, label: '', color: '#cbd5e1' };
+    let score = 0;
+    if (pwd.length >= 8) score += 1;
+    if (/[a-z]/.test(pwd)) score += 1;
+    if (/[A-Z]/.test(pwd)) score += 1;
+    if (/[0-9]/.test(pwd)) score += 1;
+    if (/[^a-zA-Z0-9]/.test(pwd)) score += 1;
+
+    if (score <= 2) return { score, label: 'Faible (min. 8 caract., 1 majuscule, 1 minuscule, 1 chiffre)', color: '#ef4444' };
+    if (score === 3 || score === 4) return { score, label: 'Moyen (ajoutez un caractère spécial)', color: '#f59e0b' };
+    return { score, label: 'Très Fort 🔒', color: '#10b981' };
+  };
+
+  const pwdStrength = getPasswordStrength(password);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
+    // Validation client-side de l'email
+    if (!email || !email.includes('@')) {
+      setError('Veuillez saisir une adresse e-mail valide.');
+      setLoading(false);
+      return;
+    }
+
+    // Validation client-side du mot de passe
+    if (password.length < 8) {
+      setError('Le mot de passe doit contenir au moins 8 caractères.');
+      setLoading(false);
+      return;
+    }
+
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
+      setError('Le mot de passe doit inclure au moins une majuscule, une minuscule et un chiffre.');
+      setLoading(false);
+      return;
+    }
+
     if (password !== passwordConfirmation) {
-      setError('Les mots de passe ne correspondent pas.');
+      setError('Les mots de passe de confirmation ne correspondent pas.');
       setLoading(false);
       return;
     }
@@ -35,7 +72,7 @@ export const Register = ({ setActiveTab }) => {
       const response = await axios.post('/v1/auth/register', {
         company_name: companyName,
         name,
-        email,
+        email: email.trim(),
         password,
         password_confirmation: passwordConfirmation,
       });
@@ -61,11 +98,18 @@ export const Register = ({ setActiveTab }) => {
       });
 
     } catch (err) {
-      setError(
-        err.response?.data?.message || 
-        err.response?.data?.error || 
-        'Une erreur est survenue lors de l\'inscription.'
-      );
+      const respData = err.response?.data;
+      if (respData?.errors) {
+        const firstKey = Object.keys(respData.errors)[0];
+        const firstMsg = respData.errors[firstKey][0];
+        setError(firstMsg);
+      } else {
+        setError(
+          respData?.message || 
+          respData?.error || 
+          'Une erreur est survenue lors de l\'inscription.'
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -219,11 +263,26 @@ export const Register = ({ setActiveTab }) => {
               <div className="form-group mb-3">
                 <label className="form-label" style={{ fontWeight: 700 }}>Mot de passe *</label>
                 <PasswordInput 
-                  placeholder="Minimum 6 caractères" 
+                  placeholder="Minimum 8 caractères (1 Maj., 1 Min., 1 Chiffre)" 
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                 />
+                {password && (
+                  <div className="mt-2" style={{ fontSize: '12px' }}>
+                    <div style={{ height: '4px', width: '100%', background: '#e2e8f0', borderRadius: '2px', overflow: 'hidden', marginBottom: '4px' }}>
+                      <div style={{
+                        height: '100%',
+                        width: `${(pwdStrength.score / 5) * 100}%`,
+                        background: pwdStrength.color,
+                        transition: 'all 0.3s ease'
+                      }} />
+                    </div>
+                    <span style={{ color: pwdStrength.color, fontWeight: 600 }}>
+                      {pwdStrength.label}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="form-group mb-3">
@@ -234,6 +293,11 @@ export const Register = ({ setActiveTab }) => {
                   onChange={(e) => setPasswordConfirmation(e.target.value)}
                   required
                 />
+                {passwordConfirmation && password !== passwordConfirmation && (
+                  <span style={{ fontSize: '12px', color: '#ef4444', fontWeight: 600 }} className="mt-1 d-block">
+                    ⚠️ Les mots de passe ne correspondent pas.
+                  </span>
+                )}
               </div>
 
               <button type="submit" className="btn btn-primary btn-submit" disabled={loading}>
