@@ -46,6 +46,20 @@ class MaintenanceService
         $startedAt  = $enabled ? now() : null;
         $endedAt    = !$enabled ? now() : null;
 
+        // Si désactivation, réinitialiser TOUS les enregistrements correspondant au type
+        if (!$enabled) {
+            $resetQuery = MaintenanceMode::where('type', $type);
+            if ($companyId) {
+                $resetQuery->where('company_id', $companyId);
+            } else {
+                $resetQuery->whereNull('company_id');
+            }
+            $resetQuery->update([
+                'enabled'  => false,
+                'ended_at' => now(),
+            ]);
+        }
+
         $maintQuery = MaintenanceMode::where('type', $type);
         if ($companyId) {
             $maintQuery->where('company_id', $companyId);
