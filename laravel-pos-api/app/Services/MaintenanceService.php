@@ -59,19 +59,28 @@ class MaintenanceService
         );
 
         // Enregistrer l'événement dans le journal d'audit
-        AuditLog::create([
-            'company_id'     => $companyId ?: 1,
-            'user_id'        => $user->id,
-            'user_role'      => $user->role ? $user->role->name : 'SuperAdmin',
-            'auditable_type' => MaintenanceMode::class,
-            'auditable_id'   => $maint->id,
-            'action'         => $enabled ? 'MAINTENANCE_ENABLED' : 'MAINTENANCE_DISABLED',
-            'module'         => 'SystemMaintenance',
-            'description'    => ($enabled ? 'Activation' : 'Désactivation') . " de la maintenance [Type: {$type}]",
-            'ip_address'     => request()->ip(),
-            'device'         => request()->userAgent(),
-            'result'         => 'success',
-        ]);
+        try {
+            $userRoleStr = 'SuperAdmin';
+            if ($user->role) {
+                $userRoleStr = is_object($user->role) ? ($user->role->name ?? $user->role->slug ?? 'SuperAdmin') : (string)$user->role;
+            }
+
+            AuditLog::create([
+                'company_id'     => $companyId ?: 1,
+                'user_id'        => $user->id,
+                'user_role'      => $userRoleStr,
+                'auditable_type' => MaintenanceMode::class,
+                'auditable_id'   => $maint->id,
+                'action'         => $enabled ? 'MAINTENANCE_ENABLED' : 'MAINTENANCE_DISABLED',
+                'module'         => 'SystemMaintenance',
+                'description'    => ($enabled ? 'Activation' : 'Désactivation') . " de la maintenance [Type: {$type}]",
+                'ip_address'     => request()->ip(),
+                'device'         => request()->userAgent(),
+                'result'         => 'success',
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Échec création AuditLog maintenance : " . $e->getMessage());
+        }
 
         // 1. Création de la notification in-app pour tous les utilisateurs (cloche & volet de notification)
         try {
