@@ -179,7 +179,7 @@ export const Home = ({ setActiveTab }) => {
       company: 'Quincaillerie Moderne (Abidjan)',
       avatar: '👨‍💼',
       stars: 5,
-      comment: 'Grâce à dls POS, nous avons réduit le temps d\'attente en caisse de 60%. Le calcul automatique du PAMP et la gestion multi-boutiques ont sécurisé l\'ensemble de nos marges.'
+      comment: 'Grâce à DLS POS, nous avons réduit le temps d\'attente en caisse de 60%. Le calcul automatique du PAMP et la gestion multi-boutiques ont sécurisé l\'ensemble de nos marges.'
     },
     {
       name: 'Fatou Ndiaye',
@@ -219,12 +219,12 @@ export const Home = ({ setActiveTab }) => {
           </div>
 
           <div className="hero-logo-wrap">
-            <img src={logo} alt="dls POS" className="hero-logo" />
+            <img src={logo} alt="DLS POS" className="hero-logo" />
             <div className="hero-logo-ring" />
           </div>
 
           <h1 className="hero-title">
-            <span className="gradient-text">dls POS</span>
+            <span className="gradient-text">DLS POS</span>
             <br />
             <span>La caisse intelligente</span>
             <br />
@@ -288,7 +288,7 @@ export const Home = ({ setActiveTab }) => {
                 <span style={{ background: '#fbbf24' }} />
                 <span style={{ background: '#10b981' }} />
               </div>
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>dls POS — Terminal</span>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>DLS POS — Terminal</span>
             </div>
             <div className="mockup-body">
               <div className="mockup-stat">
@@ -620,7 +620,7 @@ export const Home = ({ setActiveTab }) => {
               <div className="alert alert-success text-center p-4">
                 <i className="fa-solid fa-circle-check fa-3x mb-3 text-success"></i>
                 <h4>Message envoyé avec succès !</h4>
-                <p className="mb-0">Merci de nous avoir contactés. Un conseiller dls POS vous recontactera très rapidement.</p>
+                <p className="mb-0">Merci de nous avoir contactés. Un conseiller DLS POS vous recontactera très rapidement.</p>
               </div>
             ) : (
               <form onSubmit={handleContactSubmit}>
@@ -683,7 +683,7 @@ export const Home = ({ setActiveTab }) => {
         <div className="cta-content">
           <i className="fa-solid fa-cash-register cta-icon"></i>
           <h2 className="cta-title">Prêt à moderniser votre commerce ?</h2>
-          <p className="cta-desc">Rejoignez les commerçants qui font confiance à ApexPOS pour gérer leur activité au quotidien.</p>
+          <p className="cta-desc">Rejoignez les commerçants qui font confiance à DLS POS pour gérer leur activité au quotidien.</p>
           <div className="cta-actions">
             <button onClick={() => setActiveTab('register')} className="btn-cta-primary">
               <i className="fa-solid fa-rocket me-2"></i> Créer mon compte gratuitement

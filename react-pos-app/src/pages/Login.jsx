@@ -223,7 +223,7 @@ export const Login = ({ setActiveTab }) => {
         <div className="brand-header">
           <img src={logo} alt="Logo" className="login-logo-img" />
           <div className="brand-logo" style={{ marginTop: '12px' }}>
-            <span className="logo-text-apex">dls</span>
+            <span className="logo-text-apex">DLS</span>
             <span className="logo-text-pos"> POS</span>
           </div>
           <p className="brand-subtitle">Système Professionnel de Gestion POS Multi-Entreprises</p>

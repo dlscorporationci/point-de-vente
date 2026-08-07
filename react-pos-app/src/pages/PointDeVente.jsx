@@ -795,7 +795,7 @@ export const PointDeVente = () => {
                     style={{ maxHeight: '50px', maxWidth: '140px', objectFit: 'contain', marginBottom: '8px' }} 
                   />
                 )}
-                <h2>{user?.company?.name || 'dls POS'}</h2>
+                <h2>{user?.company?.name || 'DLS POS'}</h2>
                 {user?.company?.pos_settings?.receipt_header && (
                   <p style={{ fontWeight: 'bold', fontSize: '11px', margin: '3px 0' }}>{user.company.pos_settings.receipt_header}</p>
                 )}

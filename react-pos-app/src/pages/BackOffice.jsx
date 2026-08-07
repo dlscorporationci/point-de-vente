@@ -1690,7 +1690,7 @@ export const BackOffice = () => {
                   </div>
                   <div className="d-flex justify-content-between border-bottom pb-2">
                     <span className="text-muted">Nom de l'Expéditeur :</span>
-                    <strong>{emailSettingsData?.from_name || 'dls POS'}</strong>
+                    <strong>{emailSettingsData?.from_name || 'DLS POS'}</strong>
                   </div>
                   <div className="d-flex justify-content-between border-bottom pb-2">
                     <span className="text-muted">Mot de Passe SMTP :</span>
@@ -1710,7 +1710,7 @@ export const BackOffice = () => {
                 <h4 style={{ fontWeight: 800, marginBottom: '16px', fontSize: '18px' }}>
                   <i className="fa-solid fa-paper-plane text-success me-2"></i> Envoyer un E-mail de Test Réel
                 </h4>
-                <p className="text-muted small">Saisissez une adresse e-mail destinataire pour valider la délivrabilité immédiate d'un message HTML avec le branding dls POS.</p>
+                <p className="text-muted small">Saisissez une adresse e-mail destinataire pour valider la délivrabilité immédiate d'un message HTML avec le branding DLS POS.</p>
 
                 <form onSubmit={handleSendTestEmailSubmit} className="mt-3">
                   <div className="form-group mb-3">

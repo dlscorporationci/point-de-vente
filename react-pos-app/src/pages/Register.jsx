@@ -93,7 +93,7 @@ export const Register = ({ setActiveTab }) => {
       <div className="decorator-sphere sphere-2"></div>
 
       <div className="register-card card">
-        <img src={logo} alt="dls POS Logo" className="register-logo" />
+        <img src={logo} alt="DLS POS Logo" className="register-logo" />
 
         {registeredData ? (
           /* ── ÉCRAN DE FICHE D'ACCÈS OFFICIELLE (CRÉATION RÉUSSIE) ── */
@@ -174,7 +174,7 @@ export const Register = ({ setActiveTab }) => {
         ) : (
           /* ── FORMULAIRE D'INSCRIPTION STANDARD ── */
           <>
-            <h2>Créer un compte dls POS</h2>
+            <h2>Créer un compte DLS POS</h2>
             <p className="register-subtitle">Enregistrez votre entreprise et configurez votre point de vente en quelques secondes.</p>
 
             {error && <div className="error-banner mb-3"><i className="fa-solid fa-triangle-exclamation me-1"></i> {error}</div>}

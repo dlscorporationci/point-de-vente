@@ -132,9 +132,9 @@ function MainContent() {
     if (companyName) {
       document.title = slogan
         ? `${companyName} — ${slogan}`
-        : `${companyName} — dls POS`;
+        : `${companyName} — DLS POS`;
     } else {
-      document.title = 'dls POS — Gestion Commerciale';
+      document.title = 'DLS POS — Gestion Commerciale';
     }
 
     // Favicon dynamique : favicon personnalisé > logo entreprise > favicon par défaut
