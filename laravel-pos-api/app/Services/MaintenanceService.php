@@ -73,12 +73,40 @@ class MaintenanceService
             'result'         => 'success',
         ]);
 
-        // Transmettre les e-mails de notification de maintenance à toutes les entreprises clientes
+        // 1. Création de la notification in-app pour tous les utilisateurs (cloche & volet de notification)
+        try {
+            $notifTitle = $enabled 
+                ? '🛠️ Maintenance Système en cours' 
+                : '🎉 Maintenance terminée — DLS POS est opérationnel';
+            
+            $notifMessage = $enabled 
+                ? ($message ?: 'Une intervention de maintenance est actuellement en cours sur la plateforme DLS POS.')
+                : 'L\'intervention de maintenance est terminée avec succès. Tous les services DLS POS (caisse, ventes, stocks) sont de nouveau pleinement opérationnels.';
+
+            \App\Models\Notification::create([
+                'company_id' => $companyId,
+                'branch_id'  => $branchId,
+                'user_id'    => null,
+                'title'      => $notifTitle,
+                'message'    => $notifMessage,
+                'type'       => $enabled ? 'warning' : 'system',
+                'priority'   => $enabled ? 'warning' : 'normal',
+                'actor_id'   => $user->id,
+                'data'       => json_encode(['source' => 'maintenance_toggle', 'enabled' => $enabled])
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Échec création notification in-app de maintenance : " . $e->getMessage());
+        }
+
+        // 2. Transmettre les e-mails de notification de maintenance à toutes les entreprises clientes
         try {
             $emailService = new \App\Services\EmailService();
             $status = $enabled ? 'started' : 'completed';
-            $title = $enabled ? 'Intervention de Maintenance Système SaaS' : 'Fin de l\'Intervention de Maintenance';
+            $title = $enabled ? 'Intervention de Maintenance Système SaaS' : '🎉 Fin de l\'Intervention de Maintenance DLS POS';
             $endsAtStr = $maint->estimated_end_at ? \Carbon\Carbon::parse($maint->estimated_end_at)->format('d/m/Y H:i') : null;
+            $mailBody = $enabled 
+                ? $message 
+                : 'Nous vous informons que la maintenance système est officiellement terminée. La plateforme DLS POS est de nouveau disponible et pleinement fonctionnelle pour toutes vos opérations.';
 
             if ($type === 'global') {
                 $companies = \App\Models\Company::all();
@@ -91,7 +119,7 @@ class MaintenanceService
                     $emailService->sendMaintenanceNotificationEmail(
                         recipient: $recipient,
                         title: $title,
-                        messageBody: $message,
+                        messageBody: $mailBody,
                         status: $status,
                         startsAt: $maint->started_at ? $maint->started_at->format('d/m/Y H:i') : null,
                         endsAt: $endsAtStr,
@@ -109,7 +137,7 @@ class MaintenanceService
                     $emailService->sendMaintenanceNotificationEmail(
                         recipient: $recipient,
                         title: $title,
-                        messageBody: $message,
+                        messageBody: $mailBody,
                         status: $status,
                         startsAt: $maint->started_at ? $maint->started_at->format('d/m/Y H:i') : null,
                         endsAt: $endsAtStr,

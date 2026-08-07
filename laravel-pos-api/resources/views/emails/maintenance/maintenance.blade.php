@@ -5,7 +5,7 @@
 
 <p>Bonjour,</p>
 
-<p>Le département technique d'ApexPOS vous informe d'une intervention de maintenance sur la plateforme SaaS.</p>
+<p>Le département technique de DLS POS vous informe d'une intervention de maintenance sur la plateforme SaaS.</p>
 
 <div class="info-card" style="border-left-color: {{ $status === 'started' ? '#ef4444' : ($status === 'completed' ? '#22c55e' : '#3b82f6') }};">
     <table>
@@ -42,5 +42,5 @@
 
 <p>{{ $messageBody }}</p>
 
-<p style="font-size: 13px; color: #64748b;">Nous vous remercions pour votre compréhension pendant cette intervention visant à améliorer les performances et la sécurité d'ApexPOS.</p>
+<p style="font-size: 13px; color: #64748b;">Nous vous remercions pour votre compréhension pendant cette intervention visant à améliorer les performances et la sécurité de DLS POS.</p>
 @endsection
