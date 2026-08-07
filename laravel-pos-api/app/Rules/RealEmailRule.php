@@ -8,7 +8,7 @@ use Illuminate\Contracts\Validation\ValidationRule;
 class RealEmailRule implements ValidationRule
 {
     /**
-     * Liste noire des domaines d'e-mails jetables/temporaires
+     * Liste noire des domaines d'e-mails jetables, temporaires et fictifs de test
      */
     protected array $disposableDomains = [
         'mailinator.com',
@@ -25,6 +25,17 @@ class RealEmailRule implements ValidationRule
         'maildrop.cc',
         'fakeinbox.com',
         'crazymailing.com',
+        'example.com',
+        'example.org',
+        'example.net',
+        'test.com',
+        'test.fr',
+        'domain.com',
+        'sample.com',
+        'invalid.com',
+        'foo.com',
+        'bar.com',
+        'localhost',
     ];
 
     /**
@@ -49,22 +60,34 @@ class RealEmailRule implements ValidationRule
             return;
         }
 
-        // 2. Extraire le domaine
+        // 2. Extraire le nom d'utilisateur et le domaine
         $parts = explode('@', $email);
         if (count($parts) !== 2) {
             $fail("L'adresse e-mail fournie est invalide.");
             return;
         }
-        $domain = $parts[1];
+        $username = $parts[0];
+        $domain   = $parts[1];
 
         // 3. Vérification des domaines jetables / de test fictif
         if (in_array($domain, $this->disposableDomains)) {
-            $fail("Les adresses e-mails temporaires ou jetables (@{$domain}) ne sont pas autorisées.");
+            $fail("Les adresses e-mails temporaires, de démonstration ou fictives (@{$domain}) ne sont pas autorisées.");
             return;
         }
 
-        // 4. Vérification de l'existence réelle du domaine via les enregistrements DNS MX ou A
-        // if MX check returns false and A record check returns false, domain cannot receive emails
+        // 4. Détection des motifs de noms d'utilisateurs manifestement fictifs (ex: test@, fake@, asdf@, 0000@, etc.)
+        $bogusPatterns = [
+            '/^(test|demo|fake|dummy|asdf|qwerty|zxcv|1234|0000|aaaa|bbbb|cccc)[0-9]*$/i',
+            '/^contact[0-9]{3,}$/i'
+        ];
+        foreach ($bogusPatterns as $pattern) {
+            if (preg_match($pattern, $username)) {
+                $fail("Les adresses e-mails de test ou génériques ({$username}@...) ne sont pas autorisées. Veuillez utiliser votre adresse e-mail professionnelle réelle.");
+                return;
+            }
+        }
+
+        // 5. Vérification de l'existence réelle du domaine via les enregistrements DNS MX ou A
         $hasMx = @checkdnsrr($domain, 'MX');
         $hasA  = @checkdnsrr($domain, 'A');
 
