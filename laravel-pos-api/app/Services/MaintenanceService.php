@@ -152,38 +152,50 @@ class MaintenanceService
             if ($type === 'global') {
                 $companies = \App\Models\Company::all();
                 foreach ($companies as $comp) {
-                    $adminUser = \App\Models\User::withoutGlobalScopes()
-                        ->where('company_id', $comp->id)
-                        ->where('status', 'active')
-                        ->first();
-                    $recipient = $adminUser?->email ?: ($comp->email ?: 'infos@dlscorporation.ci');
-                    $emailService->sendMaintenanceNotificationEmail(
-                        recipient: $recipient,
-                        title: $title,
-                        messageBody: $mailBody,
-                        status: $status,
-                        startsAt: $maint->started_at ? $maint->started_at->format('d/m/Y H:i') : null,
-                        endsAt: $endsAtStr,
-                        companyId: $comp->id
-                    );
+                    try {
+                        $adminUser = \App\Models\User::withoutGlobalScopes()
+                            ->where('company_id', $comp->id)
+                            ->where('status', 'active')
+                            ->first();
+                        $recipient = $adminUser?->email ?: ($comp->email ?: null);
+                        if ($recipient) {
+                            $emailService->sendMaintenanceNotificationEmail(
+                                recipient: $recipient,
+                                title: $title,
+                                messageBody: $mailBody,
+                                status: $status,
+                                startsAt: $maint->started_at ? $maint->started_at->format('d/m/Y H:i') : null,
+                                endsAt: $endsAtStr,
+                                companyId: $comp->id
+                            );
+                        }
+                    } catch (\Throwable $ex) {
+                        \Illuminate\Support\Facades\Log::warning("Échec envoi mail maintenance entreprise ID {$comp->id} : " . $ex->getMessage());
+                    }
                 }
             } elseif ($companyId) {
                 $comp = \App\Models\Company::find($companyId);
                 if ($comp) {
-                    $adminUser = \App\Models\User::withoutGlobalScopes()
-                        ->where('company_id', $comp->id)
-                        ->where('status', 'active')
-                        ->first();
-                    $recipient = $adminUser?->email ?: ($comp->email ?: 'infos@dlscorporation.ci');
-                    $emailService->sendMaintenanceNotificationEmail(
-                        recipient: $recipient,
-                        title: $title,
-                        messageBody: $mailBody,
-                        status: $status,
-                        startsAt: $maint->started_at ? $maint->started_at->format('d/m/Y H:i') : null,
-                        endsAt: $endsAtStr,
-                        companyId: $comp->id
-                    );
+                    try {
+                        $adminUser = \App\Models\User::withoutGlobalScopes()
+                            ->where('company_id', $comp->id)
+                            ->where('status', 'active')
+                            ->first();
+                        $recipient = $adminUser?->email ?: ($comp->email ?: null);
+                        if ($recipient) {
+                            $emailService->sendMaintenanceNotificationEmail(
+                                recipient: $recipient,
+                                title: $title,
+                                messageBody: $mailBody,
+                                status: $status,
+                                startsAt: $maint->started_at ? $maint->started_at->format('d/m/Y H:i') : null,
+                                endsAt: $endsAtStr,
+                                companyId: $comp->id
+                            );
+                        }
+                    } catch (\Throwable $ex) {
+                        \Illuminate\Support\Facades\Log::warning("Échec envoi mail maintenance entreprise ID {$comp->id} : " . $ex->getMessage());
+                    }
                 }
             }
         } catch (\Throwable $e) {

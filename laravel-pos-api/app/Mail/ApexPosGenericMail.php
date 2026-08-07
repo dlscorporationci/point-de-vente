@@ -26,8 +26,10 @@ class ApexPosGenericMail extends Mailable
 
     public function envelope(): Envelope
     {
+        $fromAddress = config('mail.from.address', 'infos@dlscorporation.ci');
+        $fromName    = config('mail.from.name', 'DLS POS');
         return new Envelope(
-            from: new Address('infos@dlscorporation.ci', 'ApexPOS Enterprise'),
+            from: new Address($fromAddress, $fromName),
             subject: $this->emailSubject,
         );
     }
