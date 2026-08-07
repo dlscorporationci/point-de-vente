@@ -123,7 +123,7 @@ export const SessionLockScreen = ({ user, onUnlock, onSwitchAccount }) => {
           SESSION VERROUILLÉE
         </h2>
         <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#94a3b8' }}>
-          ApexPOS • Inactivité détectée
+          dls POS • Inactivité détectée
         </p>
 
         <div style={{

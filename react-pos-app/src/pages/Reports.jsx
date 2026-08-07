@@ -71,7 +71,7 @@ export const Reports = () => {
 
         {/* Section imprimable uniquement (titre officiel) */}
         <div className="print-only-header">
-          <h1>APEXPOS - RAPPORT DE CLÔTURE ET FINANCIER</h1>
+          <h1>DLS POS - RAPPORT DE CLÔTURE ET FINANCIER</h1>
           <p>Période du : <strong>{new Date(startDate).toLocaleDateString('fr-FR')}</strong> au <strong>{new Date(endDate).toLocaleDateString('fr-FR')}</strong></p>
           <hr />
         </div>

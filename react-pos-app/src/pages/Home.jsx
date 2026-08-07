@@ -179,7 +179,7 @@ export const Home = ({ setActiveTab }) => {
       company: 'Quincaillerie Moderne (Abidjan)',
       avatar: '👨‍💼',
       stars: 5,
-      comment: 'Grâce à ApexPOS, nous avons réduit le temps d\'attente en caisse de 60%. Le calcul automatique du PAMP et la gestion multi-boutiques ont sécurisé l\'ensemble de nos marges.'
+      comment: 'Grâce à dls POS, nous avons réduit le temps d\'attente en caisse de 60%. Le calcul automatique du PAMP et la gestion multi-boutiques ont sécurisé l\'ensemble de nos marges.'
     },
     {
       name: 'Fatou Ndiaye',
@@ -219,12 +219,12 @@ export const Home = ({ setActiveTab }) => {
           </div>
 
           <div className="hero-logo-wrap">
-            <img src={logo} alt="ApexPOS" className="hero-logo" />
+            <img src={logo} alt="dls POS" className="hero-logo" />
             <div className="hero-logo-ring" />
           </div>
 
           <h1 className="hero-title">
-            <span className="gradient-text">ApexPOS</span>
+            <span className="gradient-text">dls POS</span>
             <br />
             <span>La caisse intelligente</span>
             <br />
@@ -288,7 +288,7 @@ export const Home = ({ setActiveTab }) => {
                 <span style={{ background: '#fbbf24' }} />
                 <span style={{ background: '#10b981' }} />
               </div>
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>ApexPOS — Terminal</span>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>dls POS — Terminal</span>
             </div>
             <div className="mockup-body">
               <div className="mockup-stat">
@@ -620,7 +620,7 @@ export const Home = ({ setActiveTab }) => {
               <div className="alert alert-success text-center p-4">
                 <i className="fa-solid fa-circle-check fa-3x mb-3 text-success"></i>
                 <h4>Message envoyé avec succès !</h4>
-                <p className="mb-0">Merci de nous avoir contactés. Un conseiller ApexPOS vous recontactera très rapidement.</p>
+                <p className="mb-0">Merci de nous avoir contactés. Un conseiller dls POS vous recontactera très rapidement.</p>
               </div>
             ) : (
               <form onSubmit={handleContactSubmit}>
@@ -635,42 +635,41 @@ export const Home = ({ setActiveTab }) => {
                     required
                   />
                 </div>
-                <div className="form-row-grid mb-3">
-                  <div className="form-group">
-                    <label className="form-label">Adresse e-mail *</label>
-                    <input
-                      type="email"
-                      className="form-control"
-                      placeholder="nom@entreprise.com"
-                      value={contactState.email}
-                      onChange={e => setContactState({ ...contactState, email: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Numéro de téléphone</label>
-                    <input
-                      type="tel"
-                      className="form-control"
-                      placeholder="+225 07..."
-                      value={contactState.phone}
-                      onChange={e => setContactState({ ...contactState, phone: e.target.value })}
-                    />
-                  </div>
+                <div className="form-group mb-3">
+                  <label className="form-label">Adresse E-mail *</label>
+                  <input
+                    type="email"
+                    className="form-control"
+                    placeholder="exemple@entreprise.com"
+                    value={contactState.email}
+                    onChange={e => setContactState({ ...contactState, email: e.target.value })}
+                    required
+                  />
                 </div>
                 <div className="form-group mb-3">
-                  <label className="form-label">Votre message *</label>
+                  <label className="form-label">Téléphone</label>
+                  <input
+                    type="tel"
+                    className="form-control"
+                    placeholder="+225 07..."
+                    value={contactState.phone}
+                    onChange={e => setContactState({ ...contactState, phone: e.target.value })}
+                  />
+                </div>
+                <div className="form-group mb-3">
+                  <label className="form-label">Message / Besoins *</label>
                   <textarea
-                    className="form-control textarea-input"
+                    className="form-control"
                     rows="4"
-                    placeholder="Expliquez-nous vos besoins ou posez vos questions..."
+                    placeholder="Décrivez l'activité de votre commerce et vos besoins..."
                     value={contactState.message}
                     onChange={e => setContactState({ ...contactState, message: e.target.value })}
                     required
                   ></textarea>
                 </div>
-                <button type="submit" className="btn btn-primary btn-block btn-lg" disabled={contactState.loading}>
-                  {contactState.loading ? 'Envoi en cours...' : 'Envoyer le message'}
+                <button type="submit" className="btn btn-primary w-100 p-3 fw-bold" disabled={contactState.loading}>
+                  {contactState.loading ? <i className="fa-solid fa-spinner fa-spin me-2"></i> : <i className="fa-solid fa-paper-plane me-2"></i>}
+                  Envoyer ma demande
                 </button>
               </form>
             )}

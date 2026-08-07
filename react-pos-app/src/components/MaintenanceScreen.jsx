@@ -75,7 +75,7 @@ export const MaintenanceScreen = ({ maintenanceInfo: propMaintInfo, onAdminLogin
         </div>
 
         <h1 style={{ margin: '0 0 12px', fontSize: '26px', fontWeight: 'bold', color: '#ffffff' }}>
-          APEXPOS EN MAINTENANCE
+          DLS POS EN MAINTENANCE
         </h1>
 
         <p style={{ fontSize: '15px', color: '#94a3b8', lineHeight: '1.6', margin: '0 0 24px' }}>

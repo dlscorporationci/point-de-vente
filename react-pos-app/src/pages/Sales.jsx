@@ -340,7 +340,7 @@ export const Sales = () => {
             <div className="receipt-print-zone" id="printable-receipt">
               <div className="receipt-header-block">
                 <h3 className="receipt-title">
-                  <i className="fa-solid fa-store me-2"></i> ApexPOS — Reçu de Vente
+                  <i className="fa-solid fa-store me-2"></i> dls POS — Reçu de Vente
                 </h3>
                 <p className="receipt-meta">
                   <strong>N° Ticket :</strong> {selectedSale.sale_number}<br />

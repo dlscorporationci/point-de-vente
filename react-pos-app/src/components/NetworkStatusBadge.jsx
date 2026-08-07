@@ -40,7 +40,7 @@ export const NetworkStatusBadge = () => {
           onClick={handleInstallClick}
           className="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-1"
           style={{ borderRadius: '20px', fontSize: '11px', fontWeight: 700, padding: '4px 10px' }}
-          title="Installer l'application ApexPOS sur cet appareil"
+          title="Installer l'application dls POS sur cet appareil"
         >
           <i className="fa-solid fa-download text-primary"></i>
           <span>Installer l'App</span>

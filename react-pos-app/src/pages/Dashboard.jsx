@@ -136,7 +136,7 @@ export const Dashboard = ({ setActiveTab }) => {
               <span className="role-chip badge">{user?.role?.name || role || 'Opérateur'}</span>
             </div>
             <div className="welcome-sub">
-              <span><i className="fa-solid fa-building me-1 text-primary"></i> <strong>{user?.company?.name || 'ApexPOS'}</strong></span>
+              <span><i className="fa-solid fa-building me-1 text-primary"></i> <strong>{user?.company?.name || 'dls POS'}</strong></span>
               <span className="mx-2">•</span>
               <span><i className="fa-solid fa-shop me-1 text-success"></i> Boutique Active : <strong>{activeBranch?.name || user?.branch?.name || 'Toutes les boutiques'}</strong></span>
             </div>

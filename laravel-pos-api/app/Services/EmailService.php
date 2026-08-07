@@ -25,7 +25,7 @@ class EmailService
 
         return $this->dispatchEmail(
             recipient: $user->email,
-            subject: 'Bienvenue sur ApexPOS !',
+            subject: 'Bienvenue sur dls POS !',
             viewName: 'emails.auth.welcome',
             viewData: [
                 'user'    => ['name' => $user->name, 'email' => $user->email],
@@ -44,7 +44,7 @@ class EmailService
     {
         return $this->dispatchEmail(
             recipient: $user->email,
-            subject: "🔑 [Code {$code}] Réinitialisation de votre mot de passe ApexPOS",
+            subject: "🔑 [Code {$code}] Réinitialisation de votre mot de passe dls POS",
             viewName: 'emails.auth.password-reset',
             viewData: [
                 'user' => ['name' => $user->name, 'email' => $user->email],
@@ -63,7 +63,7 @@ class EmailService
     {
         return $this->dispatchEmail(
             recipient: $user->email,
-            subject: 'Votre mot de passe ApexPOS a été modifié',
+            subject: 'Votre mot de passe dls POS a été modifié',
             viewName: 'emails.auth.password-changed',
             viewData: [
                 'user' => ['name' => $user->name, 'email' => $user->email],
@@ -83,7 +83,7 @@ class EmailService
 
         return $this->dispatchEmail(
             recipient: $recipient,
-            subject: 'Votre abonnement ApexPOS est actif',
+            subject: 'Votre abonnement dls POS est actif',
             viewName: 'emails.subscription.activated',
             viewData: [
                 'user'         => ['name' => $user?->name ?: 'Administrateur', 'email' => $recipient],
@@ -117,7 +117,7 @@ class EmailService
 
         return $this->dispatchEmail(
             recipient: $recipient,
-            subject: "Rappel : Votre abonnement ApexPOS expire dans {$daysRemaining} jour(s)",
+            subject: "Rappel : Votre abonnement dls POS expire dans {$daysRemaining} jour(s)",
             viewName: 'emails.subscription.expiring',
             viewData: [
                 'user'          => ['name' => $user?->name ?: 'Administrateur', 'email' => $recipient],
@@ -149,7 +149,7 @@ class EmailService
 
         return $this->dispatchEmail(
             recipient: $recipient,
-            subject: 'Alerte : Votre abonnement ApexPOS a expiré',
+            subject: 'Alerte : Votre abonnement dls POS a expiré',
             viewName: 'emails.subscription.expired',
             viewData: [
                 'user'      => ['name' => $user?->name ?: 'Administrateur', 'email' => $recipient],
@@ -169,7 +169,7 @@ class EmailService
     {
         $recipient = $user?->email ?: $this->getCompanyAdminEmail($company);
         $status = $payment['status'] ?? 'paid';
-        $subject = $status === 'paid' ? 'Confirmation de votre règlement ApexPOS' : 'Échec de votre règlement ApexPOS';
+        $subject = $status === 'paid' ? 'Confirmation de votre règlement dls POS' : 'Échec de votre règlement dls POS';
 
         return $this->dispatchEmail(
             recipient: $recipient,
@@ -193,7 +193,7 @@ class EmailService
     {
         return $this->dispatchEmail(
             recipient: $recipient,
-            subject: "ApexPOS — Maintenance Système : {$title}",
+            subject: "dls POS — Maintenance Système : {$title}",
             viewName: 'emails.maintenance.maintenance',
             viewData: [
                 'title'       => $title,
@@ -214,7 +214,7 @@ class EmailService
     {
         return $this->dispatchEmail(
             recipient: $user->email,
-            subject: "Alerte de Sécurité ApexPOS : {$alertTitle}",
+            subject: "Alerte de Sécurité dls POS : {$alertTitle}",
             viewName: 'emails.security.alert',
             viewData: [
                 'user'             => ['name' => $user->name, 'email' => $user->email],
@@ -233,7 +233,7 @@ class EmailService
      */
     public function sendTestEmail(string $recipientEmail, bool $sync = true): array
     {
-        $subject = 'Test de connexion SMTP ApexPOS';
+        $subject = 'Test de connexion SMTP dls POS';
         $viewName = 'emails.test-email';
         $viewData = ['tested_at' => now()->toIso8601String()];
 

@@ -111,7 +111,7 @@ export const Navbar = ({ onNavigate }) => {
           >
             <img
               src={logo}
-              alt="ApexPOS"
+              alt="dls POS"
               style={{
                 width: '36px', height: '36px',
                 borderRadius: '10px',
@@ -128,7 +128,7 @@ export const Navbar = ({ onNavigate }) => {
               backgroundClip: 'text',
               letterSpacing: '-0.5px',
             }}>
-              ApexPOS
+              dls POS
             </span>
           </div>
 

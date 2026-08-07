@@ -13,7 +13,7 @@ export const UserGuide = () => {
       <div className="guide-layout card">
         <div className="guide-header">
           <h2><i className="fa-solid fa-book-open text-primary me-2"></i> Guide Utilisateur & Manuel Officiel</h2>
-          <p className="guide-subtitle">Consultez l'aide interactive d'ApexPOS pour configurer votre boutique, former vos caissiers ou administrer la plateforme.</p>
+          <p className="guide-subtitle">Consultez l'aide interactive de dls POS pour configurer votre boutique, former vos caissiers ou administrer la plateforme.</p>
         </div>
 
         <div className="guide-grid">
@@ -56,7 +56,7 @@ export const UserGuide = () => {
               <div className="animate-fade-in text-left">
                 <h3>📌 1. Introduction & Concept Multi-tenant</h3>
                 <p className="mt-3">
-                  <strong>ApexPOS</strong> est un progiciel de gestion intégré de point de vente multi-boutiques et multi-compagnies (SaaS). 
+                  <strong>dls POS</strong> est un progiciel de gestion intégré de point de vente multi-boutiques et multi-compagnies (SaaS). 
                   Il est conçu pour permettre le cloisonnement étanche des données commerciales de chaque entreprise tout en offrant 
                   un écosystème performant pour le commerce quotidien.
                 </p>
@@ -77,7 +77,7 @@ export const UserGuide = () => {
               <div className="animate-fade-in text-left">
                 <h3>👥 2. Rôles de la Plateforme & Habilitations</h3>
                 <p className="mt-3">
-                  Afin de garantir le principe du moindre privilège, ApexPOS structure les accès selon cinq profils prédéfinis.
+                  Afin de garantir le principe du moindre privilège, dls POS structure les accès selon cinq profils prédéfinis.
                 </p>
 
                 <div className="table-responsive mt-3">
@@ -126,7 +126,7 @@ export const UserGuide = () => {
               <div className="animate-fade-in text-left">
                 <h3>🔑 3. Authentification, Code PIN & Récupération</h3>
                 <p className="mt-3">
-                  ApexPOS propose deux modes de connexion distincts pour s'adapter au rythme de l'activité commerciale.
+                  dls POS propose deux modes de connexion distincts pour s'adapter au rythme de l'activité commerciale.
                 </p>
 
                 <h4 className="mt-4">1. La Connexion Standard (E-mail + Mot de passe)</h4>
@@ -183,7 +183,7 @@ export const UserGuide = () => {
               <div className="animate-fade-in text-left">
                 <h3>💳 5. Modes d'Encaissement & Ventes à Crédit</h3>
                 <p className="mt-3">
-                  ApexPOS permet d'encaisser vos transactions via plusieurs méthodes (Espèces, Carte Bancaire, Crédit Client).
+                  dls POS permet d'encaisser vos transactions via plusieurs méthodes (Espèces, Carte Bancaire, Crédit Client).
                 </p>
 
                 <h4 className="mt-4">1. Modes de Paiement</h4>
@@ -235,7 +235,7 @@ export const UserGuide = () => {
               <div className="animate-fade-in text-left">
                 <h3>🛡️ 7. Journal d'Audit & Traçabilité de l'activité</h3>
                 <p className="mt-3">
-                  Afin de prévenir la fraude interne et de garantir la transparence, ApexPOS intègre un enregistreur d'audit automatique.
+                  Afin de prévenir la fraude interne et de garantir la transparence, dls POS intègre un enregistreur d'audit automatique.
                 </p>
                 <h4 className="mt-4">Qu'est-ce qui est audité ?</h4>
                 <p className="text-muted small">

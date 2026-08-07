@@ -54,7 +54,7 @@ export const InstallPWAButton = ({ isMobileDrawer = false }) => {
       <button
         onClick={handleInstallClick}
         className={isMobileDrawer ? 'btn-install-pwa-drawer' : 'btn-install-pwa-navbar'}
-        title="Télécharger / Installer l'Application Mobile ApexPOS"
+        title="Télécharger / Installer l'Application Mobile dls POS"
       >
         <i className="fa-solid fa-mobile-screen-button me-1"></i>
         <span>{isMobileDrawer ? "Installer l'Application Mobile" : "Installer App"}</span>
@@ -67,7 +67,7 @@ export const InstallPWAButton = ({ isMobileDrawer = false }) => {
             <div className="d-flex justify-content-between align-items-center mb-3">
               <h3 className="d-flex align-items-center gap-2 m-0" style={{ fontSize: '20px', fontWeight: 800 }}>
                 <i className="fa-solid fa-mobile-screen-button text-primary"></i>
-                Installer ApexPOS Mobile
+                Installer dls POS Mobile
               </h3>
               <button 
                 type="button" 
@@ -78,7 +78,7 @@ export const InstallPWAButton = ({ isMobileDrawer = false }) => {
             </div>
             
             <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '20px' }}>
-              Accédez à ApexPOS en 1 clic directement depuis l'écran d'accueil de votre téléphone ou tablette, même hors connexion !
+              Accédez à dls POS en 1 clic directement depuis l'écran d'accueil de votre téléphone ou tablette, même hors connexion !
             </p>
 
             <div className="pwa-guide-box mb-3">
