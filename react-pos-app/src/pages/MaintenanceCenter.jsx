@@ -16,7 +16,6 @@ export const MaintenanceCenter = () => {
 
   const fetchMaintenance = useCallback(async () => {
     setLoading(true);
-    setError(null);
     try {
       const res = await axios.get('/v1/maintenance');
       setModes(res.data.modes || []);
@@ -24,13 +23,16 @@ export const MaintenanceCenter = () => {
       if (res.data.active_global?.message) {
         setMessage(res.data.active_global.message);
       }
+      if (checkMaintenanceStatus) {
+        checkMaintenanceStatus();
+      }
     } catch (err) {
       console.error("Fetch Maintenance Error:", err);
       setError(err.response?.data?.error || "Erreur lors du chargement des modes de maintenance.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [checkMaintenanceStatus]);
 
   useEffect(() => {
     fetchMaintenance();
