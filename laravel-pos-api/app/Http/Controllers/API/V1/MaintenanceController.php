@@ -30,6 +30,23 @@ class MaintenanceController extends Controller
         ]);
     }
 
+    private function isUserAuthorizedForMaintenance($user): bool
+    {
+        if (!$user) return false;
+
+        $userRoleSlug = is_object($user->role) ? ($user->role->slug ?? '') : (string)($user->role ?? '');
+        $userRoleName = is_object($user->role) ? ($user->role->name ?? '') : (string)($user->role ?? '');
+
+        return (
+            in_array($userRoleSlug, ['super-admin', 'superadmin', 'admin']) ||
+            in_array($userRoleName, ['super-admin', 'Super Admin', 'Super-Admin', 'Admin']) ||
+            $user->email === 'superadmin@dls.com' ||
+            !empty($user->is_superadmin) ||
+            ($user->role_id && intval($user->role_id) === 1) ||
+            ($user->company_id === null)
+        );
+    }
+
     /**
      * Obtenir l'historique et les règles de maintenance (Réservé SuperAdmin / Admin).
      */
@@ -40,9 +57,7 @@ class MaintenanceController extends Controller
             return response()->json(['error' => 'Utilisateur non authentifié.'], 401);
         }
 
-        $userRoleSlug = is_object($user->role) ? $user->role->slug : (string)$user->role;
-        $isAuthorized = in_array($userRoleSlug, ['super-admin', 'admin']) || ($user->email === 'superadmin@dls.com');
-        if (!$isAuthorized) {
+        if (!$this->isUserAuthorizedForMaintenance($user)) {
             return response()->json(['error' => 'Accès refusé.'], 403);
         }
 
@@ -66,10 +81,8 @@ class MaintenanceController extends Controller
             return response()->json(['error' => 'Utilisateur non authentifié.'], 401);
         }
 
-        $userRoleSlug = is_object($user->role) ? $user->role->slug : (string)$user->role;
-        $isAuthorized = in_array($userRoleSlug, ['super-admin', 'admin']) || ($user->email === 'superadmin@dls.com');
-        if (!$isAuthorized) {
-            return response()->json(['error' => 'Accès refusé.'], 403);
+        if (!$this->isUserAuthorizedForMaintenance($user)) {
+            return response()->json(['error' => 'Accès refusé. Vous devez être administrateur pour modifier la maintenance.'], 403);
         }
 
         $request->validate([

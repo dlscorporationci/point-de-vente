@@ -58,7 +58,8 @@ export const MaintenanceCenter = () => {
       }
     } catch (err) {
       console.error("Toggle Maintenance Error:", err);
-      setError(err.response?.data?.error || "Erreur lors de la modification du mode maintenance.");
+      const serverErr = err.response?.data?.error || err.response?.data?.message || err.message;
+      setError(serverErr || "Erreur lors de la modification du mode maintenance.");
     } finally {
       setUpdating(false);
     }
