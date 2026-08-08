@@ -303,37 +303,24 @@ class EmailService
             'metadata'   => $viewData,
         ]);
 
-        // Si la file d'attente est configurée sur 'sync', exécuter immédiatement et mettre à jour le log
-        if (config('queue.default') === 'sync') {
-            try {
-                $mailable = new ApexPosGenericMail($subject, $viewName, $viewData);
-                Mail::to($recipient)->send($mailable);
+        // Envoi direct synchrone pour garantir la livraison immédiate sur le VPS
+        try {
+            $mailable = new ApexPosGenericMail($subject, $viewName, $viewData);
+            Mail::to($recipient)->send($mailable);
 
-                $log->update([
-                    'status'   => 'sent',
-                    'attempts' => 1,
-                    'sent_at'  => now(),
-                ]);
-            } catch (Exception $e) {
-                $log->update([
-                    'status'        => 'failed',
-                    'attempts'      => 1,
-                    'failed_at'     => now(),
-                    'error_message' => $e->getMessage(),
-                ]);
-            }
-        } else {
-            // Dispatcher dans la queue Laravel
-            SendEmailJob::dispatch(
-                recipient: $recipient,
-                subject: $subject,
-                viewName: $viewName,
-                viewData: $viewData,
-                type: $type,
-                companyId: $companyId,
-                userId: $userId,
-                emailLogId: $log->id
-            );
+            $log->update([
+                'status'   => 'sent',
+                'attempts' => 1,
+                'sent_at'  => now(),
+            ]);
+        } catch (Exception $e) {
+            \Illuminate\Support\Facades\Log::warning("Échec envoi e-mail [{$type}] à {$recipient} : " . $e->getMessage());
+            $log->update([
+                'status'        => 'failed',
+                'attempts'      => 1,
+                'failed_at'     => now(),
+                'error_message' => $e->getMessage(),
+            ]);
         }
 
         return $log;

@@ -124,17 +124,34 @@ class MaintenanceService
                 ? ($message ?: 'Une intervention de maintenance est actuellement en cours sur la plateforme DLS POS.')
                 : 'L\'intervention de maintenance est terminée avec succès. Tous les services DLS POS (caisse, ventes, stocks) sont de nouveau pleinement opérationnels.';
 
+            // Création de l'annonce globale (company_id IS NULL) avec actor_id NULL pour éviter le filtrage d'auto-émission
             \App\Models\Notification::create([
-                'company_id' => $companyId,
-                'branch_id'  => $branchId,
+                'company_id' => null,
+                'branch_id'  => null,
                 'user_id'    => null,
                 'title'      => $notifTitle,
                 'message'    => $notifMessage,
                 'type'       => $enabled ? 'warning' : 'system',
                 'priority'   => $enabled ? 'warning' : 'normal',
-                'actor_id'   => $user?->id,
+                'actor_id'   => null,
                 'data'       => json_encode(['source' => 'maintenance_toggle', 'enabled' => $enabled])
             ]);
+
+            // Création explicite d'une notification dédiée par entreprise
+            $companiesList = \App\Models\Company::all();
+            foreach ($companiesList as $cItem) {
+                \App\Models\Notification::create([
+                    'company_id' => $cItem->id,
+                    'branch_id'  => null,
+                    'user_id'    => null,
+                    'title'      => $notifTitle,
+                    'message'    => $notifMessage,
+                    'type'       => $enabled ? 'warning' : 'system',
+                    'priority'   => $enabled ? 'warning' : 'normal',
+                    'actor_id'   => null,
+                    'data'       => json_encode(['source' => 'maintenance_toggle', 'enabled' => $enabled])
+                ]);
+            }
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning("Échec création notification in-app de maintenance : " . $e->getMessage());
         }
@@ -159,14 +176,24 @@ class MaintenanceService
                         $companies = \App\Models\Company::all();
                         foreach ($companies as $comp) {
                             try {
-                                $adminUser = \App\Models\User::withoutGlobalScopes()
+                                $users = \App\Models\User::withoutGlobalScopes()
                                     ->where('company_id', $comp->id)
                                     ->where('status', 'active')
-                                    ->first();
-                                $recipient = $adminUser?->email ?: ($comp->email ?: null);
-                                if ($recipient) {
+                                    ->get();
+
+                                $recipients = [];
+                                foreach ($users as $uItem) {
+                                    if (!empty($uItem->email)) {
+                                        $recipients[] = $uItem->email;
+                                    }
+                                }
+                                if ($comp->email && !in_array($comp->email, $recipients)) {
+                                    $recipients[] = $comp->email;
+                                }
+
+                                foreach (array_unique($recipients) as $recipientEmail) {
                                     $emailService->sendMaintenanceNotificationEmail(
-                                        recipient: $recipient,
+                                        recipient: $recipientEmail,
                                         title: $title,
                                         messageBody: $mailBody,
                                         status: $status,
@@ -183,14 +210,24 @@ class MaintenanceService
                         $comp = \App\Models\Company::find($companyId);
                         if ($comp) {
                             try {
-                                $adminUser = \App\Models\User::withoutGlobalScopes()
+                                $users = \App\Models\User::withoutGlobalScopes()
                                     ->where('company_id', $comp->id)
                                     ->where('status', 'active')
-                                    ->first();
-                                $recipient = $adminUser?->email ?: ($comp->email ?: null);
-                                if ($recipient) {
+                                    ->get();
+
+                                $recipients = [];
+                                foreach ($users as $uItem) {
+                                    if (!empty($uItem->email)) {
+                                        $recipients[] = $uItem->email;
+                                    }
+                                }
+                                if ($comp->email && !in_array($comp->email, $recipients)) {
+                                    $recipients[] = $comp->email;
+                                }
+
+                                foreach (array_unique($recipients) as $recipientEmail) {
                                     $emailService->sendMaintenanceNotificationEmail(
-                                        recipient: $recipient,
+                                        recipient: $recipientEmail,
                                         title: $title,
                                         messageBody: $mailBody,
                                         status: $status,
