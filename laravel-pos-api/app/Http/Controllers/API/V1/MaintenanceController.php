@@ -83,11 +83,11 @@ class MaintenanceController extends Controller
 
             return response()->json([
                 'success'     => true,
-                'message'     => $maint->enabled ? "Mode maintenance activé avec succès." : "Mode maintenance désactivé.",
+                'message'     => $maint->enabled ? "Mode maintenance activé avec succès." : "Mode maintenance désactivé avec succès.",
                 'maintenance' => $maint,
             ]);
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error("Erreur toggle maintenance : " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error("Erreur toggle maintenance : " . $e->getMessage() . "\n" . $e->getTraceAsString());
             return response()->json([
                 'error' => 'Échec de la modification du mode maintenance : ' . $e->getMessage()
             ], 500);

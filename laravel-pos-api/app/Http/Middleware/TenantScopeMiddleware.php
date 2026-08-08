@@ -30,9 +30,12 @@ class TenantScopeMiddleware
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user('sanctum') ?: auth('sanctum')->user();
+        $userRoleSlug = is_object($user?->role) ? ($user->role->slug ?? '') : (string)($user?->role ?? '');
+        $userRoleName = is_object($user?->role) ? ($user->role->name ?? '') : (string)($user?->role ?? '');
+
         $isSuperAdmin = $user && (
-            ($user->role && in_array($user->role->slug, ['super-admin', 'superadmin'])) ||
-            ($user->role && in_array($user->role->name, ['super-admin', 'Super Admin', 'Super-Admin'])) ||
+            in_array($userRoleSlug, ['super-admin', 'superadmin']) ||
+            in_array($userRoleName, ['super-admin', 'Super Admin', 'Super-Admin']) ||
             $user->email === 'superadmin@dls.com' ||
             !empty($user->is_superadmin)
         );
@@ -162,9 +165,8 @@ class TenantScopeMiddleware
         }
 
         if ($branch) {
-            // 3. Vérification du statut opérationnel de la boutique pour les requêtes de modification (écriture)
-            $isWriteOperation = in_array($request->method(), ['POST', 'PUT', 'PATCH', 'DELETE']);
-            $isAdminOrSuper = $authUser && $authUser->role && in_array($authUser->role->slug, ['super-admin', 'admin']);
+            $authRoleSlug   = is_object($authUser?->role) ? ($authUser->role->slug ?? '') : (string)($authUser?->role ?? '');
+            $isAdminOrSuper = $authUser && (in_array($authRoleSlug, ['super-admin', 'admin']) || $authUser->email === 'superadmin@dls.com');
 
             if ($isWriteOperation && !$isAdminOrSuper) {
                 if ($branch->status && $branch->status !== 'open') {

@@ -26,17 +26,20 @@ class CheckRoleMiddleware
             ], 401);
         }
 
+        $userRoleSlug = is_object($user->role) ? ($user->role->slug ?? '') : (string)$user->role;
+        $userRoleName = is_object($user->role) ? ($user->role->name ?? '') : (string)$user->role;
+
         // Le super-admin (par slug de rôle ou adresse email) a toujours accès à toutes les routes
-        if ($user->email === 'superadmin@dls.com' || ($user->role && $user->role->slug === 'super-admin')) {
+        if ($user->email === 'superadmin@dls.com' || in_array($userRoleSlug, ['super-admin', 'superadmin']) || in_array($userRoleName, ['super-admin', 'Super Admin', 'Super-Admin'])) {
             return $next($request);
         }
 
         // Vérifier que le rôle de l'utilisateur est dans la liste des rôles autorisés
-        if (!in_array($user->role->slug, $roles)) {
+        if (!in_array($userRoleSlug, $roles) && !in_array($userRoleName, $roles)) {
             return response()->json([
                 'error' => 'Accès refusé. Vous ne disposez pas des droits suffisants pour effectuer cette action.',
                 'required_roles' => $roles,
-                'your_role' => $user->role->slug,
+                'your_role' => $userRoleSlug,
             ], 403);
         }
 
