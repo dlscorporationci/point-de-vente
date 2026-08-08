@@ -41,10 +41,14 @@ class PdfExportService
             'filters'      => $data['filters'] ?? [],
         ])->render();
 
-        $pdf = Pdf::loadHTML($html)
-            ->setPaper('a4', 'portrait')
-            ->setOption('isRemoteEnabled', true);
+        if (class_exists(\Barryvdh\DomPDF\Facade\Pdf::class)) {
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html)
+                ->setPaper('a4', 'portrait')
+                ->setOption('isRemoteEnabled', true);
 
-        return $pdf->output();
+            return $pdf->output();
+        }
+
+        throw new \Exception("Le module de génération PDF (dompdf) nécessite l'exécution de 'composer install' sur le serveur VPS.");
     }
 }
