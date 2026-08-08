@@ -156,8 +156,9 @@ class MaintenanceService
             \Illuminate\Support\Facades\Log::warning("Échec création notification in-app de maintenance : " . $e->getMessage());
         }
 
-        // 2. Transmettre les e-mails de notification de maintenance de manière asynchrone (non-bloquante pour la réponse HTTP)
+        // 2. Transmettre les e-mails de notification de maintenance à tous les destinataires enregistrés
         try {
+            $emailService = new \App\Services\EmailService();
             $status = $enabled ? 'started' : 'completed';
             $title = $enabled ? 'Intervention de Maintenance Système SaaS' : '🎉 Fin de l\'Intervention de Maintenance DLS POS';
             $endsAtStr = $maint->estimated_end_at ? \Carbon\Carbon::parse($maint->estimated_end_at)->format('d/m/Y H:i') : null;
@@ -166,87 +167,85 @@ class MaintenanceService
                 ? $message 
                 : 'Nous vous informons que la maintenance système est officiellement terminée. La plateforme DLS POS est de nouveau disponible et pleinement fonctionnelle pour toutes vos opérations.';
 
-            register_shutdown_function(function () use ($type, $companyId, $status, $title, $mailBody, $startsAtStr, $endsAtStr) {
-                try {
-                    if (function_exists('fastcgi_finish_request')) {
-                        @fastcgi_finish_request();
-                    }
-                    $emailService = new \App\Services\EmailService();
-                    if ($type === 'global') {
-                        $companies = \App\Models\Company::all();
-                        foreach ($companies as $comp) {
-                            try {
-                                $users = \App\Models\User::withoutGlobalScopes()
-                                    ->where('company_id', $comp->id)
-                                    ->where('status', 'active')
-                                    ->get();
+            if ($type === 'global') {
+                $companies = \App\Models\Company::all();
+                foreach ($companies as $comp) {
+                    try {
+                        $users = \App\Models\User::withoutGlobalScopes()
+                            ->where('company_id', $comp->id)
+                            ->where('status', 'active')
+                            ->get();
 
-                                $recipients = [];
-                                foreach ($users as $uItem) {
-                                    if (!empty($uItem->email)) {
-                                        $recipients[] = $uItem->email;
-                                    }
-                                }
-                                if ($comp->email && !in_array($comp->email, $recipients)) {
-                                    $recipients[] = $comp->email;
-                                }
-
-                                foreach (array_unique($recipients) as $recipientEmail) {
-                                    $emailService->sendMaintenanceNotificationEmail(
-                                        recipient: $recipientEmail,
-                                        title: $title,
-                                        messageBody: $mailBody,
-                                        status: $status,
-                                        startsAt: $startsAtStr,
-                                        endsAt: $endsAtStr,
-                                        companyId: $comp->id
-                                    );
-                                }
-                            } catch (\Throwable $ex) {
-                                \Illuminate\Support\Facades\Log::warning("Échec envoi mail maintenance entreprise ID {$comp->id} : " . $ex->getMessage());
+                        $recipients = [];
+                        foreach ($users as $uItem) {
+                            if (!empty($uItem->email)) {
+                                $recipients[] = trim($uItem->email);
                             }
                         }
-                    } elseif ($companyId) {
-                        $comp = \App\Models\Company::find($companyId);
-                        if ($comp) {
+                        if ($comp->email && !in_array(trim($comp->email), $recipients)) {
+                            $recipients[] = trim($comp->email);
+                        }
+
+                        foreach (array_unique($recipients) as $recipientEmail) {
                             try {
-                                $users = \App\Models\User::withoutGlobalScopes()
-                                    ->where('company_id', $comp->id)
-                                    ->where('status', 'active')
-                                    ->get();
-
-                                $recipients = [];
-                                foreach ($users as $uItem) {
-                                    if (!empty($uItem->email)) {
-                                        $recipients[] = $uItem->email;
-                                    }
-                                }
-                                if ($comp->email && !in_array($comp->email, $recipients)) {
-                                    $recipients[] = $comp->email;
-                                }
-
-                                foreach (array_unique($recipients) as $recipientEmail) {
-                                    $emailService->sendMaintenanceNotificationEmail(
-                                        recipient: $recipientEmail,
-                                        title: $title,
-                                        messageBody: $mailBody,
-                                        status: $status,
-                                        startsAt: $startsAtStr,
-                                        endsAt: $endsAtStr,
-                                        companyId: $comp->id
-                                    );
-                                }
+                                $emailService->sendMaintenanceNotificationEmail(
+                                    recipient: $recipientEmail,
+                                    title: $title,
+                                    messageBody: $mailBody,
+                                    status: $status,
+                                    startsAt: $startsAtStr,
+                                    endsAt: $endsAtStr,
+                                    companyId: $comp->id
+                                );
                             } catch (\Throwable $ex) {
-                                \Illuminate\Support\Facades\Log::warning("Échec envoi mail maintenance entreprise ID {$comp->id} : " . $ex->getMessage());
+                                \Illuminate\Support\Facades\Log::warning("Échec envoi mail maintenance à {$recipientEmail} : " . $ex->getMessage());
                             }
                         }
+                    } catch (\Throwable $ex) {
+                        \Illuminate\Support\Facades\Log::warning("Échec envoi mails maintenance entreprise ID {$comp->id} : " . $ex->getMessage());
                     }
-                } catch (\Throwable $e) {
-                    \Illuminate\Support\Facades\Log::warning("Échec envoi mails maintenance dans shutdown function : " . $e->getMessage());
                 }
-            });
+            } elseif ($companyId) {
+                $comp = \App\Models\Company::find($companyId);
+                if ($comp) {
+                    try {
+                        $users = \App\Models\User::withoutGlobalScopes()
+                            ->where('company_id', $comp->id)
+                            ->where('status', 'active')
+                            ->get();
+
+                        $recipients = [];
+                        foreach ($users as $uItem) {
+                            if (!empty($uItem->email)) {
+                                $recipients[] = trim($uItem->email);
+                            }
+                        }
+                        if ($comp->email && !in_array(trim($comp->email), $recipients)) {
+                            $recipients[] = trim($comp->email);
+                        }
+
+                        foreach (array_unique($recipients) as $recipientEmail) {
+                            try {
+                                $emailService->sendMaintenanceNotificationEmail(
+                                    recipient: $recipientEmail,
+                                    title: $title,
+                                    messageBody: $mailBody,
+                                    status: $status,
+                                    startsAt: $startsAtStr,
+                                    endsAt: $endsAtStr,
+                                    companyId: $comp->id
+                                );
+                            } catch (\Throwable $ex) {
+                                \Illuminate\Support\Facades\Log::warning("Échec envoi mail maintenance à {$recipientEmail} : " . $ex->getMessage());
+                            }
+                        }
+                    } catch (\Throwable $ex) {
+                        \Illuminate\Support\Facades\Log::warning("Échec envoi mails maintenance entreprise ID {$comp->id} : " . $ex->getMessage());
+                    }
+                }
+            }
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning("Échec enregistrement shutdown function maintenance : " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::warning("Échec envoi général mails maintenance : " . $e->getMessage());
         }
 
         return $maint;
