@@ -566,7 +566,12 @@ function MainContent() {
 
             {/* Logo & Nom Entreprise */}
             <div className="navbar-logo" onClick={() => navigate('home')} style={{ cursor: 'pointer' }}>
-              <img src={getCompanyLogoUrl(user?.company?.logo_path)} alt="Logo" className="navbar-logo-img" />
+              <img 
+                src={getCompanyLogoUrl(user?.company?.logo_path)} 
+                alt="Logo" 
+                className="navbar-logo-img" 
+                onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = logo; }}
+              />
               <span style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
                 {user?.company?.name ? (
                   <>
@@ -734,7 +739,12 @@ function MainContent() {
         <nav ref={drawerRef} className={`side-drawer ${menuOpen ? 'open' : ''}`}>
           <div className="drawer-header">
             <div className="drawer-logo">
-              <img src={getCompanyLogoUrl(user?.company?.logo_path)} alt="Logo" className="navbar-logo-img" />
+              <img 
+                src={getCompanyLogoUrl(user?.company?.logo_path)} 
+                alt="Logo" 
+                className="navbar-logo-img" 
+                onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = logo; }}
+              />
               <span style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
                 {user?.company?.name ? (
                   <>
