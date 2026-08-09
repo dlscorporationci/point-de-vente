@@ -23,9 +23,11 @@ export const CatalogTemplatesModal = ({ isOpen, onClose, onSuccess }) => {
     setError(null);
     try {
       const res = await axios.get('/v1/catalog-templates');
-      setTemplates(res.data || []);
+      const data = res.data?.data || res.data || [];
+      setTemplates(Array.isArray(data) ? data : []);
     } catch (err) {
-      setError('Impossible de charger les modèles de catalogue.');
+      console.warn('Chargement des modèles de catalogue indisponible:', err);
+      setTemplates([]);
     } finally {
       setLoading(false);
     }
