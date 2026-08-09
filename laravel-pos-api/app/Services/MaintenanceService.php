@@ -148,56 +148,58 @@ class MaintenanceService
             \Illuminate\Support\Facades\Log::warning("Échec création notification in-app de maintenance : " . $e->getMessage());
         }
 
-        // 2. Transmettre les e-mails de notification de maintenance directement à l'adresse administrateur de chaque entreprise
-        try {
-            $emailService = new \App\Services\EmailService();
-            $status = $enabled ? 'started' : 'completed';
-            $title = $enabled ? 'Intervention de Maintenance Système SaaS' : '🎉 Fin de l\'Intervention de Maintenance DLS POS';
-            $endsAtStr = $maint->estimated_end_at ? \Carbon\Carbon::parse($maint->estimated_end_at)->format('d/m/Y H:i') : null;
-            $startsAtStr = $maint->started_at ? $maint->started_at->format('d/m/Y H:i') : null;
-            $mailBody = $enabled 
-                ? ($message ?: 'Une intervention de maintenance est actuellement en cours sur la plateforme DLS POS.')
-                : 'Nous vous informons que la maintenance système est officiellement terminée. La plateforme DLS POS est de nouveau disponible et pleinement fonctionnelle pour toutes vos opérations.';
+        // 2. Transmettre les e-mails de notification en tâche de fond pour garantir une réponse HTTP instantanée (pas de 504 Timeout)
+        register_shutdown_function(function () use ($enabled, $type, $companyId, $maint, $message) {
+            try {
+                $emailService = new \App\Services\EmailService();
+                $status = $enabled ? 'started' : 'completed';
+                $title = $enabled ? 'Intervention de Maintenance Système SaaS' : '🎉 Fin de l\'Intervention de Maintenance DLS POS';
+                $endsAtStr = $maint->estimated_end_at ? \Carbon\Carbon::parse($maint->estimated_end_at)->format('d/m/Y H:i') : null;
+                $startsAtStr = $maint->started_at ? $maint->started_at->format('d/m/Y H:i') : null;
+                $mailBody = $enabled 
+                    ? ($message ?: 'Une intervention de maintenance est actuellement en cours sur la plateforme DLS POS.')
+                    : 'Nous vous informons que la maintenance système est officiellement terminée. La plateforme DLS POS est de nouveau disponible et pleinement fonctionnelle pour toutes vos opérations.';
 
-            $companies = ($type === 'global') ? \App\Models\Company::all() : ($companyId ? \App\Models\Company::where('id', $companyId)->get() : collect());
+                $companies = ($type === 'global') ? \App\Models\Company::all() : ($companyId ? \App\Models\Company::where('id', $companyId)->get() : collect());
 
-            foreach ($companies as $comp) {
-                $recipients = [];
-                if (!empty($comp->email)) {
-                    $recipients[] = trim($comp->email);
-                }
+                foreach ($companies as $comp) {
+                    $recipients = [];
+                    if (!empty($comp->email)) {
+                        $recipients[] = trim($comp->email);
+                    }
 
-                $activeUsers = \App\Models\User::withoutGlobalScopes()
-                    ->where('company_id', $comp->id)
-                    ->where('status', 'active')
-                    ->get();
+                    $activeUsers = \App\Models\User::withoutGlobalScopes()
+                        ->where('company_id', $comp->id)
+                        ->where('status', 'active')
+                        ->get();
 
-                foreach ($activeUsers as $uItem) {
-                    if (!empty($uItem->email)) {
-                        $recipients[] = trim($uItem->email);
+                    foreach ($activeUsers as $uItem) {
+                        if (!empty($uItem->email)) {
+                            $recipients[] = trim($uItem->email);
+                        }
+                    }
+
+                    foreach (array_unique(array_filter($recipients)) as $recipientEmail) {
+                        try {
+                            $emailService->sendMaintenanceNotificationEmail(
+                                recipient: $recipientEmail,
+                                title: $title,
+                                messageBody: $mailBody,
+                                status: $status,
+                                startsAt: $startsAtStr,
+                                endsAt: $endsAtStr,
+                                companyId: $comp->id
+                            );
+                            \Illuminate\Support\Facades\Log::info("Mail de maintenance expédié à : {$recipientEmail}");
+                        } catch (\Throwable $ex) {
+                            \Illuminate\Support\Facades\Log::warning("Échec envoi mail maintenance à {$recipientEmail} : " . $ex->getMessage());
+                        }
                     }
                 }
-
-                foreach (array_unique(array_filter($recipients)) as $recipientEmail) {
-                    try {
-                        $emailService->sendMaintenanceNotificationEmail(
-                            recipient: $recipientEmail,
-                            title: $title,
-                            messageBody: $mailBody,
-                            status: $status,
-                            startsAt: $startsAtStr,
-                            endsAt: $endsAtStr,
-                            companyId: $comp->id
-                        );
-                        \Illuminate\Support\Facades\Log::info("Mail de maintenance expédié à : {$recipientEmail}");
-                    } catch (\Throwable $ex) {
-                        \Illuminate\Support\Facades\Log::warning("Échec envoi mail maintenance à {$recipientEmail} : " . $ex->getMessage());
-                    }
-                }
+            } catch (\Throwable $err) {
+                \Illuminate\Support\Facades\Log::warning("Erreur globale envoi mails maintenance : " . $err->getMessage());
             }
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning("Échec envoi général mails maintenance : " . $e->getMessage());
-        }
+        });
 
         return $maint;
     }

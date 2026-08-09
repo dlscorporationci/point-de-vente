@@ -46,9 +46,13 @@ class StockController extends Controller
             $branchId = app(\App\Services\TenantManager::class)->getBranchId() ?: $request->header('X-Branch-ID');
         }
 
-        $query = BranchProduct::whereHas('product')
-            ->where('is_active', true)
-            ->with(['product.category', 'branch']);
+        $query = BranchProduct::whereHas('product');
+
+        if (\Illuminate\Support\Facades\Schema::hasColumn('branch_products', 'is_active')) {
+            $query->where('is_active', true);
+        }
+
+        $query->with(['product.category', 'branch']);
 
         if ($branchId && $branchId !== 'all') {
             $query->where('branch_id', $branchId);
