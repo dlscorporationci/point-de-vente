@@ -114,8 +114,16 @@ class MaintenanceService
             \Illuminate\Support\Facades\Log::warning("Échec création AuditLog maintenance : " . $e->getMessage());
         }
 
-        // 1. Création de la notification in-app pour tous les utilisateurs (cloche & volet de notification)
+        // 1. Nettoyage des anciennes notifications de maintenance et création d'une SEULE notification globale
         try {
+            // Marquer comme lues toutes les anciennes notifications de maintenance pour éviter l'accumulation (e.g. 99+)
+            \App\Models\Notification::whereNull('read_at')
+                ->where(function ($q) {
+                    $q->where('type', 'system')
+                      ->where('title', 'like', '%Maintenance%');
+                })
+                ->update(['read_at' => now()]);
+
             $notifTitle = $enabled 
                 ? '🛠️ Maintenance Système en cours' 
                 : '🎉 Maintenance terminée — DLS POS est opérationnel';
@@ -124,57 +132,63 @@ class MaintenanceService
                 ? ($message ?: 'Une intervention de maintenance est actuellement en cours sur la plateforme DLS POS.')
                 : 'L\'intervention de maintenance est terminée avec succès. Tous les services DLS POS (caisse, ventes, stocks) sont de nouveau pleinement opérationnels.';
 
-            // Création de l'annonce globale (company_id IS NULL) avec actor_id NULL pour éviter le filtrage d'auto-émission
+            // Création d'une SEULE annonce globale unique (company_id IS NULL) accessible par tous les utilisateurs
             \App\Models\Notification::create([
                 'company_id' => null,
                 'branch_id'  => null,
                 'user_id'    => null,
                 'title'      => $notifTitle,
                 'message'    => $notifMessage,
-                'type'       => $enabled ? 'warning' : 'system',
+                'type'       => 'system',
                 'priority'   => $enabled ? 'warning' : 'normal',
                 'actor_id'   => null,
                 'data'       => json_encode(['source' => 'maintenance_toggle', 'enabled' => $enabled])
             ]);
-
-            // Création explicite d'une notification dédiée par entreprise
-            $companiesList = \App\Models\Company::all();
-            foreach ($companiesList as $cItem) {
-                \App\Models\Notification::create([
-                    'company_id' => $cItem->id,
-                    'branch_id'  => null,
-                    'user_id'    => null,
-                    'title'      => $notifTitle,
-                    'message'    => $notifMessage,
-                    'type'       => $enabled ? 'warning' : 'system',
-                    'priority'   => $enabled ? 'warning' : 'normal',
-                    'actor_id'   => null,
-                    'data'       => json_encode(['source' => 'maintenance_toggle', 'enabled' => $enabled])
-                ]);
-            }
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning("Échec création notification in-app de maintenance : " . $e->getMessage());
         }
 
-        // 2. Transmettre les e-mails de notification de maintenance en tâche de fond CLI (Instantané & non-bloquant pour l'interface web)
+        // 2. Transmettre les e-mails de notification de maintenance directement à l'adresse administrateur de chaque entreprise
         try {
-            $basePath = base_path();
-            $cmd = sprintf(
-                'php %s/artisan apexpos:send-maintenance-emails --type=%s --enabled=%d %s %s > /dev/null 2>&1 &',
-                $basePath,
-                escapeshellarg($type),
-                $enabled ? 1 : 0,
-                $companyId ? '--company_id=' . (int)$companyId : '',
-                $message ? '--message=' . escapeshellarg($message) : ''
-            );
-            
-            if (function_exists('exec')) {
-                @exec($cmd);
-            } elseif (function_exists('popen')) {
-                @pclose(@popen($cmd, 'r'));
+            $emailService = new \App\Services\EmailService();
+            $status = $enabled ? 'started' : 'completed';
+            $title = $enabled ? 'Intervention de Maintenance Système SaaS' : '🎉 Fin de l\'Intervention de Maintenance DLS POS';
+            $endsAtStr = $maint->estimated_end_at ? \Carbon\Carbon::parse($maint->estimated_end_at)->format('d/m/Y H:i') : null;
+            $startsAtStr = $maint->started_at ? $maint->started_at->format('d/m/Y H:i') : null;
+            $mailBody = $enabled 
+                ? ($message ?: 'Une intervention de maintenance est actuellement en cours sur la plateforme DLS POS.')
+                : 'Nous vous informons que la maintenance système est officiellement terminée. La plateforme DLS POS est de nouveau disponible et pleinement fonctionnelle pour toutes vos opérations.';
+
+            $companies = ($type === 'global') ? \App\Models\Company::all() : ($companyId ? \App\Models\Company::where('id', $companyId)->get() : collect());
+
+            foreach ($companies as $comp) {
+                $recipientEmail = $comp->email;
+                if (empty($recipientEmail)) {
+                    $adminUser = \App\Models\User::withoutGlobalScopes()
+                        ->where('company_id', $comp->id)
+                        ->where('status', 'active')
+                        ->first();
+                    $recipientEmail = $adminUser?->email;
+                }
+
+                if (!empty($recipientEmail)) {
+                    try {
+                        $emailService->sendMaintenanceNotificationEmail(
+                            recipient: trim($recipientEmail),
+                            title: $title,
+                            messageBody: $mailBody,
+                            status: $status,
+                            startsAt: $startsAtStr,
+                            endsAt: $endsAtStr,
+                            companyId: $comp->id
+                        );
+                    } catch (\Throwable $ex) {
+                        \Illuminate\Support\Facades\Log::warning("Échec envoi mail maintenance à {$recipientEmail} : " . $ex->getMessage());
+                    }
+                }
             }
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning("Échec lancement CLI e-mails maintenance : " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::warning("Échec envoi général mails maintenance : " . $e->getMessage());
         }
 
         return $maint;

@@ -26,14 +26,13 @@ class NotificationController extends Controller
         $query = Notification::withoutGlobalScopes()
             ->with(['branch:id,name', 'actor:id,name,email']);
 
-        // 1. Filtrage par entreprise (autorise les annonces globales company_id IS NULL)
+        // 1. Filtrage par entreprise et exclusions des auto-émissions
         if (!$isSuperAdmin) {
             $query->where(function ($q) use ($user) {
                 $q->where('company_id', $user->company_id)
                   ->orWhereNull('company_id');
             });
 
-            // Exclut uniquement les messages qu'un utilisateur ordinaire s'est émis à lui-même pour des tiers
             $query->where(function ($q) use ($user) {
                 $q->whereNull('actor_id')
                   ->orWhere('actor_id', '!=', $user->id)
@@ -49,6 +48,13 @@ class NotificationController extends Controller
                                 ->orWhereIn('branch_id', $accessibleBranchIds);
                           });
                   });
+            });
+        } else {
+            // Pour SuperAdmin : voir les notifications globales (company_id IS NULL) et les alertes système
+            $query->where(function ($q) use ($user) {
+                $q->whereNull('company_id')
+                  ->orWhere('user_id', $user->id)
+                  ->orWhere('company_id', $user->company_id);
             });
         }
 
@@ -128,6 +134,12 @@ class NotificationController extends Controller
                                 ->orWhereIn('branch_id', $accessibleBranchIds);
                           });
                   });
+            });
+        } else {
+            $query->where(function ($q) use ($user) {
+                $q->whereNull('company_id')
+                  ->orWhere('user_id', $user->id)
+                  ->orWhere('company_id', $user->company_id);
             });
         }
 
