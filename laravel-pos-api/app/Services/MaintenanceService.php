@@ -162,19 +162,26 @@ class MaintenanceService
             $companies = ($type === 'global') ? \App\Models\Company::all() : ($companyId ? \App\Models\Company::where('id', $companyId)->get() : collect());
 
             foreach ($companies as $comp) {
-                $recipientEmail = $comp->email;
-                if (empty($recipientEmail)) {
-                    $adminUser = \App\Models\User::withoutGlobalScopes()
-                        ->where('company_id', $comp->id)
-                        ->where('status', 'active')
-                        ->first();
-                    $recipientEmail = $adminUser?->email;
+                $recipients = [];
+                if (!empty($comp->email)) {
+                    $recipients[] = trim($comp->email);
                 }
 
-                if (!empty($recipientEmail)) {
+                $activeUsers = \App\Models\User::withoutGlobalScopes()
+                    ->where('company_id', $comp->id)
+                    ->where('status', 'active')
+                    ->get();
+
+                foreach ($activeUsers as $uItem) {
+                    if (!empty($uItem->email)) {
+                        $recipients[] = trim($uItem->email);
+                    }
+                }
+
+                foreach (array_unique(array_filter($recipients)) as $recipientEmail) {
                     try {
                         $emailService->sendMaintenanceNotificationEmail(
-                            recipient: trim($recipientEmail),
+                            recipient: $recipientEmail,
                             title: $title,
                             messageBody: $mailBody,
                             status: $status,
@@ -182,6 +189,7 @@ class MaintenanceService
                             endsAt: $endsAtStr,
                             companyId: $comp->id
                         );
+                        \Illuminate\Support\Facades\Log::info("Mail de maintenance expédié à : {$recipientEmail}");
                     } catch (\Throwable $ex) {
                         \Illuminate\Support\Facades\Log::warning("Échec envoi mail maintenance à {$recipientEmail} : " . $ex->getMessage());
                     }

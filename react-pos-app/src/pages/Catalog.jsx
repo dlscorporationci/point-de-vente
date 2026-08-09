@@ -171,21 +171,23 @@ export const Catalog = () => {
     try {
       const companyId = parseInt(localStorage.getItem('company-id') || 1);
 
-      // 1. Charger les catégories
+      // 1. Charger les catégories (Gestion des formats tableau direct, .data et .categories)
       let catData = [];
       try {
         const catRes = await axios.get('/v1/categories');
-        catData = catRes.data || [];
+        const rawCat = catRes.data;
+        catData = Array.isArray(rawCat) ? rawCat : (rawCat?.data || rawCat?.categories || []);
       } catch (netErr) {
-        catData = await db.categories.where('company_id').equals(companyId).toArray();
+        const cId = user?.company_id || parseInt(localStorage.getItem('company-id') || 1);
+        catData = await db.categories.where('company_id').equals(cId).toArray().catch(() => []);
       }
-      setCategories(catData);
+      setCategories(Array.isArray(catData) ? catData : []);
 
       if (isAdmin) {
         axios.get('/v1/branches').then(r => setBranches(r.data.data || r.data || [])).catch(() => {});
       }
 
-      // 2. Charger les produits (avec filtres optionnels)
+      // 2. Charger les produits (Gestion des formats paginés .data, .products ou tableau direct)
       let prodData = [];
       try {
         let url = '/v1/products';
@@ -195,10 +197,11 @@ export const Catalog = () => {
         if (params.length > 0) url += `?${params.join('&')}`;
 
         const prodRes = await axios.get(url);
-        prodData = prodRes.data.data || [];
+        const rawProd = prodRes.data;
+        prodData = Array.isArray(rawProd) ? rawProd : (rawProd?.data || rawProd?.products || []);
       } catch (netErr) {
-        let query = db.products.where('company_id').equals(companyId);
-        let items = await query.filter(p => !p.deleted_at).toArray();
+        const cId = user?.company_id || parseInt(localStorage.getItem('company-id') || 1);
+        let items = await db.products.where('company_id').equals(cId).filter(p => !p.deleted_at).toArray().catch(() => []);
 
         if (search) {
           const s = search.toLowerCase();
@@ -211,7 +214,7 @@ export const Catalog = () => {
 
         prodData = items;
       }
-      setProducts(prodData);
+      setProducts(Array.isArray(prodData) ? prodData : []);
     } catch (err) {
       setError('Impossible de charger le catalogue.');
     } finally {
