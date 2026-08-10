@@ -87,12 +87,22 @@ class RealEmailRule implements ValidationRule
             }
         }
 
-        // 5. Vérification de l'existence réelle du domaine via les enregistrements DNS MX ou A
-        $hasMx = @checkdnsrr($domain, 'MX');
-        $hasA  = @checkdnsrr($domain, 'A');
+        // 5. Bypass instantané pour les domaines de messagerie majeurs (évite les blocages DNS)
+        $knownDomains = ['gmail.com', 'yahoo.com', 'yahoo.fr', 'hotmail.com', 'outlook.com', 'icloud.com', 'wanadoo.fr', 'orange.fr', 'dlscorporation.ci'];
+        if (in_array($domain, $knownDomains)) {
+            return;
+        }
 
-        if (!$hasMx && !$hasA) {
-            $fail("L'adresse e-mail n'existe pas ou son domaine (@{$domain}) n'est pas actif.");
+        // Pour les autres domaines, résolution DNS sécurisée contre les timeouts
+        try {
+            $hasMx = @checkdnsrr($domain, 'MX');
+            $hasA  = $hasMx ? true : @checkdnsrr($domain, 'A');
+
+            if (!$hasMx && !$hasA) {
+                $fail("L'adresse e-mail n'existe pas ou son domaine (@{$domain}) n'est pas actif.");
+            }
+        } catch (\Throwable $e) {
+            // Passer la validation en toute sécurité si le VPS n'a pas d'accès DNS externe
         }
     }
 }
