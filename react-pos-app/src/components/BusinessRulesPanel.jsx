@@ -34,9 +34,11 @@ export const BusinessRulesPanel = () => {
       const res = await axios.get('/v1/business-rules', {
         params: { branch_id: selectedBranchId || null }
       });
-      setRules(res.data.rules || []);
+      const data = res.data?.rules || res.data || [];
+      setRules(Array.isArray(data) ? data : []);
     } catch (err) {
-      setError('Impossible de charger les règles de gestion.');
+      console.warn('Erreur chargement des règles de gestion:', err);
+      setRules([]);
     } finally {
       setLoading(false);
     }

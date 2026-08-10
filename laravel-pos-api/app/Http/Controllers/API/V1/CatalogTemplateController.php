@@ -25,21 +25,17 @@ class CatalogTemplateController extends Controller
     public function index()
     {
         try {
-            // Auto-initialisation si aucun modèle de catalogue n'existe encore
+            // Auto-initialisation directe si aucun modèle de catalogue n'existe encore
             if (CatalogTemplate::count() === 0) {
                 try {
-                    \Illuminate\Support\Facades\Artisan::call('db:seed', [
-                        '--class' => 'CatalogTemplateSeeder',
-                        '--force' => true
-                    ]);
+                    $seeder = new \Database\Seeders\CatalogTemplateSeeder();
+                    $seeder->run();
                 } catch (\Throwable $se) {
-                    \Illuminate\Support\Facades\Log::warning("Impossible d'exécuter CatalogTemplateSeeder : " . $se->getMessage());
+                    \Illuminate\Support\Facades\Log::warning("Échec exécution directe CatalogTemplateSeeder : " . $se->getMessage());
                 }
             }
 
-            $templates = CatalogTemplate::where('is_active', true)
-                ->withCount(['categories', 'products'])
-                ->get();
+            $templates = CatalogTemplate::withCount(['categories', 'products'])->get();
 
             return response()->json($templates);
         } catch (\Throwable $e) {

@@ -105,7 +105,17 @@ export const CatalogTemplatesModal = ({ isOpen, onClose, onSuccess }) => {
             {error && <div className="error-banner mb-3"><i className="fa-solid fa-circle-exclamation me-1"></i> {error}</div>}
 
             {loading ? (
-              <div className="loading-spinner">Chargement des packs de catalogues...</div>
+              <div className="loading-spinner p-4 text-center text-muted">
+                <i className="fa-solid fa-spinner fa-spin me-2 text-primary"></i> Chargement des packs de catalogues...
+              </div>
+            ) : templates.length === 0 ? (
+              <div className="p-4 text-center rounded bg-light my-3" style={{ border: '1px dashed var(--border-color)' }}>
+                <i className="fa-solid fa-boxes-stacked text-muted mb-2" style={{ fontSize: '32px' }}></i>
+                <p className="text-muted mb-3" style={{ fontSize: '14px' }}>Aucun pack de catalogue n'est actuellement disponible ou la base de données est en cours d'initialisation.</p>
+                <button onClick={loadTemplates} className="btn btn-outline-primary btn-sm" style={{ fontWeight: 700 }}>
+                  <i className="fa-solid fa-rotate me-1"></i> Réessayer / Charger les modèles
+                </button>
+              </div>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px', marginTop: '16px' }}>
                 {templates.map(tmpl => (

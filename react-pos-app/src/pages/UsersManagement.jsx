@@ -30,16 +30,31 @@ export const UsersManagement = () => {
     if (!token) return;
     setLoading(true);
     try {
-      const [usersRes, rolesRes, branchesRes, zonesRes] = await Promise.all([
+      const results = await Promise.allSettled([
         axios.get('/v1/users'),
         axios.get('/v1/custom-roles'),
         axios.get('/v1/branches'),
         axios.get('/v1/access-zones'),
       ]);
-      setUsers(usersRes.data || []);
-      setRoles(rolesRes.data || []);
-      setBranches(branchesRes.data || []);
-      setAccessZones(zonesRes.data || []);
+
+      const [usersRes, rolesRes, branchesRes, zonesRes] = results;
+
+      if (usersRes.status === 'fulfilled') {
+        const d = usersRes.value.data;
+        setUsers(Array.isArray(d) ? d : (d?.data || []));
+      }
+      if (rolesRes.status === 'fulfilled') {
+        const d = rolesRes.value.data;
+        setRoles(Array.isArray(d) ? d : (d?.data || []));
+      }
+      if (branchesRes.status === 'fulfilled') {
+        const d = branchesRes.value.data;
+        setBranches(Array.isArray(d) ? d : (d?.data || []));
+      }
+      if (zonesRes.status === 'fulfilled') {
+        const d = zonesRes.value.data;
+        setAccessZones(Array.isArray(d) ? d : (d?.data || []));
+      }
     } catch {
       setError('Impossible de charger la liste du personnel.');
     } finally {
