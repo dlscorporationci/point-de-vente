@@ -87,19 +87,14 @@ class SseController extends Controller
         $lastEventId = (int) ($request->header('Last-Event-ID') ?? $request->query('lastEventId', 0));
 
         return new StreamedResponse(function () use ($companyId, $branchId, $userId, $lastEventId) {
-            // Headers anti-buffering pour Apache + Nginx
             if (ob_get_level() > 0) {
-                ob_end_clean();
+                @ob_end_clean();
             }
 
-            // Autoriser l'arrêt immédiat du script si le client déconnecte/rafraîchit la page
+            // Autoriser la libération immédiate du worker
             ignore_user_abort(false);
 
-            $startTime        = time();
-            $lastHeartbeat    = time();
-            $currentLastId    = $lastEventId;
-
-            // Envoyer l'événement initial de connexion
+            // 1. Envoyer le paquet de connexion initial
             echo "event: connected\n";
             echo "data: " . json_encode([
                 'status'     => 'connected',
@@ -109,86 +104,41 @@ class SseController extends Controller
                 'server_ts'  => now()->toISOString(),
             ]) . "\n\n";
 
-            if (ob_get_level() > 0) ob_flush();
-            flush();
+            if (ob_get_level() > 0) @ob_flush();
+            @flush();
 
-            // Boucle SSE courte (20 secondes max) pour éviter la saturation du pool PHP-FPM
-            while (true) {
-                // Si le client a fermé/rafraîchi la page, libérer immédiatement le worker PHP-FPM
-                if (connection_aborted() || connection_status() !== CONNECTION_NORMAL) {
-                    break;
-                }
+            // 2. Récupérer et émettre les événements récents pour l'utilisateur
+            try {
+                $events = RealtimeEvent::getForUser($companyId, $branchId, $userId, $lastEventId);
 
-                // Vérifier la durée maximale (20 secondes)
-                $elapsed = time() - $startTime;
-                if ($elapsed >= 20) {
-                    echo "event: reconnect\n";
-                    echo "data: " . json_encode(['reason' => 'session_end', 'last_id' => $currentLastId]) . "\n\n";
-                    if (ob_get_level() > 0) ob_flush();
-                    flush();
-                    break;
-                }
-
-                // Purger les événements expirés (1 fois toutes les 30 secondes)
-                if ($elapsed % 30 === 0 && $elapsed > 0) {
-                    try { RealtimeEvent::purgeExpired(); } catch (\Throwable $e) {}
-                }
-
-                // Récupérer les nouveaux événements depuis la BDD
-                try {
-                    $events = RealtimeEvent::getForUser($companyId, $branchId, $userId, $currentLastId);
-
-                    foreach ($events as $event) {
-                        // VÉRIFICATION DE SÉCURITÉ FINALE :
-                        // Un événement ne peut jamais être envoyé à une autre entreprise
-                        if ((int) $event->company_id !== $companyId) {
-                            Log::warning('SSE: Tentative de cross-tenant bloquée', [
-                                'user_company'  => $companyId,
-                                'event_company' => $event->company_id,
-                                'user_id'       => $userId,
-                            ]);
-                            continue;
-                        }
-
-                        // Envoyer l'événement SSE
+                foreach ($events as $event) {
+                    if ((int) $event->company_id === $companyId) {
                         $payload = is_array($event->payload) ? $event->payload : json_decode($event->payload, true);
 
                         echo "id: {$event->id}\n";
                         echo "event: {$event->event_type}\n";
                         echo "data: " . json_encode($payload) . "\n\n";
 
-                        $currentLastId = $event->id;
-
-                        if (ob_get_level() > 0) ob_flush();
-                        flush();
-
-                        // Vérifier si le client est encore connecté après chaque envoi
-                        if (connection_aborted()) {
-                            break 2;
-                        }
+                        if (ob_get_level() > 0) @ob_flush();
+                        @flush();
                     }
-                } catch (\Throwable $e) {
-                    Log::warning('SSE stream error', ['error' => $e->getMessage(), 'user_id' => $userId]);
-                    // Ne pas fermer le stream pour une erreur BDD temporaire
                 }
-
-                // Heartbeat toutes les 15 secondes pour maintenir la connexion
-                if (time() - $lastHeartbeat >= self::HEARTBEAT_INTERVAL_SECONDS) {
-                    echo ": heartbeat " . time() . "\n\n";
-                    if (ob_get_level() > 0) ob_flush();
-                    flush();
-                    $lastHeartbeat = time();
-                }
-
-                // Attendre avant le prochain poll (2 secondes)
-                usleep(self::POLL_INTERVAL_MS);
+            } catch (\Throwable $e) {
+                Log::warning('SSE stream error', ['error' => $e->getMessage(), 'user_id' => $userId]);
             }
 
+            // 3. Fermer proprement le flux SSE pour rendre immédiatement le worker au pool PHP-FPM
+            echo "event: reconnect\n";
+            echo "data: " . json_encode(['reason' => 'cycle_complete', 'last_id' => $lastEventId]) . "\n\n";
+
+            if (ob_get_level() > 0) @ob_flush();
+            @flush();
+
         }, 200, [
-            'Content-Type'      => 'text/event-stream',
-            'Cache-Control'     => 'no-cache, no-store, must-revalidate',
-            'X-Accel-Buffering' => 'no',    // Désactive buffering Nginx
-            'Connection'        => 'keep-alive',
+            'Content-Type'                 => 'text/event-stream',
+            'Cache-Control'                => 'no-cache, no-store, must-revalidate',
+            'Connection'                   => 'close',
+            'X-Accel-Buffering'            => 'no',
             'Access-Control-Allow-Origin'  => '*',
             'Access-Control-Allow-Headers' => 'Authorization, X-Company-ID, X-Branch-ID, Last-Event-ID',
         ]);
