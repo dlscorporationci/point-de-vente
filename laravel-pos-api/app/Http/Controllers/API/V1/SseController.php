@@ -92,9 +92,8 @@ class SseController extends Controller
                 ob_end_clean();
             }
 
-            // Désactiver le timeout PHP
-            set_time_limit(0);
-            ignore_user_abort(true);
+            // Autoriser l'arrêt immédiat du script si le client déconnecte/rafraîchit la page
+            ignore_user_abort(false);
 
             $startTime        = time();
             $lastHeartbeat    = time();
@@ -113,17 +112,16 @@ class SseController extends Controller
             if (ob_get_level() > 0) ob_flush();
             flush();
 
-            // Boucle principale SSE
+            // Boucle SSE courte (20 secondes max) pour éviter la saturation du pool PHP-FPM
             while (true) {
-                // Vérifier si le client a fermé la connexion
-                if (connection_aborted()) {
+                // Si le client a fermé/rafraîchi la page, libérer immédiatement le worker PHP-FPM
+                if (connection_aborted() || connection_status() !== CONNECTION_NORMAL) {
                     break;
                 }
 
-                // Vérifier la durée maximale
+                // Vérifier la durée maximale (20 secondes)
                 $elapsed = time() - $startTime;
-                if ($elapsed >= self::MAX_DURATION_SECONDS) {
-                    // Signaler la fin de cette session SSE (EventSource se reconnecte)
+                if ($elapsed >= 20) {
                     echo "event: reconnect\n";
                     echo "data: " . json_encode(['reason' => 'session_end', 'last_id' => $currentLastId]) . "\n\n";
                     if (ob_get_level() > 0) ob_flush();
