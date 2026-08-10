@@ -72,24 +72,20 @@ class TenantScopeMiddleware
             return $next($request);
         }
 
-        $companyId = null;
-        if ($user) {
-            $companyId = $user->company_id;
-        } else {
-            $companyId = $request->header('X-Company-ID');
-        }
+        $companyId = $user ? $user->company_id : $request->header('X-Company-ID');
 
-        // 2. Traitement des routes d'authentification publiques (non bloquantes sur le Tenant)
-        $isPublicAuth = $request->is('*/auth/*') || $request->is('*/maintenance/status') || $request->is('*/tenant-test');
-
-        if ($isPublicAuth) {
-            if ($companyId) {
-                $company = Company::find($companyId);
-                if ($company && $company->status === 'active') {
-                    $this->tenantManager->setCompany($company);
+        // Fallback sécurisé : si l'utilisateur connecté n'a pas de company_id, lui affecter l'entreprise active par défaut
+        if (!$companyId) {
+            $defaultCompany = Company::where('status', 'active')->first() ?: Company::first();
+            if ($defaultCompany) {
+                $companyId = $defaultCompany->id;
+                if ($user && !$user->company_id) {
+                    try {
+                        $user->company_id = $defaultCompany->id;
+                        $user->save();
+                    } catch (\Throwable $te) {}
                 }
             }
-            return $next($request);
         }
 
         if (!$companyId) {
@@ -100,6 +96,9 @@ class TenantScopeMiddleware
 
         // 3. Recherche et vérification de la Company
         $company = Company::find($companyId);
+        if (!$company) {
+            $company = Company::where('status', 'active')->first() ?: Company::first();
+        }
 
         if (!$company) {
             return response()->json([

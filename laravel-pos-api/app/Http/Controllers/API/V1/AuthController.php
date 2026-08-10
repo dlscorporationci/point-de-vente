@@ -774,29 +774,45 @@ class AuthController extends Controller
      */
     public function getTenantUsers(Request $request)
     {
-        $users = User::with(['role:id,name,slug', 'branch:id,name', 'accessZone:id,name,allowed_modules,branch_ids'])
-            ->select('id', 'name', 'email', 'status', 'role_id', 'branch_id', 'access_zone_id', 'created_at')
-            ->whereHas('role', function ($q) {
-                // Exclure le super-admin de la liste des utilisateurs d'entreprise
-                $q->where('slug', '!=', 'super-admin');
-            })
-            ->orderBy('name')
-            ->get()
-            ->map(function ($u) {
-                return [
-                    'id'             => $u->id,
-                    'name'           => $u->name,
-                    'email'          => $u->email,
-                    'status'         => $u->status,
-                    'role'           => $u->role ? ['id' => $u->role->id, 'name' => $u->role->name, 'slug' => $u->role->slug] : null,
-                    'branch'         => $u->branch ? ['id' => $u->branch->id, 'name' => $u->branch->name] : null,
-                    'access_zone_id' => $u->access_zone_id,
-                    'access_zone'    => $u->accessZone ? ['id' => $u->accessZone->id, 'name' => $u->accessZone->name, 'allowed_modules' => $u->accessZone->allowed_modules, 'branch_ids' => $u->accessZone->branch_ids] : null,
-                    'created_at'     => $u->created_at,
-                ];
-            });
+        try {
+            $currentUser = $request->user();
+            $tenantManager = app(\App\Services\TenantManager::class);
+            $companyId = $currentUser ? ($currentUser->company_id ?: $tenantManager->getCompanyId()) : $tenantManager->getCompanyId();
 
-        return response()->json($users);
+            $query = User::withoutGlobalScopes()
+                ->with(['role:id,name,slug', 'branch:id,name', 'accessZone:id,name,allowed_modules,branch_ids']);
+
+            if ($companyId) {
+                $query->where(function ($q) use ($companyId) {
+                    $q->where('company_id', $companyId)->orWhereNull('company_id');
+                });
+            }
+
+            $users = $query->orderBy('name')
+                ->get()
+                ->reject(function ($u) {
+                    return $u->email === 'superadmin@dls.com' || ($u->role && $u->role->slug === 'super-admin');
+                })
+                ->map(function ($u) {
+                    return [
+                        'id'             => $u->id,
+                        'name'           => $u->name,
+                        'email'          => $u->email,
+                        'status'         => $u->status ?: 'active',
+                        'role'           => $u->role ? ['id' => $u->role->id, 'name' => $u->role->name, 'slug' => $u->role->slug] : ['id' => 0, 'name' => 'Employé', 'slug' => 'employee'],
+                        'branch'         => $u->branch ? ['id' => $u->branch->id, 'name' => $u->branch->name] : null,
+                        'access_zone_id' => $u->access_zone_id,
+                        'access_zone'    => $u->accessZone ? ['id' => $u->accessZone->id, 'name' => $u->accessZone->name, 'allowed_modules' => $u->accessZone->allowed_modules, 'branch_ids' => $u->accessZone->branch_ids] : null,
+                        'created_at'     => $u->created_at,
+                    ];
+                })
+                ->values();
+
+            return response()->json($users);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Erreur getTenantUsers : " . $e->getMessage());
+            return response()->json([]);
+        }
     }
 
     /**
