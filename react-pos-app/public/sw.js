@@ -1,5 +1,5 @@
-const CACHE_NAME = 'apexpos-cache-v4';
-const DYNAMIC_CACHE = 'apexpos-dynamic-v4';
+const CACHE_NAME = 'apexpos-cache-v5';
+const DYNAMIC_CACHE = 'apexpos-dynamic-v5';
 
 // Static assets to cache immediately upon installation
 const STATIC_ASSETS = [
@@ -40,22 +40,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // API Requests: Network-First with cache fallback
+  // API Requests: Toujours privilégier le réseau pour les données dynamiques
   if (url.pathname.includes('/v1/')) {
     event.respondWith(
-      fetch(request)
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            const responseClone = networkResponse.clone();
-            caches.open(DYNAMIC_CACHE).then((cache) => {
-              cache.put(request, responseClone);
-            });
-          }
-          return networkResponse;
-        })
-        .catch(() => {
-          return caches.match(request);
-        })
+      fetch(request).catch(() => caches.match(request))
     );
     return;
   }
