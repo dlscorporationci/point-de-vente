@@ -25,44 +25,74 @@ class BusinessRuleController extends Controller
      */
     public function index(Request $request)
     {
-        $currentUser = $request->user();
-        $tenantManager = app(TenantManager::class);
-        $companyId = $tenantManager->getCompanyId() ?: ($currentUser ? $currentUser->company_id : null);
-        $branchId = $request->query('branch_id');
+        try {
+            $currentUser = $request->user();
+            $tenantManager = app(TenantManager::class);
+            $companyId = $tenantManager->getCompanyId() ?: ($currentUser ? $currentUser->company_id : 1);
+            $branchId = $request->query('branch_id');
 
-        $defaultRules = BusinessRuleService::getDefaultRules();
+            $defaultRules = BusinessRuleService::getDefaultRules();
 
-        $dbRulesQuery = BusinessRule::where('company_id', $companyId);
-        if ($branchId) {
-            $dbRulesQuery->where(function ($q) use ($branchId) {
-                $q->whereNull('branch_id')->orWhere('branch_id', $branchId);
-            });
-        } else {
-            $dbRulesQuery->whereNull('branch_id');
+            // Exécuter les migrations si la table n'a pas encore été créée sur le VPS
+            if (!\Illuminate\Support\Facades\Schema::hasTable('business_rules')) {
+                try {
+                    \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+                } catch (\Throwable $me) {
+                    \Illuminate\Support\Facades\Log::warning("Échec migration auto business_rules : " . $me->getMessage());
+                }
+            }
+
+            $rulesList = [];
+            foreach ($defaultRules as $key => $meta) {
+                $effectiveValue = $meta['value'];
+                try {
+                    if (\Illuminate\Support\Facades\Schema::hasTable('business_rules')) {
+                        $effectiveValue = $this->ruleService->getRule($key, $companyId, $branchId);
+                    }
+                } catch (\Throwable $re) {
+                    $effectiveValue = $meta['value'];
+                }
+
+                $rulesList[] = [
+                    'rule_key'        => $key,
+                    'name'            => $meta['name'],
+                    'category'        => $meta['category'],
+                    'description'     => $meta['description'],
+                    'effective_value' => $effectiveValue,
+                    'default_value'   => $meta['value'],
+                    'value_type'      => $meta['type'],
+                    'is_overridden'   => ($effectiveValue !== $meta['value']),
+                ];
+            }
+
+            return response()->json([
+                'rules'     => $rulesList,
+                'branch_id' => $branchId ? (int) $branchId : null,
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Erreur BusinessRuleController@index : " . $e->getMessage());
+
+            // Secours ultime : renvoyer toujours les définitions des règles système
+            $defaultRules = BusinessRuleService::getDefaultRules();
+            $rulesList = [];
+            foreach ($defaultRules as $key => $meta) {
+                $rulesList[] = [
+                    'rule_key'        => $key,
+                    'name'            => $meta['name'],
+                    'category'        => $meta['category'],
+                    'description'     => $meta['description'],
+                    'effective_value' => $meta['value'],
+                    'default_value'   => $meta['value'],
+                    'value_type'      => $meta['type'],
+                    'is_overridden'   => false,
+                ];
+            }
+
+            return response()->json([
+                'rules'     => $rulesList,
+                'branch_id' => null,
+            ]);
         }
-        $dbRules = $dbRulesQuery->get();
-
-        $rulesList = [];
-
-        foreach ($defaultRules as $key => $meta) {
-            $effectiveValue = $this->ruleService->getRule($key, $companyId, $branchId);
-
-            $rulesList[] = [
-                'rule_key'        => $key,
-                'name'            => $meta['name'],
-                'category'        => $meta['category'],
-                'description'     => $meta['description'],
-                'effective_value' => $effectiveValue,
-                'default_value'   => $meta['value'],
-                'value_type'      => $meta['type'],
-                'is_overridden'   => ($effectiveValue !== $meta['value']),
-            ];
-        }
-
-        return response()->json([
-            'rules'     => $rulesList,
-            'branch_id' => $branchId ? (int) $branchId : null,
-        ]);
     }
 
     /**
