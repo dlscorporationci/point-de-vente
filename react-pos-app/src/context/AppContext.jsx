@@ -8,7 +8,13 @@ const AppContext = createContext(null);
 
 const getApiBaseUrl = () => {
   if (typeof window !== 'undefined') {
+    if (import.meta.env.VITE_API_URL) {
+      return import.meta.env.VITE_API_URL;
+    }
     if ((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (window.location.port === '5173' || window.location.port === '3000')) {
+      if (localStorage.getItem('use-production-api') === 'true') {
+        return 'https://pos.dlscorporation.ci/api';
+      }
       return 'http://127.0.0.1:8000/api';
     }
   }
