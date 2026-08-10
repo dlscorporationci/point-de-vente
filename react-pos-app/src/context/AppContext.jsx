@@ -461,24 +461,27 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  // Intercepteur Axios pour gérer les erreurs 401 (Déconnexion automatique uniquement si token invalide sur route privée)
+  // Intercepteur Axios pour gérer les erreurs 401 (Déconnexion automatique uniquement si jeton révoqué)
   useEffect(() => {
     const interceptor = axios.interceptors.response.use(
       (response) => response,
       (error) => {
         if (error.response && error.response.status === 401) {
           const url = error.config?.url || '';
-          // Ignorer les 401 provenant des requêtes de connexion pour ne pas déclencher une déconnexion en boucle
-          if (!url.includes('/auth/login') && !url.includes('/auth/login-pin')) {
-            logout();
+          const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/login-pin');
+          const isBackgroundEndpoint = url.includes('/notifications') || url.includes('/maintenance') || url.includes('/tenant-test');
+
+          if (!isAuthEndpoint && !isBackgroundEndpoint) {
+            const msg = String(error.response.data?.message || error.response.data?.error || '');
+            if (msg.includes('Unauthenticated') || msg.includes('expiré') || url.includes('/auth/me')) {
+              logout();
+            }
           }
         }
         return Promise.reject(error);
       }
     );
-    return () => {
-      axios.interceptors.response.eject(interceptor);
-    };
+    return () => axios.interceptors.response.eject(interceptor);
   }, []);
 
   // Abonnement aux changements de statut SSE
