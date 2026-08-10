@@ -251,9 +251,9 @@ function MainContent() {
     if (!user) {
       switch (activeTab) {
         case 'register': return <Register setActiveTab={setActiveTab} />
-        case 'auth':     return <Login setActiveTab={setActiveTab} />
-        case 'home':
-        default:         return <Home setActiveTab={setActiveTab} />
+        case 'home':     return <Home setActiveTab={setActiveTab} />
+        case 'auth':
+        default:         return <Login setActiveTab={setActiveTab} />
       }
     }
 
