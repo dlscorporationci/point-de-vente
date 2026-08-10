@@ -62,8 +62,8 @@ class TenantScopeMiddleware
             // toujours le TenantManager avec l'entreprise active ou la première entreprise disponible.
             $saCompanyId = $user->company_id ?: $request->header('X-Company-ID');
             if (!$saCompanyId) {
-                $firstComp = Company::where('status', 'active')->first() ?: Company::first();
-                $saCompanyId = $firstComp?->id ?: 1;
+                $saCompanyId = \Illuminate\Support\Facades\DB::table('companies')->where('status', 'active')->value('id')
+                    ?: (\Illuminate\Support\Facades\DB::table('companies')->value('id') ?: 1);
             }
             $saCompany = Company::find($saCompanyId);
             if ($saCompany) {
@@ -76,12 +76,13 @@ class TenantScopeMiddleware
 
         // Fallback sécurisé : si l'utilisateur connecté n'a pas de company_id, lui affecter l'entreprise active par défaut
         if (!$companyId) {
-            $defaultCompany = Company::where('status', 'active')->first() ?: Company::first();
-            if ($defaultCompany) {
-                $companyId = $defaultCompany->id;
+            $defId = \Illuminate\Support\Facades\DB::table('companies')->where('status', 'active')->value('id')
+                ?: \Illuminate\Support\Facades\DB::table('companies')->value('id');
+            if ($defId) {
+                $companyId = $defId;
                 if ($user && !$user->company_id) {
                     try {
-                        $user->company_id = $defaultCompany->id;
+                        $user->company_id = $defId;
                         $user->save();
                     } catch (\Throwable $te) {}
                 }
@@ -97,7 +98,11 @@ class TenantScopeMiddleware
         // 3. Recherche et vérification de la Company
         $company = Company::find($companyId);
         if (!$company) {
-            $company = Company::where('status', 'active')->first() ?: Company::first();
+            $firstId = \Illuminate\Support\Facades\DB::table('companies')->where('status', 'active')->value('id')
+                ?: \Illuminate\Support\Facades\DB::table('companies')->value('id');
+            if ($firstId) {
+                $company = Company::find($firstId);
+            }
         }
 
         if (!$company) {

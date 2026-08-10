@@ -40,8 +40,9 @@ class TenantManager
             if ($user && $user->company_id) {
                 return (int)$user->company_id;
             }
-            $firstComp = Company::where('status', 'active')->first() ?: Company::first();
-            return $firstComp?->id ? (int)$firstComp->id : 1;
+            $compId = \Illuminate\Support\Facades\DB::table('companies')->where('status', 'active')->value('id')
+                ?: \Illuminate\Support\Facades\DB::table('companies')->value('id');
+            return $compId ? (int)$compId : 1;
         } catch (\Throwable $e) {
             return 1;
         }
