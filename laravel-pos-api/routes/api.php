@@ -15,8 +15,8 @@ Route::prefix('v1')->middleware('tenant')->group(function () {
         ]);
     });
 
-    // Routes publiques d'authentification avec limitation de débit (throttle:30,1)
-    Route::middleware('throttle:30,1')->group(function () {
+    // Routes publiques d'authentification avec limitation de débit (throttle:120,1)
+    Route::middleware('throttle:120,1')->group(function () {
         Route::post('/auth/login',          [AuthController::class, 'login']);
         Route::post('/auth/login-pin',      [AuthController::class, 'loginPin']);
         Route::post('/auth/register',       [AuthController::class, 'register']);
