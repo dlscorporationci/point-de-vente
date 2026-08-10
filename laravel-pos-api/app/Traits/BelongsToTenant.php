@@ -15,6 +15,11 @@ trait BelongsToTenant
     {
         // 1. Définition du Global Scope pour filtrer par company_id
         static::addGlobalScope('tenant', function (Builder $builder) {
+            // Empêcher l'altération du modèle User pour la résolution Sanctum/Auth et anti-ré-entrance
+            if ($builder->getModel() instanceof \App\Models\User) {
+                return;
+            }
+
             $tenantManager = app(TenantManager::class);
             if ($tenantManager->getCompanyId()) {
                 $builder->where('company_id', $tenantManager->getCompanyId());
