@@ -85,7 +85,7 @@ function MainContent() {
   const [activeTab, setActiveTabState] = useState(() => {
     if (!user) return 'home';
     const savedTab = sessionStorage.getItem('apex_active_tab');
-    if (savedTab) return savedTab;
+    if (savedTab && savedTab !== 'home' && savedTab !== 'auth') return savedTab;
     if (isSuperAdmin) return 'backoffice';
     return 'dashboard';
   });
@@ -94,6 +94,18 @@ function MainContent() {
     sessionStorage.setItem('apex_active_tab', tab);
     setActiveTabState(tab);
   };
+
+  // Synchronisation automatique : lorsqu'un utilisateur se connecte, le diriger immédiatement sur le Dashboard
+  useEffect(() => {
+    if (user) {
+      const savedTab = sessionStorage.getItem('apex_active_tab');
+      if (!savedTab || savedTab === 'home' || savedTab === 'auth') {
+        const target = isSuperAdmin ? 'backoffice' : 'dashboard';
+        sessionStorage.setItem('apex_active_tab', target);
+        setActiveTabState(target);
+      }
+    }
+  }, [user, isSuperAdmin]);
 
   const [menuOpen, setMenuOpen] = useState(false)
   const drawerRef = useRef(null)
