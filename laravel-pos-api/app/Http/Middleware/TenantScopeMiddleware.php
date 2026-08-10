@@ -168,6 +168,7 @@ class TenantScopeMiddleware
         if ($branch) {
             $authRoleSlug   = is_object($authUser?->role) ? ($authUser->role->slug ?? '') : (string)($authUser?->role ?? '');
             $isAdminOrSuper = $authUser && (in_array($authRoleSlug, ['super-admin', 'admin']) || $authUser->email === 'superadmin@dls.com');
+            $isWriteOperation = in_array(strtoupper($request->method()), ['POST', 'PUT', 'PATCH', 'DELETE']);
 
             if ($isWriteOperation && !$isAdminOrSuper) {
                 if ($branch->status && $branch->status !== 'open') {
