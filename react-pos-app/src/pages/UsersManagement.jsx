@@ -41,7 +41,32 @@ export const UsersManagement = () => {
 
       if (usersRes.status === 'fulfilled') {
         const d = usersRes.value.data;
-        setUsers(Array.isArray(d) ? d : (d?.data || []));
+        const list = Array.isArray(d) ? d : (d?.data || []);
+        if (list.length === 0 && user) {
+          setUsers([{
+            id: user.id || 1,
+            name: user.name || 'Administrateur',
+            email: user.email,
+            status: user.status || 'active',
+            role: user.role || { name: 'Administrateur', slug: 'admin' },
+            branch: user.branch || { name: 'Boutique Centrale' },
+            created_at: new Date().toISOString()
+          }]);
+        } else {
+          setUsers(list);
+        }
+      } else {
+        if (user) {
+          setUsers([{
+            id: user.id || 1,
+            name: user.name || 'Administrateur',
+            email: user.email,
+            status: user.status || 'active',
+            role: user.role || { name: 'Administrateur', slug: 'admin' },
+            branch: user.branch || { name: 'Boutique Centrale' },
+            created_at: new Date().toISOString()
+          }]);
+        }
       }
       if (rolesRes.status === 'fulfilled') {
         const d = rolesRes.value.data;

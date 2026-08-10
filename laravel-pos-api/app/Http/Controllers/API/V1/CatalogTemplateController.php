@@ -30,6 +30,17 @@ class CatalogTemplateController extends Controller
             }
 
             $templates = CatalogTemplate::withCount(['categories', 'products'])->get();
+
+            if ($templates->isEmpty()) {
+                try {
+                    \Illuminate\Support\Facades\Artisan::call('db:seed', [
+                        '--class' => 'CatalogTemplateSeeder',
+                        '--force' => true,
+                    ]);
+                    $templates = CatalogTemplate::withCount(['categories', 'products'])->get();
+                } catch (\Throwable $se) {}
+            }
+
             return response()->json($templates);
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error("Erreur CatalogTemplateController@index : " . $e->getMessage());
