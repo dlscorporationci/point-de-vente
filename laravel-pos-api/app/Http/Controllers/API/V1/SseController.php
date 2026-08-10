@@ -91,10 +91,12 @@ class SseController extends Controller
                 @ob_end_clean();
             }
 
-            // Autoriser la libération immédiate du worker
             ignore_user_abort(false);
 
-            // 1. Envoyer le paquet de connexion initial
+            $startTime     = time();
+            $currentLastId = $lastEventId;
+
+            // 1. Événement initial de connexion
             echo "event: connected\n";
             echo "data: " . json_encode([
                 'status'     => 'connected',
@@ -107,29 +109,44 @@ class SseController extends Controller
             if (ob_get_level() > 0) @ob_flush();
             @flush();
 
-            // 2. Récupérer et émettre les événements récents pour l'utilisateur
-            try {
-                $events = RealtimeEvent::getForUser($companyId, $branchId, $userId, $lastEventId);
-
-                foreach ($events as $event) {
-                    if ((int) $event->company_id === $companyId) {
-                        $payload = is_array($event->payload) ? $event->payload : json_decode($event->payload, true);
-
-                        echo "id: {$event->id}\n";
-                        echo "event: {$event->event_type}\n";
-                        echo "data: " . json_encode($payload) . "\n\n";
-
-                        if (ob_get_level() > 0) @ob_flush();
-                        @flush();
-                    }
+            // 2. Boucle SSE de 15s max (verification toutes les 5s)
+            while (true) {
+                if (connection_aborted()) {
+                    break;
                 }
-            } catch (\Throwable $e) {
-                Log::warning('SSE stream error', ['error' => $e->getMessage(), 'user_id' => $userId]);
+
+                if ((time() - $startTime) >= 15) {
+                    break;
+                }
+
+                try {
+                    $events = RealtimeEvent::getForUser($companyId, $branchId, $userId, $currentLastId);
+
+                    foreach ($events as $event) {
+                        if ((int) $event->company_id === $companyId) {
+                            $payload = is_array($event->payload) ? $event->payload : json_decode($event->payload, true);
+
+                            echo "id: {$event->id}\n";
+                            echo "event: {$event->event_type}\n";
+                            echo "data: " . json_encode($payload) . "\n\n";
+
+                            $currentLastId = $event->id;
+
+                            if (ob_get_level() > 0) @ob_flush();
+                            @flush();
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('SSE stream error', ['error' => $e->getMessage(), 'user_id' => $userId]);
+                }
+
+                // Pause de 5 secondes pour alléger le CPU et le pool PHP-FPM
+                sleep(5);
             }
 
-            // 3. Fermer proprement le flux SSE pour rendre immédiatement le worker au pool PHP-FPM
+            // 3. Signal de reconnexion propre sans déclencher d'erreur EventSource
             echo "event: reconnect\n";
-            echo "data: " . json_encode(['reason' => 'cycle_complete', 'last_id' => $lastEventId]) . "\n\n";
+            echo "data: " . json_encode(['reason' => 'cycle_complete', 'last_id' => $currentLastId]) . "\n\n";
 
             if (ob_get_level() > 0) @ob_flush();
             @flush();
@@ -137,7 +154,7 @@ class SseController extends Controller
         }, 200, [
             'Content-Type'                 => 'text/event-stream',
             'Cache-Control'                => 'no-cache, no-store, must-revalidate',
-            'Connection'                   => 'close',
+            'Connection'                   => 'keep-alive',
             'X-Accel-Buffering'            => 'no',
             'Access-Control-Allow-Origin'  => '*',
             'Access-Control-Allow-Headers' => 'Authorization, X-Company-ID, X-Branch-ID, Last-Event-ID',
