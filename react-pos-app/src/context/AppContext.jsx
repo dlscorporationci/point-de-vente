@@ -395,23 +395,17 @@ export const AppProvider = ({ children }) => {
     localStorage.setItem('company-id', compId);
     setCompanyIdState(compId);
 
-    if (userData.active_branch) {
-      axios.defaults.headers.common['X-Branch-ID'] = userData.active_branch.id.toString();
-      localStorage.setItem('branch-id', userData.active_branch.id.toString());
-      localStorage.setItem('active-branch', JSON.stringify(userData.active_branch));
-      setActiveBranchState(userData.active_branch);
-      setBranchIdState(userData.active_branch.id.toString());
-    } else if (userData.branch?.id) {
-      const b = { id: userData.branch.id, name: userData.branch.name };
-      axios.defaults.headers.common['X-Branch-ID'] = b.id.toString();
-      localStorage.setItem('branch-id', b.id.toString());
-      localStorage.setItem('active-branch', JSON.stringify(b));
-      setActiveBranchState(b);
-      setBranchIdState(b.id.toString());
-    } else {
-      setActiveBranchState(null);
-      setBranchIdState(null);
-    }
+    const activeBr = userData.active_branch
+      || (userData.branch?.id ? { id: userData.branch.id, name: userData.branch.name } : null)
+      || (userData.assigned_branches && userData.assigned_branches.length > 0 ? userData.assigned_branches[0] : null)
+      || { id: 1, name: 'Boutique Centrale' };
+
+    userData.active_branch = activeBr;
+    axios.defaults.headers.common['X-Branch-ID'] = activeBr.id.toString();
+    localStorage.setItem('branch-id', activeBr.id.toString());
+    localStorage.setItem('active-branch', JSON.stringify(activeBr));
+    setActiveBranchState(activeBr);
+    setBranchIdState(activeBr.id.toString());
 
     setToken(userToken);
     setUser(userData);

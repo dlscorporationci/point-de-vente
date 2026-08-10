@@ -108,8 +108,7 @@ export const Login = ({ setActiveTab }) => {
       setSuccessMsg('Connexion réussie !');
       if (setActiveTab) {
         const isSuperAdmin = (userObj.role === 'super-admin');
-        const needsBranch = !isSuperAdmin && !userObj.active_branch && (!userObj.branch || (userObj.assigned_branches && userObj.assigned_branches.length > 1));
-        setActiveTab(needsBranch ? 'select-branch' : (isSuperAdmin ? 'backoffice' : 'dashboard'));
+        setActiveTab(isSuperAdmin ? 'backoffice' : 'dashboard');
       }
     } catch (err) {
       setError(err.response?.data?.error || err.response?.data?.message || 'Identifiants d\'accès incorrects.');
