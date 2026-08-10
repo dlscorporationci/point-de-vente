@@ -25,18 +25,11 @@ class CatalogTemplateController extends Controller
     public function index()
     {
         try {
-            // Auto-initialisation directe si aucun modèle de catalogue n'existe encore
-            if (CatalogTemplate::count() === 0) {
-                try {
-                    $seeder = new \Database\Seeders\CatalogTemplateSeeder();
-                    $seeder->run();
-                } catch (\Throwable $se) {
-                    \Illuminate\Support\Facades\Log::warning("Échec exécution directe CatalogTemplateSeeder : " . $se->getMessage());
-                }
+            if (!\Illuminate\Support\Facades\Schema::hasTable('catalog_templates')) {
+                return response()->json([]);
             }
 
             $templates = CatalogTemplate::withCount(['categories', 'products'])->get();
-
             return response()->json($templates);
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error("Erreur CatalogTemplateController@index : " . $e->getMessage());

@@ -32,25 +32,17 @@ class BusinessRuleController extends Controller
             $branchId = $request->query('branch_id');
 
             $defaultRules = BusinessRuleService::getDefaultRules();
-
-            // Exécuter les migrations si la table n'a pas encore été créée sur le VPS
-            if (!\Illuminate\Support\Facades\Schema::hasTable('business_rules')) {
-                try {
-                    \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
-                } catch (\Throwable $me) {
-                    \Illuminate\Support\Facades\Log::warning("Échec migration auto business_rules : " . $me->getMessage());
-                }
-            }
+            $hasTable = \Illuminate\Support\Facades\Schema::hasTable('business_rules');
 
             $rulesList = [];
             foreach ($defaultRules as $key => $meta) {
                 $effectiveValue = $meta['value'];
-                try {
-                    if (\Illuminate\Support\Facades\Schema::hasTable('business_rules')) {
+                if ($hasTable) {
+                    try {
                         $effectiveValue = $this->ruleService->getRule($key, $companyId, $branchId);
+                    } catch (\Throwable $re) {
+                        $effectiveValue = $meta['value'];
                     }
-                } catch (\Throwable $re) {
-                    $effectiveValue = $meta['value'];
                 }
 
                 $rulesList[] = [
