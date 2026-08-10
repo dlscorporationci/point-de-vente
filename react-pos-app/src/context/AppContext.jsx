@@ -29,11 +29,22 @@ export const AppProvider = ({ children }) => {
 
   // 2. Gestion du Tenant (Multi-Tenancy)
   const [companyId, setCompanyIdState] = useState(() => {
-    const savedCompany = localStorage.getItem('company-id');
-    if (savedCompany) {
-      axios.defaults.headers.common['X-Company-ID'] = savedCompany;
+    let savedCompany = localStorage.getItem('company-id');
+    if (!savedCompany || savedCompany === 'null' || savedCompany === 'undefined') {
+      const savedUserStr = localStorage.getItem('user');
+      if (savedUserStr) {
+        try {
+          const u = JSON.parse(savedUserStr);
+          if (u && u.company_id) savedCompany = String(u.company_id);
+        } catch {}
+      }
     }
-    return savedCompany || null;
+    if (!savedCompany || savedCompany === 'null' || savedCompany === 'undefined') {
+      savedCompany = '1';
+    }
+    localStorage.setItem('company-id', savedCompany);
+    axios.defaults.headers.common['X-Company-ID'] = savedCompany;
+    return savedCompany;
   });
 
   const [branchId, setBranchIdState] = useState(() => {
