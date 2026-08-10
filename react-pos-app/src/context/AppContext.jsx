@@ -390,15 +390,10 @@ export const AppProvider = ({ children }) => {
     axios.defaults.headers.common['Authorization'] = `Bearer ${userToken}`;
     localStorage.setItem('token', userToken);
 
-    if (userData.company_id) {
-      axios.defaults.headers.common['X-Company-ID'] = userData.company_id.toString();
-      localStorage.setItem('company-id', userData.company_id.toString());
-      setCompanyIdState(userData.company_id.toString());
-    } else {
-      delete axios.defaults.headers.common['X-Company-ID'];
-      localStorage.removeItem('company-id');
-      setCompanyIdState(null);
-    }
+    const compId = userData.company_id ? userData.company_id.toString() : '1';
+    axios.defaults.headers.common['X-Company-ID'] = compId;
+    localStorage.setItem('company-id', compId);
+    setCompanyIdState(compId);
 
     if (userData.active_branch) {
       axios.defaults.headers.common['X-Branch-ID'] = userData.active_branch.id.toString();

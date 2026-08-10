@@ -1,6 +1,45 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
+const DEFAULT_TEMPLATES = [
+  {
+    id: 1,
+    name: '🛠️ Quincaillerie & Matériaux',
+    domain: 'Quincaillerie',
+    icon: 'fa-screwdriver-wrench',
+    description: 'Pack complet d\'outillage, ciment, peinture, boulonnerie et matériel de construction.',
+    categories_count: 5,
+    products_count: 24
+  },
+  {
+    id: 2,
+    name: '🛒 Supermarché & Alimentation',
+    domain: 'Alimentation',
+    icon: 'fa-cart-shopping',
+    description: 'Produits frais, boissons, épicerie sèche et entretien ménager.',
+    categories_count: 6,
+    products_count: 30
+  },
+  {
+    id: 3,
+    name: '💊 Pharmacie & Santé',
+    domain: 'Pharmacie',
+    icon: 'fa-prescription-bottle-medical',
+    description: 'Médicaments courants, parapharmacie, hygiène et soins.',
+    categories_count: 4,
+    products_count: 20
+  },
+  {
+    id: 4,
+    name: '📱 Électronique & High-Tech',
+    domain: 'High-Tech',
+    icon: 'fa-mobile-screen-button',
+    description: 'Smartphones, câbles, écouteurs, accessoires informatiques et électroménager.',
+    categories_count: 4,
+    products_count: 18
+  }
+];
+
 export const CatalogTemplatesModal = ({ isOpen, onClose, onSuccess }) => {
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -24,10 +63,11 @@ export const CatalogTemplatesModal = ({ isOpen, onClose, onSuccess }) => {
     try {
       const res = await axios.get('/v1/catalog-templates');
       const data = res.data?.data || res.data || [];
-      setTemplates(Array.isArray(data) ? data : []);
+      const list = Array.isArray(data) ? data : [];
+      setTemplates(list.length > 0 ? list : DEFAULT_TEMPLATES);
     } catch (err) {
       console.warn('Chargement des modèles de catalogue indisponible:', err);
-      setTemplates([]);
+      setTemplates(DEFAULT_TEMPLATES);
     } finally {
       setLoading(false);
     }
