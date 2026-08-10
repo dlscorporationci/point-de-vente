@@ -118,8 +118,8 @@ class TenantScopeMiddleware
             ], 403);
         }
 
-        // 3b. Vérification automatique de la date d'expiration de l'abonnement
-        if ($company->subscription_expires_at && \Carbon\Carbon::now()->greaterThan($company->subscription_expires_at)) {
+        // 3b. Vérification automatique de la date d'expiration de l'abonnement (sauf pour l'authentification et le super-admin)
+        if (!$isPublicAuth && !$isSuperAdmin && $company->subscription_expires_at && \Carbon\Carbon::now()->greaterThan($company->subscription_expires_at)) {
             return response()->json([
                 'error' => 'Votre abonnement ApexPOS (' . strtoupper($company->subscription_plan ?: 'PRO') . ') a expiré le ' . $company->subscription_expires_at->format('d/m/Y') . '. Veuillez contacter le support pour procéder au renouvellement.'
             ], 402);
