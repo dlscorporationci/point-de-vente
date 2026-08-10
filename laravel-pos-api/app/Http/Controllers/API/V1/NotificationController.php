@@ -102,60 +102,84 @@ class NotificationController extends Controller
      */
     public function unreadCount(Request $request)
     {
-        $user = $request->user();
-        $userRole = is_object($user->role) ? $user->role->slug : $user->role;
-        $isSuperAdmin = ($userRole === 'super-admin') || ($user->email === 'superadmin@dls.com');
-
-        $accessibleBranchIds = $user->assignedBranches()->pluck('id')->toArray();
-        if ($user->branch_id && !in_array($user->branch_id, $accessibleBranchIds)) {
-            $accessibleBranchIds[] = $user->branch_id;
-        }
-
-        $query = Notification::withoutGlobalScopes()->whereNull('read_at');
-
-        if (!$isSuperAdmin) {
-            $query->where(function ($q) use ($user) {
-                $q->where('company_id', $user->company_id)
-                  ->orWhereNull('company_id');
-            });
-
-            $query->where(function ($q) use ($user) {
-                $q->whereNull('actor_id')
-                  ->orWhere('actor_id', '!=', $user->id)
-                  ->orWhere('user_id', $user->id);
-            });
-
-            $query->where(function ($q) use ($user, $accessibleBranchIds) {
-                $q->where('user_id', $user->id)
-                  ->orWhere(function ($sub) use ($accessibleBranchIds) {
-                      $sub->whereNull('user_id')
-                          ->where(function ($b) use ($accessibleBranchIds) {
-                              $b->whereNull('branch_id')
-                                ->orWhereIn('branch_id', $accessibleBranchIds);
-                          });
-                  });
-            });
-        } else {
-            $query->where(function ($q) use ($user) {
-                $q->whereNull('company_id')
-                  ->orWhere('user_id', $user->id)
-                  ->orWhere('company_id', $user->company_id);
-            });
-        }
-
-        $unreadList = $query->get()->filter(function ($n) use ($user, $isSuperAdmin) {
-            if ($isSuperAdmin) return true;
-            if ($n->permission_required) {
-                return $user->hasPermission($n->permission_required);
+        try {
+            $user = $request->user();
+            if (!$user) {
+                return response()->json(['unread_count' => 0, 'has_critical' => false, 'has_warning' => false]);
             }
-            return true;
-        });
 
-        return response()->json([
-            'unread_count' => $unreadList->count(),
-            'has_critical' => $unreadList->contains('priority', 'critical'),
-            'has_warning'  => $unreadList->contains('priority', 'warning'),
-        ]);
+            $userRole = is_object($user->role) ? $user->role->slug : (is_string($user->role) ? $user->role : '');
+            $isSuperAdmin = ($userRole === 'super-admin') || ($user->email === 'superadmin@dls.com');
+
+            $accessibleBranchIds = [];
+            try {
+                if (method_exists($user, 'assignedBranches')) {
+                    $branchesCol = $user->assignedBranches();
+                    if ($branchesCol) {
+                        $accessibleBranchIds = $branchesCol->pluck('id')->toArray();
+                    }
+                }
+            } catch (\Throwable $be) {
+                $accessibleBranchIds = [];
+            }
+
+            if ($user->branch_id && !in_array($user->branch_id, $accessibleBranchIds)) {
+                $accessibleBranchIds[] = $user->branch_id;
+            }
+
+            $query = Notification::withoutGlobalScopes()->whereNull('read_at');
+
+            if (!$isSuperAdmin) {
+                $query->where(function ($q) use ($user) {
+                    $q->where('company_id', $user->company_id)
+                      ->orWhereNull('company_id');
+                });
+
+                $query->where(function ($q) use ($user) {
+                    $q->whereNull('actor_id')
+                      ->orWhere('actor_id', '!=', $user->id)
+                      ->orWhere('user_id', $user->id);
+                });
+
+                $query->where(function ($q) use ($user, $accessibleBranchIds) {
+                    $q->where('user_id', $user->id)
+                      ->orWhere(function ($sub) use ($accessibleBranchIds) {
+                          $sub->whereNull('user_id')
+                              ->where(function ($b) use ($accessibleBranchIds) {
+                                  $b->whereNull('branch_id')
+                                    ->orWhereIn('branch_id', $accessibleBranchIds);
+                              });
+                      });
+                });
+            } else {
+                $query->where(function ($q) use ($user) {
+                    $q->whereNull('company_id')
+                      ->orWhere('user_id', $user->id)
+                      ->orWhere('company_id', $user->company_id);
+                });
+            }
+
+            $unreadList = $query->get()->filter(function ($n) use ($user, $isSuperAdmin) {
+                if ($isSuperAdmin) return true;
+                if ($n->permission_required && method_exists($user, 'hasPermission')) {
+                    return $user->hasPermission($n->permission_required);
+                }
+                return true;
+            });
+
+            return response()->json([
+                'unread_count' => $unreadList->count(),
+                'has_critical' => $unreadList->contains('priority', 'critical'),
+                'has_warning'  => $unreadList->contains('priority', 'warning'),
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Erreur NotificationController@unreadCount : " . $e->getMessage());
+            return response()->json([
+                'unread_count' => 0,
+                'has_critical' => false,
+                'has_warning'  => false,
+            ]);
+        }
     }
 
     /**
