@@ -36,6 +36,15 @@ export const Login = ({ setActiveTab }) => {
     setPinCode('');
   }, [loginMode]);
 
+  // Si l'utilisateur est déjà connecté, le rediriger immédiatement hors de la page de connexion
+  useEffect(() => {
+    if (user && setActiveTab) {
+      const isSuperAdmin = (user.role === 'super-admin' || user.role?.slug === 'super-admin' || user.email === 'superadmin@dls.com');
+      const needsBranch = !isSuperAdmin && !user.active_branch && (!user.branch || (user.assigned_branches && user.assigned_branches.length > 1));
+      setActiveTab(needsBranch ? 'select-branch' : (isSuperAdmin ? 'backoffice' : 'dashboard'));
+    }
+  }, [user, setActiveTab]);
+
   // Formatage automatique du Code Entreprise en majuscules sans espaces
   const handleCompanyCodeChange = (e) => {
     const val = e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '');

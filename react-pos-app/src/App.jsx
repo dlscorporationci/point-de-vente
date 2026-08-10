@@ -305,7 +305,7 @@ function MainContent() {
       case 'backoffice':    return <BackOffice />
       case 'dashboard':     return isSuperAdmin ? <BackOffice /> : <Dashboard setActiveTab={setActiveTab} />
       case 'register':      return <Register setActiveTab={setActiveTab} />
-      case 'auth':          return <Login setActiveTab={setActiveTab} />
+      case 'auth':          return isSuperAdmin ? <BackOffice /> : <Dashboard setActiveTab={setActiveTab} />
       case 'select-branch': return <BranchSelectionPage onSelectBranch={() => navigate('dashboard')} />
       case 'catalog':       return <Catalog />
       case 'suppliers':     return <Suppliers />
