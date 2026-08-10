@@ -13,24 +13,32 @@ class MaintenanceService
      */
     public function isMaintenanceActive(?int $companyId = null, ?int $branchId = null): ?MaintenanceMode
     {
-        // 1. Vérifier la maintenance globale
-        $global = MaintenanceMode::where('type', 'global')->where('enabled', true)->first();
-        if ($global) {
-            return $global;
-        }
-
-        // 2. Vérifier la maintenance ciblée par entreprise
-        if ($companyId) {
-            $companyMaint = MaintenanceMode::where('type', 'company')
-                ->where('company_id', $companyId)
-                ->where('enabled', true)
-                ->first();
-            if ($companyMaint) {
-                return $companyMaint;
+        try {
+            if (!\Illuminate\Support\Facades\Schema::hasTable('maintenance_modes')) {
+                return null;
             }
-        }
 
-        return null;
+            // 1. Vérifier la maintenance globale
+            $global = MaintenanceMode::where('type', 'global')->where('enabled', true)->first();
+            if ($global) {
+                return $global;
+            }
+
+            // 2. Vérifier la maintenance ciblée par entreprise
+            if ($companyId) {
+                $companyMaint = MaintenanceMode::where('type', 'company')
+                    ->where('company_id', $companyId)
+                    ->where('enabled', true)
+                    ->first();
+                if ($companyMaint) {
+                    return $companyMaint;
+                }
+            }
+
+            return null;
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
     /**
