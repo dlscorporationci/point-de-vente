@@ -257,10 +257,7 @@ function MainContent() {
       }
     }
 
-    // Si l'utilisateur est connecté mais doit choisir sa boutique (uniquement pour les utilisateurs non Super-Admin)
-    if (!activeBranch && activeTab !== 'select-branch' && !isSuperAdmin && (assignedBranches?.length > 1 || !user?.branch_id)) {
-      return <BranchSelectionPage onSelectBranch={() => navigate('dashboard')} />
-    }
+
 
     // Controler la permission par Zone d'Accès
     const allowedModules = user?.access_zone?.allowed_modules;
