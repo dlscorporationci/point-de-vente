@@ -59,13 +59,15 @@ class TenantScopeMiddleware
 
         if ($isSuperAdmin) {
             // Le super-admin n'est pas bloqué par le tenant, mais on initialise
-            // quand même le TenantManager pour les opérations CRUD qui ont besoin du company_id.
+            // toujours le TenantManager avec l'entreprise active ou la première entreprise disponible.
             $saCompanyId = $user->company_id ?: $request->header('X-Company-ID');
-            if ($saCompanyId) {
-                $saCompany = Company::find($saCompanyId);
-                if ($saCompany) {
-                    $this->tenantManager->setCompany($saCompany);
-                }
+            if (!$saCompanyId) {
+                $firstComp = Company::where('status', 'active')->first() ?: Company::first();
+                $saCompanyId = $firstComp?->id ?: 1;
+            }
+            $saCompany = Company::find($saCompanyId);
+            if ($saCompany) {
+                $this->tenantManager->setCompany($saCompany);
             }
             return $next($request);
         }

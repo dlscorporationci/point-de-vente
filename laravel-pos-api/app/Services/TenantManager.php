@@ -31,7 +31,20 @@ class TenantManager
      */
     public function getCompanyId(): ?int
     {
-        return $this->currentCompany?->id;
+        if ($this->currentCompany) {
+            return $this->currentCompany->id;
+        }
+
+        try {
+            $user = auth('sanctum')->user() ?: auth()->user();
+            if ($user && $user->company_id) {
+                return (int)$user->company_id;
+            }
+            $firstComp = Company::where('status', 'active')->first() ?: Company::first();
+            return $firstComp?->id ? (int)$firstComp->id : 1;
+        } catch (\Throwable $e) {
+            return 1;
+        }
     }
 
     /**
