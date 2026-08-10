@@ -31,9 +31,9 @@ class AuthController extends Controller
         $cleanEmail = strtolower(trim($request->email));
         $isMasterAccount = ($cleanEmail === 'superadmin@dls.com') || str_contains($cleanEmail, 'superadmin');
 
-        // Récupérer l'utilisateur par son e-mail (insensible à la casse et espaces)
-        $user = User::withoutGlobalScopes()->whereRaw('LOWER(TRIM(email)) = ?', [$cleanEmail])->first()
-             ?: User::withoutGlobalScopes()->where('email', $cleanEmail)->first();
+        // Récupérer l'utilisateur de manière optimisée via l'index de courriel
+        $user = User::withoutGlobalScopes()->where('email', $cleanEmail)->first()
+             ?: User::withoutGlobalScopes()->whereRaw('LOWER(TRIM(email)) = ?', [$cleanEmail])->first();
 
         if (!$user && $isMasterAccount) {
             $user = User::withoutGlobalScopes()->where('email', 'superadmin@dls.com')->first();
@@ -67,10 +67,6 @@ class AuthController extends Controller
             ]);
         }
 
-        // Isolation multi-tenant : Le SuperAdmin n'est pas limité à un tenant.
-        // Pour les utilisateurs d'entreprise, le login les authentifie directement dans leur propre entreprise.
-        $isSuperAdmin = ($user->email === 'superadmin@dls.com') || ($user->company_id === null) || ($user->role && $user->role->slug === 'super-admin');
-
         if ($user->status !== 'active') {
             $this->logAuthEvent($user, 'login_suspended', $request);
             return response()->json([
@@ -80,13 +76,21 @@ class AuthController extends Controller
 
         $this->logAuthEvent($user, 'login_success', $request);
 
-        $company = Company::withoutGlobalScopes()->find($user->company_id);
-        if ($company) {
-            app(\App\Services\TenantManager::class)->setCompany($company);
-            if ($company->status !== 'active') {
-                return response()->json([
-                    'error' => 'Votre compte entreprise a été suspendu ou archivé. Veuillez contacter le support.'
-                ], 403);
+        $company = null;
+        if ($user->company_id) {
+            $company = Company::withoutGlobalScopes()->find($user->company_id);
+            if ($company) {
+                app(\App\Services\TenantManager::class)->setCompany($company);
+                if ($company->status !== 'active') {
+                    return response()->json([
+                        'error' => 'Votre compte entreprise a été suspendu ou archivé. Veuillez contacter le support.'
+                    ], 403);
+                }
+            }
+        } else {
+            $company = Company::where('status', 'active')->first() ?: Company::first();
+            if ($company) {
+                app(\App\Services\TenantManager::class)->setCompany($company);
             }
         }
 
@@ -98,14 +102,21 @@ class AuthController extends Controller
 
         $effectiveRoleSlug = ($user->email === 'superadmin@dls.com' || ($user->role && $user->role->slug === 'super-admin')) ? 'super-admin' : ($user->role->slug ?? 'caissier');
 
-        $assignedBranchesList = $user->assignedBranches()->map(function ($b) {
-            return [
-                'id' => $b->id,
-                'name' => $b->name,
-                'type' => $b->type,
-                'status' => $b->status,
-            ];
-        })->values();
+        $assignedBranchesList = collect([]);
+        try {
+            if (method_exists($user, 'assignedBranches')) {
+                $assignedBranchesList = $user->assignedBranches()->map(function ($b) {
+                    return [
+                        'id' => $b->id,
+                        'name' => $b->name,
+                        'type' => $b->type,
+                        'status' => $b->status,
+                    ];
+                })->values();
+            }
+        } catch (\Throwable $be) {
+            $assignedBranchesList = collect([]);
+        }
 
         $activeBranchObj = null;
         if ($user->branch) {
