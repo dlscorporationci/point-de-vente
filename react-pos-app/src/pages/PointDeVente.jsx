@@ -406,18 +406,18 @@ export const PointDeVente = () => {
   }
 
   return (
-    <div className="pos-container">
+    <div className="pos-container" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', margin: '0 auto' }}>
       <div className="decorator-sphere sphere-1"></div>
       <div className="decorator-sphere sphere-2"></div>
 
-      <div className="pos-layout card">
+      <div className="pos-layout card" style={{ borderRadius: '16px', background: 'var(--bg-card)', border: '1px solid var(--border-color)', padding: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', width: '100%', boxSizing: 'border-box', overflow: 'hidden' }}>
         {error && <div className="error-banner">⚠️ {error}</div>}
         {success && <div className="success-banner">✔️ {success}</div>}
 
-        <div className="pos-grid-columns">
+        <div className="pos-grid-columns" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 340px', gap: '16px', alignItems: 'start', width: '100%', boxSizing: 'border-box', overflow: 'hidden' }}>
           {/* COLONNE GAUCHE: GRILLE DES PRODUITS TACTILE */}
-          <div className="pos-left-panel">
-            <div className="pos-search-box">
+          <div className="pos-left-panel" style={{ display: 'flex', flexDirection: 'column', gap: '12px', minWidth: 0, width: '100%', boxSizing: 'border-box', overflow: 'hidden' }}>
+            <div className="pos-search-box" style={{ width: '100%' }}>
               <input 
                 type="text" 
                 className="form-control pos-search-input" 
@@ -453,7 +453,7 @@ export const PointDeVente = () => {
                 Aucun produit trouvé dans cette catégorie.
               </div>
             ) : (
-              <div className="pos-products-grid">
+              <div className="pos-products-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(135px, 1fr))', gap: '12px', width: '100%', maxHeight: 'calc(100vh - 220px)', overflowY: 'auto', boxSizing: 'border-box' }}>
                 {filteredProducts.map(p => {
                   const rawStock = parseFloat(p.quantity !== undefined ? p.quantity : (p.stock !== undefined ? p.stock : 0));
                   const cartItem = cart.find(item => item.product.id === p.id);
@@ -521,7 +521,7 @@ export const PointDeVente = () => {
           </div>
 
           {/* COLONNE DROITE: PANIER / TOTAL */}
-          <div className="pos-right-panel">
+          <div className="pos-right-panel" style={{ width: '340px', minWidth: '340px', maxWidth: '340px', boxSizing: 'border-box' }}>
             <div className="pos-cart-header">
               <h3><i className="fa-solid fa-cart-shopping me-2 text-primary"></i> Panier</h3>
               <button onClick={clearCart} className="btn-clear-cart">Vider</button>
