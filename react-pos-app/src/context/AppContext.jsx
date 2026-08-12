@@ -3,6 +3,7 @@ import axios from 'axios';
 import { offlineStorage } from '../services/offlineStorage';
 import { purgeLocalCacheOnLogout } from '../services/db';
 import { realtimeService } from '../services/RealtimeService';
+import { syncService } from '../services/SyncService';
 
 const AppContext = createContext(null);
 
@@ -485,10 +486,21 @@ export const AppProvider = ({ children }) => {
     return () => axios.interceptors.response.eject(interceptor);
   }, []);
 
-  // Abonnement aux changements de statut SSE
+  // Abonnement aux changements de statut SSE et réception d'événements temps réel
   useEffect(() => {
-    const cleanup = realtimeService.onStatusChange(setRealtimeStatus);
-    return cleanup;
+    const cleanupStatus = realtimeService.onStatusChange(setRealtimeStatus);
+    const cleanupEvents = realtimeService.subscribeAll((eventType, payload) => {
+      console.info('[AppContext] Événement Temps Réel reçu:', eventType, payload);
+      // PULL incrémental instantané pour rattraper le delta serveur
+      syncService.runFullSync();
+      // Notifier toutes les vues ouvertes
+      window.dispatchEvent(new CustomEvent('realtime-event', { detail: { eventType, payload } }));
+    });
+
+    return () => {
+      cleanupStatus();
+      cleanupEvents();
+    };
   }, []);
 
   // Reconnexion SSE lors du changement de boutique

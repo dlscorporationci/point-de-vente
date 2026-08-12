@@ -168,11 +168,20 @@ export const PointDeVente = () => {
   useEffect(() => {
     loadData();
 
-    // Recharger automatiquement les stocks réels au retour sur l'onglet POS ou lors du focus
+    // Recharger automatiquement les stocks réels lors du focus ou de la réception d'un événement temps réel SSE
     const handleFocus = () => loadData();
+    const handleRealtimeEvent = () => loadData();
+
     window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, [token]);
+    window.addEventListener('realtime-event', handleRealtimeEvent);
+    window.addEventListener('sync-complete', handleRealtimeEvent);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('realtime-event', handleRealtimeEvent);
+      window.removeEventListener('sync-complete', handleRealtimeEvent);
+    };
+  }, [token, loadData]);
 
   // Recherche & Simulation Barcode Scanner (Touche Entrée dans l'input)
   const handleSearchKeyDown = (e) => {

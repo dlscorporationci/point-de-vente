@@ -140,8 +140,8 @@ class SseController extends Controller
                     Log::warning('SSE stream error', ['error' => $e->getMessage(), 'user_id' => $userId]);
                 }
 
-                // Pause de 5 secondes pour alléger le CPU et le pool PHP-FPM
-                sleep(5);
+                // Pause de 1 seconde pour une réactivité temps réel instantanée
+                sleep(1);
             }
 
             // 3. Signal de reconnexion propre sans déclencher d'erreur EventSource
