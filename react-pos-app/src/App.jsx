@@ -99,7 +99,7 @@ function MainContent() {
   useEffect(() => {
     if (user) {
       const savedTab = sessionStorage.getItem('apex_active_tab');
-      if (!savedTab || savedTab === 'home' || savedTab === 'auth') {
+      if (!savedTab || savedTab === 'home' || savedTab === 'auth' || (isSuperAdmin && savedTab === 'select-branch')) {
         const target = isSuperAdmin ? 'backoffice' : 'dashboard';
         sessionStorage.setItem('apex_active_tab', target);
         setActiveTabState(target);
@@ -303,7 +303,7 @@ function MainContent() {
       case 'dashboard':     return isSuperAdmin ? <BackOffice /> : <Dashboard setActiveTab={setActiveTab} />
       case 'register':      return <Register setActiveTab={setActiveTab} />
       case 'auth':          return isSuperAdmin ? <BackOffice /> : <Dashboard setActiveTab={setActiveTab} />
-      case 'select-branch': return <BranchSelectionPage onSelectBranch={() => navigate('dashboard')} />
+      case 'select-branch': return <BranchSelectionPage onSelectBranch={() => navigate(isSuperAdmin ? 'backoffice' : 'dashboard')} />
       case 'catalog':       return <Catalog />
       case 'suppliers':     return <Suppliers />
       case 'customers':     return <Customers />
