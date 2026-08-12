@@ -444,6 +444,13 @@ export const AppProvider = ({ children }) => {
     delete axios.defaults.headers.common['X-Company-ID'];
     delete axios.defaults.headers.common['X-Branch-ID'];
 
+    // Purge des caches localStorage offline hérités (anti-fuite multi-tenant)
+    localStorage.removeItem('apexpos_cached_products');
+    localStorage.removeItem('apexpos_cached_categories');
+    localStorage.removeItem('apexpos_cached_customers');
+    localStorage.removeItem('apexpos_offline_sales_queue');
+    localStorage.removeItem('apexpos_cached_dashboard_stats');
+
     // Purge du cache local sensible Dexie lors du logout (tout en conservant les pending non-sync)
     purgeLocalCacheOnLogout().catch(() => {});
 

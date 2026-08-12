@@ -173,13 +173,23 @@ export const getPendingSyncQueue = async (companyId, branchId) => {
  */
 export const purgeLocalCacheOnLogout = async () => {
   try {
-    await db.transaction('rw', [db.products, db.categories, db.customers, db.suppliers, db.stock, db.notifications], async () => {
+    await db.transaction('rw', [
+      db.products, db.categories, db.customers, db.suppliers, db.stock, 
+      db.notifications, db.sales, db.sale_items, db.cash_sessions, 
+      db.purchases, db.transfers, db.sync_metadata
+    ], async () => {
       await db.products.clear();
       await db.categories.clear();
       await db.customers.clear();
       await db.suppliers.clear();
       await db.stock.clear();
       await db.notifications.clear();
+      await db.sales.clear();
+      await db.sale_items.clear();
+      await db.cash_sessions.clear();
+      await db.purchases.clear();
+      await db.transfers.clear();
+      await db.sync_metadata.clear();
     });
   } catch (err) {
     console.warn('Purge sélective Dexie lors du logout:', err);

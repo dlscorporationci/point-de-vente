@@ -130,48 +130,51 @@ class CashSessionController extends Controller
             return response()->json(['error' => 'Aucune boutique n\'est associée à votre profil utilisateur.'], 400);
         }
 
-        // Vérifier si une caisse est déjà ouverte pour cette boutique
-        $activeSession = CashSession::where('branch_id', $branchId)
-            ->where('status', 'open')
-            ->first();
+        return DB::transaction(function () use ($request, $user, $branchId) {
+            // Vérifier si une caisse est déjà ouverte pour cette boutique
+            $activeSession = CashSession::where('branch_id', $branchId)
+                ->where('status', 'open')
+                ->lockForUpdate()
+                ->first();
 
-        if ($activeSession) {
-            $openedBy = $activeSession->user ? $activeSession->user->name : 'un membre de l\'équipe';
+            if ($activeSession) {
+                $openedBy = $activeSession->user ? $activeSession->user->name : 'un membre de l\'équipe';
+                return response()->json([
+                    'error' => "Une session de caisse est déjà ouverte pour cette boutique par {$openedBy}."
+                ], 422);
+            }
+
+            $validated = $request->validate([
+                'opening_balance' => 'required|numeric|min:0',
+                'notes'           => 'nullable|string|max:500',
+            ]);
+
+            $companyId = app(\App\Services\TenantManager::class)->getCompanyId() ?: $user->company_id;
+
+            $session = CashSession::create([
+                'company_id'      => $companyId,
+                'branch_id'       => $branchId,
+                'user_id'         => $user->id,
+                'opening_balance' => $validated['opening_balance'],
+                'status'          => 'open',
+                'notes'           => $validated['notes'] ?? null,
+                'opened_at'       => now(),
+            ]);
+
+            try {
+                event(new CashSessionOpened($session, $user));
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('CashSessionOpened event error: ' . $e->getMessage());
+            }
+
+            $session->load(['transactions', 'user', 'branch']);
+            $this->enrichSessionSummary($session);
+
             return response()->json([
-                'error' => "Une session de caisse est déjà ouverte pour cette boutique par {$openedBy}."
-            ], 422);
-        }
-
-        $validated = $request->validate([
-            'opening_balance' => 'required|numeric|min:0',
-            'notes'           => 'nullable|string|max:500',
-        ]);
-
-        $companyId = app(\App\Services\TenantManager::class)->getCompanyId() ?: $user->company_id;
-
-        $session = CashSession::create([
-            'company_id'      => $companyId,
-            'branch_id'       => $branchId,
-            'user_id'         => $user->id,
-            'opening_balance' => $validated['opening_balance'],
-            'status'          => 'open',
-            'notes'           => $validated['notes'] ?? null,
-            'opened_at'       => now(),
-        ]);
-
-        try {
-            event(new CashSessionOpened($session, $user));
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('CashSessionOpened event error: ' . $e->getMessage());
-        }
-
-        $session->load(['transactions', 'user', 'branch']);
-        $this->enrichSessionSummary($session);
-
-        return response()->json([
-            'message' => 'Session de caisse ouverte avec succès pour la boutique.',
-            'session' => $session
-        ], 201);
+                'message' => 'Session de caisse ouverte avec succès pour la boutique.',
+                'session' => $session
+            ], 201);
+        });
     }
 
     /**
@@ -233,56 +236,58 @@ class CashSessionController extends Controller
             return response()->json(['error' => "Accès refusé. La permission 'cash.close' est obligatoire pour fermer une session de caisse."], 403);
         }
 
-        $session = CashSession::findOrFail($id);
+        return DB::transaction(function () use ($request, $id) {
+            $session = CashSession::where('id', $id)->lockForUpdate()->firstOrFail();
 
-        if ($session->status !== 'open') {
-            return response()->json(['error' => 'Cette caisse est déjà fermée.'], 422);
-        }
+            if ($session->status !== 'open') {
+                return response()->json(['error' => 'Cette caisse est déjà fermée.'], 422);
+            }
 
-        $validated = $request->validate([
-            'closing_balance' => 'required|numeric|min:0',
-            'notes'           => 'nullable|string|max:500',
-        ]);
+            $validated = $request->validate([
+                'closing_balance' => 'required|numeric|min:0',
+                'notes'           => 'nullable|string|max:500',
+            ]);
 
-        // Calculer le solde théorique physique de caisse (Espèces)
-        $cashSalesSum = Sale::where('cash_session_id', $session->id)
-            ->where('payment_method', 'cash')
-            ->sum('total');
+            // Calculer le solde théorique physique de caisse (Espèces)
+            $cashSalesSum = Sale::where('cash_session_id', $session->id)
+                ->where('payment_method', 'cash')
+                ->sum('total');
 
-        $depositsSum = CashSessionTransaction::where('cash_session_id', $session->id)
-            ->where('type', 'deposit')
-            ->sum('amount');
+            $depositsSum = CashSessionTransaction::where('cash_session_id', $session->id)
+                ->where('type', 'deposit')
+                ->sum('amount');
 
-        $withdrawalsSum = CashSessionTransaction::where('cash_session_id', $session->id)
-            ->where('type', 'withdrawal')
-            ->sum('amount');
+            $withdrawalsSum = CashSessionTransaction::where('cash_session_id', $session->id)
+                ->where('type', 'withdrawal')
+                ->sum('amount');
 
-        $theoreticalBalance = floatval($session->opening_balance) + floatval($cashSalesSum) + floatval($depositsSum) - floatval($withdrawalsSum);
-        $closingBalance = floatval($validated['closing_balance']);
-        $gap = round($closingBalance - $theoreticalBalance, 2);
+            $theoreticalBalance = floatval($session->opening_balance) + floatval($cashSalesSum) + floatval($depositsSum) - floatval($withdrawalsSum);
+            $closingBalance = floatval($validated['closing_balance']);
+            $gap = round($closingBalance - $theoreticalBalance, 2);
 
-        $session->update([
-            'closing_balance'     => $closingBalance,
-            'theoretical_balance' => $theoreticalBalance,
-            'status'              => 'closed',
-            'closed_at'           => now(),
-            'notes'               => $validated['notes'] ?? $session->notes,
-        ]);
+            $session->update([
+                'closing_balance'     => $closingBalance,
+                'theoretical_balance' => $theoreticalBalance,
+                'status'              => 'closed',
+                'closed_at'           => now(),
+                'notes'               => $validated['notes'] ?? $session->notes,
+            ]);
 
-        try {
-            event(new CashSessionClosed($session, $request->user(), $gap));
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('CashSessionClosed event error: ' . $e->getMessage());
-        }
+            try {
+                event(new CashSessionClosed($session, $request->user(), $gap));
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('CashSessionClosed event error: ' . $e->getMessage());
+            }
 
-        $session->load(['transactions', 'user', 'branch']);
-        $this->enrichSessionSummary($session);
+            $session->load(['transactions', 'user', 'branch']);
+            $this->enrichSessionSummary($session);
 
-        return response()->json([
-            'message' => 'Caisse fermée avec succès.',
-            'gap'     => $gap,
-            'session' => $session
-        ]);
+            return response()->json([
+                'message' => 'Caisse fermée avec succès.',
+                'gap'     => $gap,
+                'session' => $session
+            ]);
+        });
     }
 
     /**

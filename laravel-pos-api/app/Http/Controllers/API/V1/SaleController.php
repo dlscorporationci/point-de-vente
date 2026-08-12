@@ -105,6 +105,7 @@ class SaleController extends Controller
         $request->merge(['cash_session_id' => $session->id]);
 
         $request->validate([
+            'idempotency_key' => 'nullable|string|max:64',
             'cash_session_id' => 'required|exists:cash_sessions,id',
             'payment_method'  => 'required|in:cash,card,credit',
             'customer_id'     => 'nullable|exists:customers,id',
@@ -173,6 +174,19 @@ class SaleController extends Controller
             }
         }
 
+        if ($request->idempotency_key) {
+            $existingSale = Sale::where('company_id', $user->company_id)
+                ->where('idempotency_key', $request->idempotency_key)
+                ->first();
+            if ($existingSale) {
+                $existingSale->load('details.product', 'user', 'branch');
+                return response()->json([
+                    'message' => 'Vente déjà enregistrée (idempotent).',
+                    'sale' => $existingSale,
+                ], 200);
+            }
+        }
+
         return DB::transaction(function () use ($request, $user, $session, $customer, $totalSim, $taxFactor) {
             // Calculer les totaux réels pour la transaction
             $subtotal = 0;
@@ -238,6 +252,7 @@ class SaleController extends Controller
 
             // Créer la vente
             $sale = Sale::create([
+                'idempotency_key' => $request->idempotency_key,
                 'company_id'      => $user->company_id ?: $session->company_id,
                 'branch_id'       => $activeBranchId,
                 'user_id'         => $user->id,

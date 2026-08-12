@@ -58,6 +58,11 @@ class SyncController extends Controller
             $branchId = $op['branch_id'] ?? $user->branch_id;
 
             // 1. Vérification d'Idempotence (Anti-Doublons)
+            $existingIdempotency = \Illuminate\Support\Facades\DB::table('sync_idempotency')
+                ->where('uuid', $uuid)
+                ->where('company_id', $companyId)
+                ->exists();
+
             if ($existingIdempotency) {
                 $syncedUuids[] = $uuid;
                 continue;
