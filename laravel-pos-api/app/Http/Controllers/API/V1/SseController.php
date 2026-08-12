@@ -87,6 +87,11 @@ class SseController extends Controller
         $lastEventId = (int) ($request->header('Last-Event-ID') ?? $request->query('lastEventId', 0));
 
         return new StreamedResponse(function () use ($companyId, $branchId, $userId, $lastEventId) {
+            // 0. Débloquer la session PHP immédiatement pour ne pas bloquer les autres requêtes de l'utilisateur
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                @session_write_close();
+            }
+
             if (ob_get_level() > 0) {
                 @ob_end_clean();
             }
@@ -95,6 +100,9 @@ class SseController extends Controller
 
             $startTime     = time();
             $currentLastId = $lastEventId;
+
+            // Padding 2KB pour forcer Nginx à désactiver le buffering FastCGI immédiatement
+            echo ": " . str_repeat(" ", 2048) . "\n\n";
 
             // 1. Événement initial de connexion
             echo "event: connected\n";
@@ -109,7 +117,7 @@ class SseController extends Controller
             if (ob_get_level() > 0) @ob_flush();
             @flush();
 
-            // 2. Boucle SSE de 15s max (verification toutes les 5s)
+            // 2. Boucle SSE de 15s max (verification toutes les 0.5s)
             while (true) {
                 if (connection_aborted()) {
                     break;
@@ -140,8 +148,8 @@ class SseController extends Controller
                     Log::warning('SSE stream error', ['error' => $e->getMessage(), 'user_id' => $userId]);
                 }
 
-                // Pause de 1 seconde pour une réactivité temps réel instantanée
-                sleep(1);
+                // Pause de 0.5 seconde (500ms) pour une ultra-réactivité sans bloquer
+                usleep(500000);
             }
 
             // 3. Signal de reconnexion propre sans déclencher d'erreur EventSource
