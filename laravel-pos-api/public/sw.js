@@ -1,110 +1,59 @@
-const CACHE_NAME = 'apexpos-cache-v5';
-const DYNAMIC_CACHE = 'apexpos-dynamic-v5';
-
-// Static assets to cache immediately upon installation
-const STATIC_ASSETS = [
+const CACHE_NAME = 'apexpos-shell-v1';
+const SHELL_ASSETS = [
   '/',
   '/index.html',
-  '/manifest.json',
-  '/favicon.svg'
 ];
 
-// Install Event — Pre-cache core shell
+// Installation : mise en cache de l'App Shell
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS);
-    }).then(() => self.skipWaiting())
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(SHELL_ASSETS))
+      .then(() => self.skipWaiting())
   );
 });
 
-// Activate Event — Clean up old caches
+// Activation : nettoyage des anciens caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
-        keys.filter((key) => key !== CACHE_NAME && key !== DYNAMIC_CACHE)
+        keys.filter((key) => key !== CACHE_NAME)
             .map((key) => caches.delete(key))
       );
     }).then(() => self.clients.claim())
   );
 });
 
-// Fetch Event — Network-First for HTML/JS navigation to guarantee latest builds
+// Fetch : Network-First pour les API, Cache-First pour les assets statiques
 self.addEventListener('fetch', (event) => {
-  const request = event.request;
-  const url = new URL(request.url);
+  const url = new URL(event.request.url);
 
-  // Skip non-GET requests (API POSTs handled by React Offline Queue)
-  if (request.method !== 'GET') {
+  // Ne pas intercepter les requêtes API, SSE ou les extensions de navigateur
+  if (url.pathname.startsWith('/api/') || 
+      url.pathname.startsWith('/v1/') ||
+      url.pathname.includes('/sse/') ||
+      url.protocol === 'chrome-extension:') {
     return;
   }
 
-  // API Requests: Toujours privilégier le réseau pour les données dynamiques
-  if (url.pathname.includes('/v1/')) {
-    event.respondWith(
-      fetch(request).catch(() => caches.match(request))
-    );
-    return;
-  }
-
-  // Navigation HTML & JS Bundle: Network First to avoid stale cache white screens
-  if (request.mode === 'navigate' || url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) {
-    event.respondWith(
-      fetch(request)
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            const responseClone = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(request, responseClone);
-            });
-          }
-          return networkResponse;
-        })
-        .catch(() => caches.match(request))
-    );
-    return;
-  }
-
-  // Static Assets / Page Navigation: Cache First with Network & index.html Fallback
+  // Stratégie : Network-First avec fallback cache pour les assets statiques
   event.respondWith(
-    caches.match(request).then((cachedResponse) => {
-      if (cachedResponse) {
-        // En arrière-plan, tenter de mettre à jour le cache si réseau disponible
-        fetch(request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(request, networkResponse);
-            });
-          }
-        }).catch(() => {});
-
-        return cachedResponse;
-      }
-
-      // Si non présent en cache, tenter la requête réseau
-      return fetch(request)
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            const responseClone = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(request, responseClone);
-            });
-          }
-          return networkResponse;
-        })
-        .catch(async () => {
-          // Si le réseau échoue (Mode Déconnecté F5), renvoyer index.html depuis le cache
-          const cache = await caches.open(CACHE_NAME);
-          const indexFallback = await cache.match('./index.html') || await cache.match('./') || await cache.match('/index.html');
-          if (indexFallback) {
-            return indexFallback;
-          }
-          return new Response('ApexPOS Mode Hors-Ligne', {
-            status: 200,
-            headers: new Headers({ 'Content-Type': 'text/html' })
+    fetch(event.request)
+      .then((response) => {
+        // Mettre en cache les réponses réussies pour les assets statiques
+        if (response.ok && event.request.method === 'GET') {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone);
           });
-        });
-    })
+        }
+        return response;
+      })
+      .catch(() => {
+        // Fallback sur le cache si le réseau est indisponible
+        return caches.match(event.request)
+          .then((cached) => cached || caches.match('/index.html'));
+      })
   );
 });

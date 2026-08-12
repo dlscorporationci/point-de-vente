@@ -12,17 +12,22 @@
     <title>DLS POS — Gestion de Caisse & Ventes</title>
     <link rel="manifest" href="./manifest.json" />
     <meta name="theme-color" content="#0f4a86" />
-    <script type="module" crossorigin src="/assets/index-BYF_VKcR.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-eftCBGa7.css">
+    <script type="module" crossorigin src="/assets/index-B8OZnlap.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-D_EGtq0q.css">
   </head>
   <body>
     <div id="root"></div>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then(reg => console.log('Service Worker DLS POS PWA enregistré avec succès !', reg.scope))
-            .catch(err => console.error('Erreur enregistrement Service Worker:', err));
+          navigator.serviceWorker.getRegistrations().then(registrations => {
+            for (let registration of registrations) {
+              registration.unregister();
+            }
+          });
+          if (typeof caches !== 'undefined') {
+            caches.keys().then(keys => keys.forEach(key => caches.delete(key)));
+          }
         });
       }
     </script>
