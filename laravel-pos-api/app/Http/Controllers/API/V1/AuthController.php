@@ -1068,29 +1068,53 @@ class AuthController extends Controller
      */
     private function logAuthEvent(?User $user, string $action, Request $request, ?string $emailAttempted = null): void
     {
+        // Audit silencieux : toute erreur (colonne manquante, storage non accessible)
+        // est ignorée pour ne jamais bloquer la connexion / l'inscription.
         try {
             $companyId = $user ? $user->company_id : null;
-            if (!$companyId) {
-                $companyId = app(\App\Services\TenantManager::class)->getCompanyId();
-            }
+            try {
+                if (!$companyId) {
+                    $companyId = app(\App\Services\TenantManager::class)->getCompanyId();
+                }
+            } catch (\Throwable $_) {}
 
-            AuditLog::create([
-                'company_id'     => $companyId,
-                'user_id'        => $user ? $user->id : null,
+            // Construire uniquement les colonnes garanties d'exister
+            $data = [
+                'company_id' => $companyId,
+                'user_id'    => $user ? $user->id : null,
+                'action'     => $action,
+                'ip_address' => $request->ip(),
+                'user_agent' => substr($request->userAgent() ?? '', 0, 500),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+
+            // Colonnes optionnelles : ajoutées seulement si elles existent
+            $optionalColumns = [
                 'auditable_type' => User::class,
                 'auditable_id'   => $user ? $user->id : 0,
-                'action'         => $action,
-                'old_values'     => $emailAttempted ? ['email_attempted' => $emailAttempted] : null,
-                'new_values'     => [
-                    'device' => $request->header('User-Agent'),
-                    'status' => $user ? 'success' : 'failed'
-                ],
-                'ip_address'     => $request->ip(),
-                'user_agent'     => $request->userAgent(),
-                'created_at'     => now(),
-            ]);
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Auth Audit Logging Failed: ' . $e->getMessage());
+                'old_values'     => $emailAttempted ? json_encode(['email_attempted' => $emailAttempted]) : null,
+                'new_values'     => json_encode(['status' => $user ? 'success' : 'failed']),
+                'user_name'      => $user ? $user->name : ($emailAttempted ?? 'Anonyme'),
+                'entity_type'    => 'auth',
+                'entity_id'      => $user ? $user->id : null,
+            ];
+
+            foreach ($optionalColumns as $col => $val) {
+                try {
+                    if (\Illuminate\Support\Facades\Schema::hasColumn('audit_logs', $col)) {
+                        $data[$col] = $val;
+                    }
+                } catch (\Throwable $_) {}
+            }
+
+            AuditLog::unguarded(function () use ($data) {
+                AuditLog::insert($data);
+            });
+
+        } catch (\Throwable $e) {
+            // Silence total : on ne loggue jamais ici pour éviter le crash storage
         }
     }
 }
+
