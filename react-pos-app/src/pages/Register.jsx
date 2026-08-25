@@ -99,10 +99,11 @@ export const Register = ({ setActiveTab }) => {
 
     } catch (err) {
       const respData = err.response?.data;
-      if (respData?.errors) {
+      if (respData?.errors && typeof respData.errors === 'object') {
         const firstKey = Object.keys(respData.errors)[0];
-        const firstMsg = respData.errors[firstKey][0];
-        setError(firstMsg);
+        const rawErr = respData.errors[firstKey];
+        const firstMsg = Array.isArray(rawErr) ? rawErr[0] : (typeof rawErr === 'string' ? rawErr : JSON.stringify(rawErr));
+        setError(firstMsg || respData?.message || 'Une erreur est survenue lors de l\'inscription.');
       } else {
         setError(
           respData?.message || 
