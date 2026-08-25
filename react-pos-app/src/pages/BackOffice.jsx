@@ -9,7 +9,7 @@ import { GlobalDateRangeFilter } from '../components/GlobalDateRangeFilter';
 import { CompanyInspection } from './CompanyInspection';
 
 export const BackOffice = () => {
-  const { token, user } = useApp();
+  const { token, user, logout } = useApp();
   const [activeSubTab, setActiveSubTab] = useState('dashboard');
   const [metrics, setMetrics] = useState(null);
   const [recentActivities, setRecentActivities] = useState([]);
@@ -712,9 +712,26 @@ export const BackOffice = () => {
         
         {/* Header Backoffice */}
         <div className="admin-header">
-          <div>
-            <h2><i className="fa-solid fa-gears text-primary me-2"></i> Console SaaS & Offres</h2>
-            <p className="admin-subtitle">Portail de supervision, d'abonnements et de gestion des entreprises de la plateforme.</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%', flexWrap: 'wrap', gap: '12px' }}>
+            <div>
+              <h2><i className="fa-solid fa-gears text-primary me-2"></i> Console SaaS & Offres</h2>
+              <p className="admin-subtitle">Portail de supervision, d'abonnements et de gestion des entreprises de la plateforme.</p>
+            </div>
+            <button
+              onClick={() => logout()}
+              title="Se déconnecter"
+              style={{
+                display: 'flex', alignItems: 'center', gap: '8px',
+                padding: '8px 18px', borderRadius: '8px', border: '1.5px solid #ef4444',
+                background: 'transparent', color: '#ef4444', fontWeight: 700,
+                fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = '#fff'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#ef4444'; }}
+            >
+              <i className="fa-solid fa-right-from-bracket"></i> Déconnexion
+            </button>
           </div>
           <div className="admin-subtabs" style={{ flexWrap: 'wrap', gap: '6px' }}>
             <button className={`subtab-btn ${activeSubTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveSubTab('dashboard')}>
