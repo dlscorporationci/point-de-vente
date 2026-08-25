@@ -128,6 +128,18 @@ function MainContent() {
     setMenuOpen(false)
   }
 
+  // Écouter l'événement 'app-navigate' émis par logout() pour forcer la redirection
+  useEffect(() => {
+    const handleAppNavigate = (e) => {
+      const tab = e.detail?.tab || 'auth';
+      sessionStorage.removeItem('apex_active_tab');
+      setActiveTabState(tab);
+      setMenuOpen(false);
+    };
+    window.addEventListener('app-navigate', handleAppNavigate);
+    return () => window.removeEventListener('app-navigate', handleAppNavigate);
+  }, []);
+
   const getCompanyLogoUrl = (logoPath) => {
     if (!logoPath) return logo;
     return getAssetUrl(logoPath);

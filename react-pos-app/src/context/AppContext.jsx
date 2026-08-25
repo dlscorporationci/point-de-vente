@@ -460,6 +460,8 @@ export const AppProvider = ({ children }) => {
 
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('app-logout'));
+      // Forcer la redirection vers la page de connexion après nettoyage
+      window.dispatchEvent(new CustomEvent('app-navigate', { detail: { tab: 'auth' } }));
     }
   };
 
