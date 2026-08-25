@@ -530,86 +530,105 @@ class AuthController extends Controller
             ], 422);
         }
 
-        return DB::transaction(function () use ($request) {
-            // 1. Créer la compagnie
-            $company = Company::create([
-                'name' => $request->company_name,
-            ]);
+        try {
+            return DB::transaction(function () use ($request, $cleanEmail) {
+                // 1. Créer la compagnie
+                $company = Company::create([
+                    'name' => trim($request->company_name),
+                ]);
 
-            // 2. Créer la succursale par défaut (Boutique Centrale)
-            $branch = Branch::create([
-                'company_id' => $company->id,
-                'name'       => 'Boutique Centrale',
-                'address'    => 'Siège Social',
-                'phone'      => '+221 33 000 00 00',
-            ]);
+                // 2. Créer la succursale par défaut (Boutique Centrale)
+                $branch = Branch::create([
+                    'company_id' => $company->id,
+                    'name'       => 'Boutique Centrale',
+                    'address'    => 'Siège Social',
+                    'phone'      => '+221 33 000 00 00',
+                ]);
 
-            // 3. Créer l'utilisateur administrateur de l'entreprise
-            $adminRole = \App\Models\Role::firstOrCreate(['slug' => 'admin'], ['name' => 'Administrateur']);
-            $adminRoleId = $adminRole ? $adminRole->id : 2;
-            $randomPin = (string) random_int(1000, 9999);
+                // 3. Créer l'utilisateur administrateur de l'entreprise
+                $adminRole = \App\Models\Role::withoutGlobalScopes()->firstOrCreate(['slug' => 'admin'], ['name' => 'Administrateur']);
+                $adminRoleId = $adminRole ? $adminRole->id : 2;
+                $randomPin = (string) random_int(1000, 9999);
 
-            $user = User::create([
-                'company_id' => $company->id,
-                'branch_id'  => $branch->id,
-                'role_id'    => $adminRoleId, // Administrateur Entreprise (slug: admin)
-                'name'       => $request->name,
-                'email'      => $request->email,
-                'password'   => Hash::make($request->password),
-                'pin_code'   => $randomPin,
-                'status'     => 'active',
-            ]);
+                $user = User::create([
+                    'company_id' => $company->id,
+                    'branch_id'  => $branch->id,
+                    'role_id'    => $adminRoleId, // Administrateur Entreprise (slug: admin)
+                    'name'       => trim($request->name),
+                    'email'      => $cleanEmail,
+                    'password'   => Hash::make($request->password),
+                    'pin_code'   => $randomPin,
+                    'status'     => 'active',
+                ]);
 
-            $user->load(['role.permissions', 'branch']);
-            $token = $user->createToken('pos-auth-token')->plainTextToken;
+                // Rattacher la boutique d'origine à l'utilisateur dans user_branches
+                try {
+                    $user->branches()->attach($branch->id);
+                } catch (\Throwable $tb) {
+                    \Illuminate\Support\Facades\Log::warning("Attachement branch user_branches omis : " . $tb->getMessage());
+                }
 
-            // Déclenchement de l'e-mail de bienvenue centralisé
-            try {
-                (new \App\Services\EmailService())->sendWelcomeEmail($user, $company);
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning("Échec envoi mail de bienvenue : " . $e->getMessage());
-            }
+                $user->load(['role.permissions', 'branch']);
+                $token = $user->createToken('pos-auth-token')->plainTextToken;
 
-            return response()->json([
-                'token' => $token,
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'status' => $user->status,
-                    'role' => $user->role ? $user->role->slug : 'admin',
-                    'permissions' => $user->role ? $user->role->permissions->pluck('slug') : [],
-                    'company_id' => $user->company_id,
-                    'company' => [
-                        'id' => $company->id,
-                        'name' => $company->name,
-                        'code' => $company->code,
-                        'tax_settings' => $company->tax_settings ?? ['tax_rate' => 18, 'enable_tax' => true],
-                    ],
-                    'branch' => [
-                        'id' => $branch->id,
-                        'name' => $branch->name,
-                    ],
-                    'active_branch' => [
-                        'id' => $branch->id,
-                        'name' => $branch->name,
-                        'type' => $branch->type,
-                        'status' => $branch->status,
-                    ],
-                    'assigned_branches' => [
-                        [
+                // Déclenchement de l'e-mail de bienvenue centralisé
+                try {
+                    (new \App\Services\EmailService())->sendWelcomeEmail($user, $company);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning("Échec envoi mail de bienvenue : " . $e->getMessage());
+                }
+
+                return response()->json([
+                    'token' => $token,
+                    'user' => [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'email' => $user->email,
+                        'status' => $user->status,
+                        'role' => $user->role ? $user->role->slug : 'admin',
+                        'permissions' => $user->role ? $user->role->permissions->pluck('slug') : [],
+                        'company_id' => $user->company_id,
+                        'company' => [
+                            'id' => $company->id,
+                            'name' => $company->name,
+                            'code' => $company->code,
+                            'tax_settings' => $company->tax_settings ?? ['tax_rate' => 18, 'enable_tax' => true],
+                        ],
+                        'branch' => [
+                            'id' => $branch->id,
+                            'name' => $branch->name,
+                        ],
+                        'active_branch' => [
                             'id' => $branch->id,
                             'name' => $branch->name,
                             'type' => $branch->type,
                             'status' => $branch->status,
+                        ],
+                        'assigned_branches' => [
+                            [
+                                'id' => $branch->id,
+                                'name' => $branch->name,
+                                'type' => $branch->type,
+                                'status' => $branch->status,
+                            ]
                         ]
-                    ]
-                ],
-                'company_code' => $company->code,
-                'pin_code' => $randomPin,
-                'message' => 'Entreprise enregistrée avec succès.'
-            ], 201);
-        });
+                    ],
+                    'company_code' => $company->code,
+                    'pin_code' => $randomPin,
+                    'message' => 'Entreprise enregistrée avec succès.'
+                ], 201);
+            });
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Échec création entreprise register : " . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'email' => $cleanEmail
+            ]);
+
+            return response()->json([
+                'message' => 'Une erreur est survenue lors de la création de l\'entreprise : ' . $e->getMessage(),
+                'error'   => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
