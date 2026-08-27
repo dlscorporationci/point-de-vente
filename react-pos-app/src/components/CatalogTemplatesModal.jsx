@@ -80,12 +80,19 @@ export const CatalogTemplatesModal = ({ isOpen, onClose, onSuccess }) => {
     try {
       const res = await axios.get(`/v1/catalog-templates/${tmpl.id}`);
       setTemplateDetails(res.data);
-      // Sélectionner toutes les catégories par défaut
       if (res.data && res.data.categories) {
         setSelectedCategories(res.data.categories.map(c => c.id));
+      } else if (tmpl.categories) {
+        setSelectedCategories(tmpl.categories.map(c => c.id));
       }
     } catch (err) {
-      setError('Erreur lors du chargement de l\'aperçu.');
+      console.warn('Erreur chargement détails modèle API, utilisation du modèle local:', err);
+      setTemplateDetails(tmpl);
+      if (tmpl && tmpl.categories && Array.isArray(tmpl.categories)) {
+        setSelectedCategories(tmpl.categories.map(c => c.id));
+      } else {
+        setSelectedCategories([]);
+      }
     } finally {
       setDetailsLoading(false);
     }
