@@ -57,11 +57,16 @@ export function VerifyEmail({ onNavigate }) {
       if (data && data.success) {
         setSuccess(true);
         setStatusMessage(data.message || 'Votre adresse e-mail a été vérifiée avec succès ! Votre compte est désormais actif.');
+        
+        if (updateUser) {
+          updateUser({ email_verified_at: data.email_verified_at || new Date().toISOString() });
+        }
+        if (refreshUser) {
+          try { await refreshUser(); } catch (e) {}
+        }
+        
         // Nettoyer l'URL
         window.history.replaceState({}, document.title, window.location.pathname);
-        if (checkAuthStatus) {
-          await checkAuthStatus();
-        }
       } else {
         setSuccess(false);
         setErrorMessage(data.error || 'Échec de la vérification. Le jeton est invalide ou a expiré.');
@@ -72,6 +77,20 @@ export function VerifyEmail({ onNavigate }) {
       setErrorMessage(msg);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoToApp = async () => {
+    if (updateUser) {
+      updateUser({ email_verified_at: new Date().toISOString() });
+    }
+    if (refreshUser) {
+      try { await refreshUser(); } catch (e) {}
+    }
+    if (onNavigate) {
+      onNavigate(user ? 'dashboard' : 'auth');
+    } else {
+      window.location.href = '/';
     }
   };
 
@@ -182,13 +201,7 @@ export function VerifyEmail({ onNavigate }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '20px' }}>
           {success ? (
             <button
-              onClick={() => {
-                if (user) {
-                  onNavigate('dashboard');
-                } else {
-                  onNavigate('auth');
-                }
-              }}
+              onClick={handleGoToApp}
               style={{
                 width: '100%',
                 padding: '12px',
