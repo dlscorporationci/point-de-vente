@@ -24,7 +24,13 @@
         @if(!empty($company['code']))
         <tr>
             <td class="label">Code Connexion Caisse :</td>
-            <td class="value" style="color: #0284c7; font-size: 16px;">{{ $company['code'] }}</td>
+            <td class="value"><span class="badge" style="background-color: #ea580c; color: #ffffff; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 14px;">{{ $company['code'] }}</span></td>
+        </tr>
+        @endif
+        @if(!empty($user['pin_code']))
+        <tr>
+            <td class="label">Code PIN Opérateur (4 chiffres) :</td>
+            <td class="value"><span class="badge" style="background-color: #10b981; color: #ffffff; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 14px; letter-spacing: 2px;">{{ $user['pin_code'] }}</span></td>
         </tr>
         @endif
     </table>
@@ -33,7 +39,7 @@
 <p>Vous pouvez dès à présent vous connecter à votre espace de gestion, configurer vos boutiques, ajouter votre catalogue de produits et commencer vos encaissements en caisse.</p>
 
 <div class="btn-container">
-    <a href="{{ $loginUrl ?? 'http://localhost:5173' }}" class="btn">Accéder à ApexPOS</a>
+    <a href="{{ $loginUrl ?? 'https://pos.dlscorporation.ci' }}" class="btn">Accéder à ApexPOS</a>
 </div>
 
 <p style="font-size: 13px; color: #64748b;"><em>Remarque : Pour des raisons de sécurité, ne partagez jamais votre mot de passe ni vos PINs de caisse.</em></p>

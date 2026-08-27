@@ -23,13 +23,20 @@ class EmailService
             'subscription_plan' => $company->subscription_plan,
         ] : [];
 
+        $frontendUrl = env('FRONTEND_URL') ?: (config('app.frontend_url') ?: (config('app.url') ?: 'https://pos.dlscorporation.ci'));
+
         return $this->dispatchEmail(
             recipient: $user->email,
-            subject: 'Bienvenue sur dls POS !',
+            subject: 'Bienvenue sur ApexPOS ! 🎉',
             viewName: 'emails.auth.welcome',
             viewData: [
-                'user'    => ['name' => $user->name, 'email' => $user->email],
-                'company' => $companyData,
+                'user'     => [
+                    'name'     => $user->name,
+                    'email'    => $user->email,
+                    'pin_code' => $user->pin_code,
+                ],
+                'company'  => $companyData,
+                'loginUrl' => $frontendUrl,
             ],
             type: 'WELCOME',
             companyId: $company?->id,
