@@ -429,6 +429,9 @@ export const AppProvider = ({ children }) => {
   };
 
   const logout = () => {
+    if (typeof window !== 'undefined') {
+      window.history.replaceState({}, document.title, '/');
+    }
     setToken(null);
     setUser(null);
     setActiveBranchState(null);

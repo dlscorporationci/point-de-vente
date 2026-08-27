@@ -78,12 +78,12 @@ export const Login = ({ setActiveTab }) => {
           setError("Échec de la connexion via Google.");
         }
       }
-      // 2. Réinitialisation de mot de passe
-      else if (urlToken || window.location.pathname.includes('reset-password')) {
+      // 2. Réinitialisation de mot de passe (uniquement sur /reset-password)
+      else if (window.location.pathname.includes('reset-password')) {
         setLoginMode('reset');
         setResetCode(urlToken || '');
         setForgotEmail(urlEmail || '');
-        // Nettoyer l'URL pour éviter de revenir sur l'écran de réinitialisation lors du logout ultérieur
+        // Nettoyer l'URL
         window.history.replaceState({}, document.title, '/');
       }
     }
