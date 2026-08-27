@@ -111,7 +111,7 @@ function MainContent() {
     const tokenParam = params.get('token');
 
     if (path.includes('verify-email')) {
-      const isEmailVerified = !!(user?.email_verified_at || user?.google_id || user?.google_verified_at || isSuperAdmin);
+      const isEmailVerified = !!(user?.email_verified_at || user?.google_id || user?.google_verified_at || user?.is_pin_auth || isSuperAdmin);
       if (isEmailVerified && !tokenParam) {
         window.history.replaceState({}, document.title, '/');
         const target = isSuperAdmin ? 'backoffice' : 'dashboard';
@@ -128,7 +128,7 @@ function MainContent() {
   // Synchronisation automatique : lorsqu'un utilisateur se connecte, le diriger immédiatement sur le Dashboard / BackOffice
   useEffect(() => {
     if (user) {
-      const isEmailVerified = !!(user.email_verified_at || user.google_id || user.google_verified_at || isSuperAdmin);
+      const isEmailVerified = !!(user.email_verified_at || user.google_id || user.google_verified_at || user.is_pin_auth || isSuperAdmin);
       if (!isEmailVerified && !isSuperAdmin) {
         setActiveTabState('verify-email');
         return;
@@ -319,7 +319,7 @@ function MainContent() {
     }
 
     // Bloquer l'accès aux pages métiers si l'adresse e-mail n'est pas vérifiée (non super-admin)
-    const isEmailVerified = !!(user?.email_verified_at || user?.google_id || user?.google_verified_at);
+    const isEmailVerified = !!(user?.email_verified_at || user?.google_id || user?.google_verified_at || user?.is_pin_auth);
     if (user && !isEmailVerified && !isSuperAdmin) {
       return <VerifyEmail onNavigate={(t) => setActiveTab(t)} />;
     }
