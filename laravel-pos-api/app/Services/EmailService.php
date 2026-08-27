@@ -42,7 +42,7 @@ class EmailService
      */
     public function sendVerificationEmail(User $user, string $tokenPlainText): EmailLog
     {
-        $frontendUrl = config('app.frontend_url') ?: 'http://localhost:5173';
+        $frontendUrl = env('FRONTEND_URL') ?: (config('app.frontend_url') ?: (config('app.url') ?: 'https://pos.dlscorporation.ci'));
         $verificationUrl = rtrim($frontendUrl, '/') . "/verify-email?token=" . urlencode($tokenPlainText) . "&email=" . urlencode($user->email);
 
         return $this->dispatchEmail(
@@ -65,7 +65,7 @@ class EmailService
      */
     public function sendPasswordResetEmail(User $user, string $token): EmailLog
     {
-        $frontendUrl = config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:5173'));
+        $frontendUrl = env('FRONTEND_URL') ?: (config('app.frontend_url') ?: (config('app.url') ?: 'https://pos.dlscorporation.ci'));
         $resetUrl = rtrim($frontendUrl, '/') . "/reset-password?token=" . urlencode($token) . "&email=" . urlencode($user->email);
 
         return $this->dispatchEmail(
