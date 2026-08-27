@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
 import logo from '../assets/logo.jpg';
 
 export function VerifyEmail({ onNavigate }) {
-  const { user, token, logout, checkAuthStatus } = useApp();
+  const { user, token, logout, updateUser, refreshUser } = useApp();
   
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
@@ -12,6 +12,7 @@ export function VerifyEmail({ onNavigate }) {
   const [success, setSuccess] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [resendLoading, setResendLoading] = useState(false);
+  const verifyingRef = useRef(false);
 
   // Masquer l'adresse e-mail (ex: contact@entreprise.com => c***t@entreprise.com)
   const maskEmail = (email) => {
@@ -34,13 +35,14 @@ export function VerifyEmail({ onNavigate }) {
     return () => clearInterval(timer);
   }, [resendCooldown]);
 
-  // Si l'URL contient un jeton de vérification, lancer la validation automatique
+  // Si l'URL contient un jeton de vérification, lancer la validation automatique UNE SEULE FOIS
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const tokenParam = params.get('token');
     const emailParam = params.get('email') || user?.email;
 
-    if (tokenParam && emailParam) {
+    if (tokenParam && emailParam && !verifyingRef.current) {
+      verifyingRef.current = true;
       handleVerifyToken(tokenParam, emailParam);
     }
   }, []);
@@ -56,6 +58,7 @@ export function VerifyEmail({ onNavigate }) {
 
       if (data && data.success) {
         setSuccess(true);
+        setErrorMessage('');
         setStatusMessage(data.message || 'Votre adresse e-mail a été vérifiée avec succès ! Votre compte est désormais actif.');
         
         if (updateUser) {
@@ -73,8 +76,10 @@ export function VerifyEmail({ onNavigate }) {
       }
     } catch (err) {
       console.error('Erreur verify-email:', err);
-      const msg = err.response?.data?.error || err.response?.data?.message || 'Échec de la vérification. Le jeton est invalide ou a expiré.';
-      setErrorMessage(msg);
+      if (!success) {
+        const msg = err.response?.data?.error || err.response?.data?.message || 'Échec de la vérification. Le jeton est invalide ou a expiré.';
+        setErrorMessage(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -171,7 +176,7 @@ export function VerifyEmail({ onNavigate }) {
           </div>
         )}
 
-        {!loading && errorMessage && (
+        {!loading && !success && errorMessage && (
           <div style={{
             backgroundColor: '#7f1d1d',
             color: '#fca5a5',
