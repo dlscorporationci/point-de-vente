@@ -272,6 +272,12 @@ Route::prefix('v1')->middleware('tenant')->group(function () {
             Route::get('/admin/companies',                    [\App\Http\Controllers\API\V1\SuperAdminController::class, 'companies']);
             Route::post('/admin/companies',                   [\App\Http\Controllers\API\V1\SuperAdminController::class, 'createCompany']);
             Route::match(['post', 'put'], '/admin/companies/{id}', [\App\Http\Controllers\API\V1\SuperAdminController::class, 'updateCompany']);
+            Route::delete('/admin/companies/{id}',            [\App\Http\Controllers\API\V1\SuperAdminController::class, 'deleteCompany']);
+
+            // Suppressions SuperAdmin d'entités spécifiques (Boutiques, Clients, Produits)
+            Route::delete('/admin/branches/{id}',             [\App\Http\Controllers\API\V1\SuperAdminController::class, 'deleteBranch']);
+            Route::delete('/admin/customers/{id}',            [\App\Http\Controllers\API\V1\SuperAdminController::class, 'deleteCustomer']);
+            Route::delete('/admin/products/{id}',             [\App\Http\Controllers\API\V1\SuperAdminController::class, 'deleteProduct']);
 
             // Gestion des Formules & Offres d'Abonnement
             Route::get('/admin/plans',                         [\App\Http\Controllers\API\V1\SuperAdminController::class, 'plans']);
@@ -280,6 +286,7 @@ Route::prefix('v1')->middleware('tenant')->group(function () {
             Route::delete('/admin/plans/{id}',                 [\App\Http\Controllers\API\V1\SuperAdminController::class, 'deletePlan']);
 
             Route::get('/admin/users',                        [\App\Http\Controllers\API\V1\SuperAdminController::class, 'users']);
+            Route::delete('/admin/users/{id}',                [\App\Http\Controllers\API\V1\SuperAdminController::class, 'deleteUser']);
             Route::post('/admin/users/{id}/reset-password',   [\App\Http\Controllers\API\V1\SuperAdminController::class, 'resetUserPassword']);
             Route::post('/admin/users/{id}/toggle-status',    [\App\Http\Controllers\API\V1\SuperAdminController::class, 'toggleUserStatus']);
             Route::get('/admin/system/status',                [\App\Http\Controllers\API\V1\SuperAdminController::class, 'systemStatus']);

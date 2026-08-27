@@ -1870,6 +1870,116 @@ class SuperAdminController extends Controller
     }
 
     /**
+     * Supprimer définitivement une entreprise et toutes ses données associées (SuperAdmin).
+     */
+    public function deleteCompany(Request $request, $id)
+    {
+        $this->authorizeSuperAdmin($request);
+
+        $company = Company::findOrFail($id);
+
+        DB::transaction(function () use ($id, $company) {
+            // Supprimer toutes les données rattachées
+            User::withoutGlobalScopes()->where('company_id', $id)->delete();
+            \App\Models\Branch::withoutGlobalScopes()->where('company_id', $id)->delete();
+            Product::withoutGlobalScopes()->where('company_id', $id)->delete();
+            Sale::withoutGlobalScopes()->where('company_id', $id)->delete();
+            Customer::withoutGlobalScopes()->where('company_id', $id)->delete();
+            Supplier::withoutGlobalScopes()->where('company_id', $id)->delete();
+            Purchase::withoutGlobalScopes()->where('company_id', $id)->delete();
+            CashSession::withoutGlobalScopes()->where('company_id', $id)->delete();
+            StockTransfer::withoutGlobalScopes()->where('company_id', $id)->delete();
+            DB::table('company_subscriptions')->where('company_id', $id)->delete();
+            DB::table('email_verification_tokens')->where('company_id', $id)->delete();
+            
+            $company->delete();
+        });
+
+        $this->logAuthEvent($request->user(), 'superadmin_delete_company', $request);
+
+        return response()->json([
+            'success' => true,
+            'message' => "L'entreprise '{$company->name}' et l'intégralité de ses données associées ont été supprimées définitivement."
+        ]);
+    }
+
+    /**
+     * Supprimer un utilisateur du système (SuperAdmin).
+     */
+    public function deleteUser(Request $request, $id)
+    {
+        $this->authorizeSuperAdmin($request);
+
+        if ($request->user()->id == $id) {
+            return response()->json(['error' => "Vous ne pouvez pas supprimer votre propre compte SuperAdmin."], 400);
+        }
+
+        $userToDelete = User::withoutGlobalScopes()->findOrFail($id);
+        $userName = $userToDelete->name;
+
+        $userToDelete->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => "L'utilisateur '{$userName}' a été supprimé avec succès."
+        ]);
+    }
+
+    /**
+     * Supprimer une boutique / succursale (SuperAdmin).
+     */
+    public function deleteBranch(Request $request, $id)
+    {
+        $this->authorizeSuperAdmin($request);
+
+        $branch = \App\Models\Branch::withoutGlobalScopes()->findOrFail($id);
+        $branchName = $branch->name;
+
+        $branch->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => "La boutique '{$branchName}' a été supprimée avec succès."
+        ]);
+    }
+
+    /**
+     * Supprimer un client (SuperAdmin).
+     */
+    public function deleteCustomer(Request $request, $id)
+    {
+        $this->authorizeSuperAdmin($request);
+
+        $customer = Customer::withoutGlobalScopes()->findOrFail($id);
+        $customerName = $customer->name;
+
+        $customer->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => "Le client '{$customerName}' a été supprimé avec succès."
+        ]);
+    }
+
+    /**
+     * Supprimer un produit (SuperAdmin).
+     */
+    public function deleteProduct(Request $request, $id)
+    {
+        $this->authorizeSuperAdmin($request);
+
+        $product = Product::withoutGlobalScopes()->findOrFail($id);
+        $productName = $product->name;
+
+        $product->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => "Le produit '{$productName}' a été supprimé avec succès."
+        ]);
+    }
+
+    /**
      * Helper pour valider le statut Super Admin du demandeur.
      */
     protected function authorizeSuperAdmin(Request $request)

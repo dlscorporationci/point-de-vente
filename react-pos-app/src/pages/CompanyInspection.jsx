@@ -74,6 +74,27 @@ export const CompanyInspection = ({ companyId, onBack, onExportPdf }) => {
     }
   };
 
+  const handleDeleteEntity = async (type, item) => {
+    const itemName = item.name || item.sale_number || item.transfer_number || item.id;
+    if (!window.confirm(`⚠️ ATTENTION SuperAdmin : Êtes-vous sûr de vouloir supprimer définitivement cet élément "${itemName}" ?`)) {
+      return;
+    }
+    try {
+      let endpoint = '';
+      if (type === 'customers') endpoint = `/v1/admin/customers/${item.id}`;
+      else if (type === 'products') endpoint = `/v1/admin/products/${item.id}`;
+      else if (type === 'users') endpoint = `/v1/admin/users/${item.id}`;
+      else if (type === 'branches') endpoint = `/v1/admin/branches/${item.id}`;
+
+      if (endpoint) {
+        await axios.delete(endpoint);
+        loadSubTabList(activeTab, page, search, filterStatus);
+      }
+    } catch (err) {
+      alert(err.response?.data?.error || err.response?.data?.message || "Erreur lors de la suppression par le SuperAdmin.");
+    }
+  };
+
   useEffect(() => {
     loadOverview();
   }, [companyId, dateFilter]);
@@ -481,6 +502,7 @@ export const CompanyInspection = ({ companyId, onBack, onExportPdf }) => {
                           <th>Email</th>
                           <th style={{ textAlign: 'right' }}>Dette Due</th>
                           <th>Date Inscription</th>
+                          <th style={{ textAlign: 'right' }}>Actions</th>
                         </tr>
                       )}
                       {activeTab === 'suppliers' && (
@@ -499,6 +521,7 @@ export const CompanyInspection = ({ companyId, onBack, onExportPdf }) => {
                           <th style={{ textAlign: 'right' }}>Prix Achat</th>
                           <th style={{ textAlign: 'right' }}>Prix Vente</th>
                           <th style={{ textAlign: 'center' }}>Seuil Alerte</th>
+                          <th style={{ textAlign: 'right' }}>Actions</th>
                         </tr>
                       )}
                       {activeTab === 'purchases' && (
@@ -538,6 +561,7 @@ export const CompanyInspection = ({ companyId, onBack, onExportPdf }) => {
                           <th>Rôle</th>
                           <th>Boutique</th>
                           <th>Dernière Connexion</th>
+                          <th style={{ textAlign: 'right' }}>Actions</th>
                         </tr>
                       )}
                     </thead>
@@ -561,6 +585,11 @@ export const CompanyInspection = ({ companyId, onBack, onExportPdf }) => {
                               <td className="text-muted">{item.email || '-'}</td>
                               <td style={{ textAlign: 'right', fontWeight: 800, color: '#ef4444' }}>{(item.debt || item.balance || 0).toLocaleString('fr-FR')} FCFA</td>
                               <td className="text-muted small">{new Date(item.created_at).toLocaleDateString('fr-FR')}</td>
+                              <td style={{ textAlign: 'right' }}>
+                                <button onClick={() => handleDeleteEntity('customers', item)} className="btn btn-xs btn-outline-danger" title="Supprimer ce client">
+                                  <i className="fa-solid fa-trash"></i> Supprimer
+                                </button>
+                              </td>
                             </>
                           )}
                           {activeTab === 'suppliers' && (
@@ -579,6 +608,11 @@ export const CompanyInspection = ({ companyId, onBack, onExportPdf }) => {
                               <td style={{ textAlign: 'right' }}>{item.cost_price?.toLocaleString('fr-FR')} FCFA</td>
                               <td style={{ textAlign: 'right', fontWeight: 900, color: '#10b981' }}>{item.selling_price?.toLocaleString('fr-FR')} FCFA</td>
                               <td style={{ textAlign: 'center', fontWeight: 800, color: '#f59e0b' }}>{item.alert_quantity || 5}</td>
+                              <td style={{ textAlign: 'right' }}>
+                                <button onClick={() => handleDeleteEntity('products', item)} className="btn btn-xs btn-outline-danger" title="Supprimer ce produit">
+                                  <i className="fa-solid fa-trash"></i> Supprimer
+                                </button>
+                              </td>
                             </>
                           )}
                           {activeTab === 'purchases' && (
@@ -622,6 +656,11 @@ export const CompanyInspection = ({ companyId, onBack, onExportPdf }) => {
                               <td><span className="badge bg-primary uppercase">{item.role?.name || item.role?.slug || 'User'}</span></td>
                               <td>{item.branch?.name || 'Toutes'}</td>
                               <td className="text-muted small">{item.last_login_at ? new Date(item.last_login_at).toLocaleString('fr-FR') : 'Jamais'}</td>
+                              <td style={{ textAlign: 'right' }}>
+                                <button onClick={() => handleDeleteEntity('users', item)} className="btn btn-xs btn-outline-danger" title="Supprimer cet utilisateur">
+                                  <i className="fa-solid fa-trash"></i> Supprimer
+                                </button>
+                              </td>
                             </>
                           )}
                         </tr>

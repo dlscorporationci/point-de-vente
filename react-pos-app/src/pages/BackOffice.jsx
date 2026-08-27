@@ -600,6 +600,36 @@ export const BackOffice = () => {
     }
   };
 
+  const handleDeleteCompany = async (company) => {
+    if (!window.confirm(`⚠️ ATTENTION : Êtes-vous ABSOLUMENT SÛR de vouloir SUPPRIMER définitivement l'entreprise "${company.name}" (Code: ${company.code}) ?\n\nCette action détruira IRRÉVOCABLEMENT toutes ses boutiques, ses utilisateurs, ses ventes et ses stocks !`)) {
+      return;
+    }
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await axios.delete(`/v1/admin/companies/${company.id}`);
+      setSuccess(res.data?.message || `L'entreprise "${company.name}" a été supprimée.`);
+      loadCompanies();
+    } catch (err) {
+      setError(err.response?.data?.error || "Impossible de supprimer l'entreprise.");
+    }
+  };
+
+  const handleDeleteUser = async (u) => {
+    if (!window.confirm(`Êtes-vous sûr de vouloir supprimer définitivement l'utilisateur "${u.name}" (${u.email}) ?`)) {
+      return;
+    }
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await axios.delete(`/v1/admin/users/${u.id}`);
+      setSuccess(res.data?.message || `L'utilisateur "${u.name}" a été supprimé.`);
+      loadUsers();
+    } catch (err) {
+      setError(err.response?.data?.error || "Impossible de supprimer l'utilisateur.");
+    }
+  };
+
   const resetCompanyForm = () => {
     setCompanyName('');
     setCompanyPlan('pro');
@@ -994,9 +1024,12 @@ export const BackOffice = () => {
                             <button onClick={() => openEditCompanyModal(c)} className="btn btn-secondary me-2 btn-sm" style={{ padding: '8px 14px' }}>
                               <i className="fa-solid fa-pen me-1"></i> Gérer
                             </button>
-                            <button onClick={() => toggleCompanyStatus(c)} className={`btn btn-sm ${c.status === 'active' ? 'btn-danger' : 'btn-success'}`} style={{ padding: '8px 14px' }}>
-                              {c.status === 'active' ? 'Suspendre' : 'Activer'}
-                            </button>
+                             <button onClick={() => toggleCompanyStatus(c)} className={`btn btn-sm me-2 ${c.status === 'active' ? 'btn-outline-danger' : 'btn-outline-success'}`} style={{ padding: '8px 14px' }}>
+                               {c.status === 'active' ? 'Suspendre' : 'Activer'}
+                             </button>
+                             <button onClick={() => handleDeleteCompany(c)} className="btn btn-sm btn-danger" style={{ padding: '8px 14px', fontWeight: 700 }} title="Supprimer définitivement cette entreprise">
+                               <i className="fa-solid fa-trash me-1"></i> Supprimer
+                             </button>
                           </td>
                         </tr>
                       );
@@ -1610,9 +1643,14 @@ export const BackOffice = () => {
                             <i className="fa-solid fa-key me-1"></i> Mot de passe
                           </button>
                           {u.id !== user.id && (
-                            <button onClick={() => toggleUserStatus(u)} className={`btn btn-sm ${u.status === 'active' ? 'btn-danger' : 'btn-success'}`}>
-                              {u.status === 'active' ? 'Bloquer' : 'Débloquer'}
-                            </button>
+                            <>
+                              <button onClick={() => toggleUserStatus(u)} className={`btn btn-sm me-2 ${u.status === 'active' ? 'btn-outline-warning' : 'btn-outline-success'}`}>
+                                {u.status === 'active' ? 'Bloquer' : 'Débloquer'}
+                              </button>
+                              <button onClick={() => handleDeleteUser(u)} className="btn btn-sm btn-danger" style={{ fontWeight: 700 }} title="Supprimer cet utilisateur">
+                                <i className="fa-solid fa-trash me-1"></i> Supprimer
+                              </button>
+                            </>
                           )}
                         </td>
                       </tr>
