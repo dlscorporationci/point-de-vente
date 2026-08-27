@@ -639,7 +639,7 @@ class AuthController extends Controller
                 // Déclenchement de l'e-mail de bienvenue et de vérification centralisé
                 try {
                     $emailService = new \App\Services\EmailService();
-                    $emailService->sendWelcomeEmail($user, $company);
+                    $emailService->sendWelcomeEmail($user, $company, $randomPin);
                     $emailService->sendVerificationEmail($user, $verifyTokenPlain);
                 } catch (\Throwable $e) {
                     \Illuminate\Support\Facades\Log::warning("Échec envoi mail de bienvenue/vérification : " . $e->getMessage());

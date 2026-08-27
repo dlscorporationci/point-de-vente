@@ -15,7 +15,7 @@ class EmailService
     /**
      * E-mail de bienvenue après inscription.
      */
-    public function sendWelcomeEmail(User $user, ?Company $company = null): EmailLog
+    public function sendWelcomeEmail(User $user, ?Company $company = null, ?string $plainPin = null): EmailLog
     {
         $companyData = $company ? [
             'name'              => $company->name,
@@ -25,6 +25,12 @@ class EmailService
 
         $frontendUrl = env('FRONTEND_URL') ?: (config('app.frontend_url') ?: (config('app.url') ?: 'https://pos.dlscorporation.ci'));
 
+        // Ne transmettre que le PIN en clair (ex: 4 chiffres). Si pin_code est un hash Bcrypt ($2y$), ignorer le hash.
+        $pinDisplay = $plainPin;
+        if (!$pinDisplay && !empty($user->pin_code) && !str_starts_with($user->pin_code, '$2y$')) {
+            $pinDisplay = $user->pin_code;
+        }
+
         return $this->dispatchEmail(
             recipient: $user->email,
             subject: 'Bienvenue sur ApexPOS ! 🎉',
@@ -33,7 +39,7 @@ class EmailService
                 'user'     => [
                     'name'     => $user->name,
                     'email'    => $user->email,
-                    'pin_code' => $user->pin_code,
+                    'pin_code' => $pinDisplay,
                 ],
                 'company'  => $companyData,
                 'loginUrl' => $frontendUrl,
