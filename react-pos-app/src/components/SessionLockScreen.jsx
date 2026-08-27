@@ -14,6 +14,7 @@ import axios from 'axios';
  */
 export const SessionLockScreen = ({ user, onUnlock, onSwitchAccount }) => {
   const [pin, setPin]             = useState('');
+  const [showPin, setShowPin]     = useState(false);
   const [attempts, setAttempts]   = useState(0);
   const [lockoutTime, setLockoutTime] = useState(0);
   const [error, setError]         = useState(null);
@@ -188,35 +189,58 @@ export const SessionLockScreen = ({ user, onUnlock, onSwitchAccount }) => {
               }}>
                 Saisissez votre code PIN
               </label>
-              {/* Phase 9 — inputMode="numeric" + pattern="[0-9]*" pour le clavier numérique mobile */}
-              <input
-                type="password"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                autoComplete="current-password"
-                maxLength={8}
-                value={pin}
-                onChange={(e) => {
-                  // Autoriser uniquement les chiffres
-                  const v = e.target.value.replace(/\D/g, '');
-                  setPin(v);
-                }}
-                placeholder="• • • •"
-                autoFocus
-                disabled={loading}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  backgroundColor: '#0f172a',
-                  border: '1px solid #334155',
-                  borderRadius: '8px',
-                  color: '#ffffff',
-                  fontSize: '20px',
-                  textAlign: 'center',
-                  letterSpacing: '8px',
-                  outline: 'none'
-                }}
-              />
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <input
+                  type={showPin ? 'text' : 'password'}
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  autoComplete="current-password"
+                  maxLength={8}
+                  value={pin}
+                  onChange={(e) => {
+                    // Autoriser uniquement les chiffres
+                    const v = e.target.value.replace(/\D/g, '');
+                    setPin(v);
+                  }}
+                  placeholder="• • • •"
+                  autoFocus
+                  disabled={loading}
+                  style={{
+                    width: '100%',
+                    padding: '12px 48px 12px 16px',
+                    backgroundColor: '#0f172a',
+                    border: '1px solid #334155',
+                    borderRadius: '8px',
+                    color: '#ffffff',
+                    fontSize: '20px',
+                    textAlign: 'center',
+                    letterSpacing: showPin ? '4px' : '8px',
+                    outline: 'none'
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPin(!showPin)}
+                  title={showPin ? "Masquer le PIN" : "Afficher le PIN"}
+                  tabIndex={-1}
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    background: 'none',
+                    border: 'none',
+                    color: '#94a3b8',
+                    cursor: 'pointer',
+                    padding: '6px',
+                    fontSize: '18px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 2,
+                  }}
+                >
+                  <i className={showPin ? "fa-solid fa-eye-slash" : "fa-solid fa-eye"}></i>
+                </button>
+              </div>
             </div>
 
             <button
