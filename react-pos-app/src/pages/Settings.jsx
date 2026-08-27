@@ -1327,7 +1327,7 @@ export const Settings = () => {
                   <form onSubmit={handleUpdateProfile} style={{ marginTop: '16px' }}>
                     <div className="form-group mb-3">
                       <label className="form-label" style={{ fontWeight: 600 }}>Mot de passe actuel</label>
-                      <PasswordInput value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="Indispensable pour valider le changement" />
+                      <PasswordInput value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="Indispensable pour valider le changement" autoComplete="new-password" />
                     </div>
                     <div className="row">
                       <div className="col-md-6 form-group mb-3">
