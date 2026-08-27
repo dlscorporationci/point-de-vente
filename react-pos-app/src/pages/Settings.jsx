@@ -1274,7 +1274,7 @@ export const Settings = () => {
                       <small className="text-muted">Utilisé pour la connexion rapide et le déverrouillage de caisse sur les terminaux POS.</small>
                     </div>
                     <div>
-                      {user?.has_pin ? (
+                      {(user?.has_pin || user?.hasPin || user?.pin_code || user?.is_pin_auth) ? (
                         <span className="badge bg-success" style={{ padding: '6px 10px', fontSize: '12px', borderRadius: '6px' }}>
                           <i className="fa-solid fa-shield-halved me-1"></i> PIN Actif (Configuré)
                         </span>
