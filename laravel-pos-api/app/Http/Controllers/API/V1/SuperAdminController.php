@@ -1896,7 +1896,24 @@ class SuperAdminController extends Controller
             $company->delete();
         });
 
-        $this->logAuthEvent($request->user(), 'superadmin_delete_company', $request);
+        try {
+            AuditLog::create([
+                'company_id'     => $id,
+                'branch_id'      => null,
+                'user_id'        => $request->user() ? $request->user()->id : null,
+                'user_role'      => 'super-admin',
+                'auditable_type' => Company::class,
+                'auditable_id'   => $id,
+                'action'         => 'SUPERADMIN_DELETE_COMPANY',
+                'module'         => 'SuperAdmin',
+                'description'    => "SuperAdmin a supprimé définitivement l'entreprise [{$company->name}] (ID: {$id})",
+                'ip_address'     => $request->ip(),
+                'device'         => $request->userAgent(),
+                'result'         => 'success',
+            ]);
+        } catch (\Throwable $e) {
+            // Ignorer silencieusement
+        }
 
         return response()->json([
             'success' => true,
