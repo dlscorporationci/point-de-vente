@@ -45,6 +45,50 @@ export const Login = ({ setActiveTab }) => {
     }
   }, [user, setActiveTab]);
 
+  // Extraction automatique du jeton et e-mail depuis l'URL de réinitialisation (ex: /reset-password?token=...&email=...)
+  // Et extraction du jeton Google OAuth après redirection du backend
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const urlToken = params.get('token');
+      const urlEmail = params.get('email');
+      
+      const googleToken = params.get('google_token');
+      const googleUserBase64 = params.get('google_user');
+      const googleError = params.get('google_error');
+
+      // 1. Google OAuth Callback
+      if (googleError) {
+        setError(googleError);
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+      else if (googleToken && googleUserBase64) {
+        try {
+          const userObj = JSON.parse(atob(googleUserBase64));
+          login(userObj, googleToken);
+          setSuccessMsg('Connexion Google réussie !');
+          if (setActiveTab) {
+            const isSuperAdmin = (userObj.role === 'super-admin' || userObj.role?.slug === 'super-admin');
+            const needsBranch = !isSuperAdmin && !userObj.active_branch && (!userObj.branch || (userObj.assigned_branches && userObj.assigned_branches.length > 1));
+            setActiveTab(needsBranch ? 'select-branch' : (isSuperAdmin ? 'backoffice' : 'dashboard'));
+          }
+          window.history.replaceState({}, document.title, window.location.pathname);
+        } catch (e) {
+          console.error("Erreur de décodage des données utilisateur Google", e);
+          setError("Échec de la connexion via Google.");
+        }
+      }
+      // 2. Réinitialisation de mot de passe
+      else if (urlToken || window.location.pathname.includes('reset-password')) {
+        setLoginMode('reset');
+        setResetCode(urlToken || '');
+        setForgotEmail(urlEmail || '');
+        // Nettoyer l'URL pour éviter de revenir sur l'écran de réinitialisation lors du logout ultérieur
+        window.history.replaceState({}, document.title, '/');
+      }
+    }
+  }, [login, setActiveTab]);
+
   // Formatage automatique du Code Entreprise en majuscules sans espaces
   const handleCompanyCodeChange = (e) => {
     const val = e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '');
@@ -117,55 +161,95 @@ export const Login = ({ setActiveTab }) => {
     }
   };
 
-  // Soumission demande oubli mot de passe
-  const handleForgotSubmit = async (e) => {
-    e.preventDefault();
+  // Soumission connexion Google OAuth
+  const handleGoogleLogin = async () => {
     setLoading(true);
     setError(null);
-    setSuccessMsg(null);
     try {
-      const res = await axios.post('/v1/auth/forgot-password', { email: forgotEmail });
-      setSuccessMsg(res.data.message);
-      setResetCode('');
-      setTimeout(() => setLoginMode('reset'), 2500);
+      const response = await axios.get(`/v1/auth/google/redirect?json=true&_t=${new Date().getTime()}`);
+      if (response.data?.url) {
+        window.location.href = response.data.url;
+      } else {
+        setError("Impossible d'initialiser l'authentification Google.");
+      }
     } catch (err) {
-      setError(err.response?.data?.error || "Erreur lors de la demande.");
+      setError(err.response?.data?.error || err.response?.data?.message || "Erreur de connexion Google.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Soumission réinitialisation mot de passe
+  // Soumission demande oubli mot de passe
+  const handleForgotSubmit = async (e) => {
+    e.preventDefault();
+    if (!forgotEmail || !forgotEmail.trim()) {
+      setError("Veuillez saisir votre adresse e-mail.");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    setSuccessMsg(null);
+    try {
+      const res = await axios.post('/v1/auth/forgot-password', { email: forgotEmail.trim() });
+      setSuccessMsg(res.data.message || "Si un compte correspondant existe, un email de réinitialisation a été envoyé.");
+    } catch (err) {
+      setError(err.response?.data?.error || err.response?.data?.message || "Erreur lors de la demande de réinitialisation.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Soumission réinitialisation mot de passe avec le jeton sécurisé
   const handleResetSubmit = async (e) => {
     e.preventDefault();
+    if (!forgotEmail || !forgotEmail.trim()) {
+      setError("Veuillez renseigner votre adresse e-mail.");
+      return;
+    }
+    if (!resetCode || !resetCode.trim()) {
+      setError("Jeton de réinitialisation manquant. Veuillez recliquer sur le lien présent dans l'e-mail.");
+      return;
+    }
+    if (newPassword.length < 8) {
+      setError("Le mot de passe est trop court. Il doit contenir au moins 8 caractères.");
+      return;
+    }
+    if (newPassword.length > 100) {
+      setError("Le mot de passe ne doit pas dépasser 100 caractères.");
+      return;
+    }
+    if (!/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+      setError("Le mot de passe est trop faible. Il doit inclure au moins une majuscule, une minuscule et un chiffre (ex: MonMdp2026).");
+      return;
+    }
+    if (newPassword !== newPasswordConfirm) {
+      setError("La confirmation du mot de passe ne correspond pas.");
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setSuccessMsg(null);
 
-    if (newPassword !== newPasswordConfirm) {
-      setError("Les mots de passe ne correspondent pas.");
-      setLoading(false);
-      return;
-    }
-
     try {
       const res = await axios.post('/v1/auth/reset-password', {
-        email: forgotEmail,
-        token: resetCode,
+        email: forgotEmail.trim(),
+        token: resetCode.trim(),
         password: newPassword,
         password_confirmation: newPasswordConfirm
       });
-      setSuccessMsg(res.data.message);
+      setSuccessMsg(res.data.message || "Votre mot de passe a été modifié avec succès !");
       setTimeout(() => {
         setLoginMode('standard');
-        setEmail(forgotEmail);
-        setForgotEmail('');
+        setEmail(forgotEmail ? forgotEmail.trim() : '');
+        setPassword('');
         setResetCode('');
         setNewPassword('');
         setNewPasswordConfirm('');
+        window.history.replaceState({}, document.title, '/');
       }, 3000);
     } catch (err) {
-      setError(err.response?.data?.error || "Code incorrect ou expiré.");
+      setError(err.response?.data?.error || err.response?.data?.message || "Lien ou jeton de réinitialisation invalide ou expiré.");
     } finally {
       setLoading(false);
     }
@@ -286,7 +370,10 @@ export const Login = ({ setActiveTab }) => {
               {pinUpdateError && <div className="error-banner mb-2" style={{ fontSize: '12px' }}>{pinUpdateError}</div>}
               <div className="d-flex gap-2">
                 <input 
-                  type="password" 
+                  type="password"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  autoComplete="new-password"
                   className="form-control text-center" 
                   placeholder="Nouveau PIN (4 chiffres)"
                   value={newSelfPin}
@@ -322,7 +409,7 @@ export const Login = ({ setActiveTab }) => {
                   <input 
                     type="email" 
                     className="form-control"
-                    value={email}
+                    value={email ?? ''}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="nom@entreprise.com"
                     required
@@ -339,6 +426,29 @@ export const Login = ({ setActiveTab }) => {
                 </div>
                 <button type="submit" className="btn btn-primary btn-block btn-lg" disabled={loading}>
                   {loading ? 'Connexion en cours...' : 'Se Connecter'}
+                </button>
+
+                <div style={{ margin: '16px 0', textAlign: 'center', position: 'relative' }}>
+                  <hr style={{ borderColor: 'var(--border-color)', margin: 0 }} />
+                  <span style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#fff', padding: '0 8px', fontSize: '12px', color: 'var(--text-muted)' }}>
+                    OU
+                  </span>
+                </div>
+
+                <button 
+                  type="button" 
+                  onClick={handleGoogleLogin} 
+                  className="btn btn-outline-secondary btn-block btn-lg" 
+                  disabled={loading}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 600 }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 18 18">
+                    <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.259h2.908c1.702-1.567 2.684-3.874 2.684-6.617z"/>
+                    <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z"/>
+                    <path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/>
+                    <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
+                  </svg>
+                  Continuer avec Google
                 </button>
                 
                 <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -404,6 +514,9 @@ export const Login = ({ setActiveTab }) => {
                     onChange={(e) => setPinCode(e.target.value.replace(/\D/g, ''))}
                     placeholder="Entrez votre code PIN secret"
                     maxLength="8"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    autoComplete="one-time-code"
                     required
                     className="form-control text-center"
                     style={{ fontSize: '18px', letterSpacing: '4px' }}
@@ -428,65 +541,82 @@ export const Login = ({ setActiveTab }) => {
             {loginMode === 'forgot' && (
               <form onSubmit={handleForgotSubmit} className="standard-form text-left">
                 <p className="section-instruction mb-3">
-                  Saisissez l'adresse e-mail associée à votre compte pour obtenir un code de réinitialisation.
+                  Saisissez l'adresse e-mail associée à votre compte ApexPOS. Vous recevrez un e-mail contenant un lien sécurisé de réinitialisation.
                 </p>
                 <div className="form-group mb-3">
-                  <label className="form-label" style={{ fontWeight: 700 }}>Adresse E-mail</label>
+                  <label className="form-label" style={{ fontWeight: 700 }}>Adresse E-mail *</label>
                   <input 
                     type="email" 
                     className="form-control"
                     value={forgotEmail}
                     onChange={(e) => setForgotEmail(e.target.value)}
                     required
-                    placeholder="admin@entreprise.com"
+                    placeholder="nom@entreprise.com"
                   />
                 </div>
-                <button type="submit" className="btn btn-primary btn-block" disabled={loading}>
-                  {loading ? 'Envoi...' : 'Envoyer le code de réinitialisation'}
+                <button type="submit" className="btn btn-primary btn-block btn-lg" disabled={loading}>
+                  {loading ? 'Envoi du lien...' : 'Envoyer le lien de réinitialisation'}
                 </button>
                 <div className="mt-3 text-center">
-                  <button type="button" onClick={() => setLoginMode('pin')} className="btn-link-login">
-                    <i className="fa-solid fa-arrow-left me-1"></i> Annuler et revenir
+                  <button type="button" onClick={() => setLoginMode('standard')} className="btn-link-login">
+                    <i className="fa-solid fa-arrow-left me-1"></i> Revenir à la connexion
                   </button>
                 </div>
               </form>
             )}
 
-            {/* D. Mode Réinitialisation */}
+            {/* D. Mode Réinitialisation (Lien ou Jeton Sécurisé) */}
             {loginMode === 'reset' && (
               <form onSubmit={handleResetSubmit} className="standard-form text-left">
                 <div className="form-group mb-2">
-                  <label className="form-label">Code secret récepteur (6 chiffres)</label>
+                  <label className="form-label" style={{ fontWeight: 700 }}>Adresse E-mail *</label>
                   <input 
-                    type="text" 
-                    className="form-control text-center"
-                    value={resetCode}
-                    onChange={(e) => setResetCode(e.target.value)}
+                    type="email" 
+                    className="form-control"
+                    value={forgotEmail ?? ''}
+                    onChange={(e) => setForgotEmail(e.target.value)}
                     required
-                    style={{ letterSpacing: '4px', fontSize: '18px', fontWeight: 800 }}
+                    placeholder="nom@entreprise.com"
                   />
                 </div>
                 <div className="form-group mb-2">
-                  <label className="form-label">Nouveau mot de passe</label>
+                  <label className="form-label" style={{ fontWeight: 700 }}>Jeton de réinitialisation *</label>
+                  <input 
+                    type="text"
+                    className="form-control"
+                    value={resetCode ?? ''}
+                    onChange={(e) => setResetCode(e.target.value)}
+                    required
+                    placeholder="Collez le jeton ou cliquez sur le lien reçu"
+                    style={{ fontSize: '13px', fontFamily: 'monospace' }}
+                  />
+                </div>
+                <div className="form-group mb-2">
+                  <label className="form-label" style={{ fontWeight: 700 }}>Nouveau mot de passe *</label>
                   <PasswordInput 
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Min. 8 caractères"
+                    placeholder="Min. 8 caractères (A-Z, a-z, 0-9)"
                     required
                   />
                 </div>
                 <div className="form-group mb-3">
-                  <label className="form-label">Confirmer le mot de passe</label>
+                  <label className="form-label" style={{ fontWeight: 700 }}>Confirmer le mot de passe *</label>
                   <PasswordInput 
                     value={newPasswordConfirm}
                     onChange={(e) => setNewPasswordConfirm(e.target.value)}
-                    placeholder="Confirmer"
+                    placeholder="Confirmer le mot de passe"
                     required
                   />
                 </div>
-                <button type="submit" className="btn btn-primary btn-block" disabled={loading}>
-                  Enregistrer le nouveau mot de passe
+                <button type="submit" className="btn btn-primary btn-block btn-lg" disabled={loading}>
+                  {loading ? 'Validation en cours...' : 'Enregistrer le nouveau mot de passe'}
                 </button>
+                <div className="mt-3 text-center">
+                  <button type="button" onClick={() => setLoginMode('standard')} className="btn-link-login">
+                    <i className="fa-solid fa-arrow-left me-1"></i> Revenir à la connexion
+                  </button>
+                </div>
               </form>
             )}
 

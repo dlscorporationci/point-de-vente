@@ -1,8 +1,9 @@
+import { db } from './db';
+
 /**
  * Service de stockage et de gestion hors-ligne (Offline Storage Manager)
- * Combine localStorage et le moteur IndexedDB/SQLite localDatabase.
+ * Unifié sur le moteur Dexie (IndexedDB) avec fallback localStorage pour compatibilité.
  */
-
 
 const QUEUE_KEY = 'apexpos_offline_sales_queue';
 const PRODUCTS_KEY = 'apexpos_cached_products';
@@ -14,8 +15,6 @@ export const offlineStorage = {
   // 1. GESTION DU CATALOGUE ET DES CLIENTS EN CACHE
   // ----------------------------------------------------
   saveProducts(products) {
-    // Déprécié : les produits sont désormais gérés exclusivement par Dexie (db.js)
-    // Conservé pour compatibilité lecture seule
     try {
       localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products || []));
     } catch (e) {
@@ -33,7 +32,6 @@ export const offlineStorage = {
   },
 
   saveCategories(categories) {
-    // Déprécié : les catégories sont désormais gérées par Dexie
     try {
       localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories || []));
     } catch (e) {
@@ -51,7 +49,6 @@ export const offlineStorage = {
   },
 
   saveCustomers(customers) {
-    // Déprécié : les clients sont désormais gérés par Dexie
     try {
       localStorage.setItem(CUSTOMERS_KEY, JSON.stringify(customers || []));
     } catch (e) {
@@ -69,7 +66,7 @@ export const offlineStorage = {
   },
 
   // ----------------------------------------------------
-  // 2. GESTION DE LA FILE D'ATTENTE DES VENTES HORS-LIGNE
+  // 2. GESTION DE LA FILE D'ATTENTE DES VENTES HORS-LIGNE (DEXIE + FALLBACK)
   // ----------------------------------------------------
   getPendingSales() {
     try {
@@ -83,7 +80,11 @@ export const offlineStorage = {
   enqueueSale(salePayload) {
     try {
       const queue = this.getPendingSales();
-      const localId = `OFFLINE-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      const uuid = (typeof crypto !== 'undefined' && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : `OFFLINE-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+      const localId = uuid;
+      
       const formattedSale = {
         ...salePayload,
         _local_id: localId,
@@ -92,6 +93,24 @@ export const offlineStorage = {
       };
       queue.push(formattedSale);
       localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
+
+      // Enregistrer également dans Dexie sync_queue pour le moteur SyncService
+      const companyId = parseInt(localStorage.getItem('company-id') || salePayload.company_id || 1);
+      const branchId = parseInt(localStorage.getItem('branch-id') || salePayload.branch_id || 1);
+      const user = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')) : null;
+
+      db.sync_queue.put({
+        uuid: uuid,
+        company_id: companyId,
+        branch_id: branchId,
+        user_id: user ? user.id : 1,
+        entity_type: 'sale',
+        entity_id: null,
+        action: 'create',
+        payload: salePayload,
+        status: 'pending',
+        created_at: new Date().toISOString()
+      }).catch(err => console.warn('Erreur insertion Dexie sync_queue:', err));
 
       return formattedSale;
     } catch (e) {
@@ -104,6 +123,8 @@ export const offlineStorage = {
     try {
       const queue = this.getPendingSales().filter(item => item._local_id !== localId);
       localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
+
+      db.sync_queue.where('uuid').equals(localId).delete().catch(() => {});
     } catch (e) {
       console.error('Erreur suppression vente synchronisée:', e);
     }
@@ -111,5 +132,7 @@ export const offlineStorage = {
 
   clearQueue() {
     localStorage.removeItem(QUEUE_KEY);
+    db.sync_queue.where('entity_type').equals('sale').delete().catch(() => {});
   }
 };
+

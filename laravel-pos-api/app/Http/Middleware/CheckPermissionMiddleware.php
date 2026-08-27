@@ -18,13 +18,21 @@ class CheckPermissionMiddleware
 
     /**
      * Handle an incoming request.
-     * Usage: ->middleware('permission:sales.discount') or ->middleware('permission:stock.adjust')
      */
     public function handle(Request $request, Closure $next, string $permissionSlug): Response
     {
         $user = $request->user('sanctum') ?: auth('sanctum')->user();
+        $reqId = $request->attributes->get('request_id') ?? $request->header('X-Request-ID') ?? (app()->bound('request_id') ? app('request_id') : null);
+
         if (!$user) {
-            return response()->json(['error' => 'Accès non authentifié.'], 401);
+            $msg = 'Accès non authentifié.';
+            return response()->json([
+                'status'     => 'error',
+                'code'       => 'UNAUTHENTICATED',
+                'message'    => $msg,
+                'error'      => $msg,
+                'request_id' => $reqId,
+            ], 401);
         }
 
         if ($this->authService->isSuperAdmin($user)) {
@@ -32,9 +40,14 @@ class CheckPermissionMiddleware
         }
 
         if (!$this->authService->hasPermission($user, $permissionSlug)) {
+            $msg = "Accès refusé. La permission granulaire '{$permissionSlug}' est obligatoire pour effectuer cette action.";
             return response()->json([
-                'error' => "Accès refusé. La permission granulaire '{$permissionSlug}' est obligatoire pour effectuer cette action.",
-                'required_permission' => $permissionSlug
+                'status'              => 'error',
+                'code'                => 'FORBIDDEN',
+                'message'             => $msg,
+                'error'               => $msg,
+                'required_permission' => $permissionSlug,
+                'request_id'          => $reqId,
             ], 403);
         }
 

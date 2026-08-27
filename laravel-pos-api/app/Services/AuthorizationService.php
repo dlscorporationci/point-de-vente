@@ -15,22 +15,31 @@ class AuthorizationService
     protected array $moduleAliases = [
         'stocks'        => ['catalog'],
         'catalog'       => ['stocks'],
-        'sales'         => ['pos'],
+        'sale'          => ['sales', 'pos'],
+        'sales'         => ['pos', 'sale'],
         'cash-sessions' => ['pos'],
-        'pos'           => ['sales', 'cash-sessions'],
+        'pos'           => ['sales', 'sale', 'cash-sessions'],
         'suppliers'     => ['purchases'],
         'purchases'     => ['suppliers'],
-        'customers'     => ['pos', 'sales'],
+        'customers'     => ['pos', 'sales', 'sale'],
     ];
 
     /**
-     * Verifies if a user is super-admin
+     * Verifies if a user is super-admin.
+     *
+     * SOURCE DE VÉRITÉ UNIQUE (RISK-2.0-04) :
+     * L'appartenance au rôle super-admin repose UNIQUEMENT sur le slug RBAC
+     * et le flag `is_superadmin`. Aucune vérification d'adresse email en dur
+     * n'est tolérée afin d'éviter toute incohérence si les données changent.
+     *
+     * Tout autre composant (TenantScopeMiddleware, contrôleurs, etc.)
+     * DOIT appeler cette méthode plutôt que dupliquer la logique.
      */
     public function isSuperAdmin(?User $user): bool
     {
         if (!$user) return false;
-        return $user->email === 'superadmin@dls.com' ||
-            ($user->role && in_array($user->role->slug, ['super-admin', 'superadmin'])) ||
+        $slug = is_object($user->role) ? ($user->role->slug ?? '') : '';
+        return in_array($slug, ['super-admin', 'superadmin']) ||
             !empty($user->is_superadmin);
     }
 
@@ -43,7 +52,8 @@ class AuthorizationService
         if ($this->isSuperAdmin($user)) return true;
 
         // Admin role has full module access by default
-        $roleSlug = $user->role ? ($user->role->slug ?? $user->role->name ?? '') : '';
+        $role = $user->role ?: ($user->role_id ? \App\Models\Role::withoutGlobalScopes()->find($user->role_id) : null);
+        $roleSlug = $role ? ($role->slug ?? $role->name ?? '') : '';
         if ($roleSlug === 'admin' || $roleSlug === 'Administrateur Entreprise') {
             return true;
         }
@@ -93,7 +103,7 @@ class AuthorizationService
         if ($branchIdInt <= 0) return true;
 
         // Verify branch belongs to the user's company
-        $branch = Branch::find($branchIdInt);
+        $branch = Branch::withoutGlobalScopes()->find($branchIdInt);
         if (!$branch || ($user->company_id && (int)$branch->company_id !== (int)$user->company_id)) {
             return false;
         }

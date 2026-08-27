@@ -30,17 +30,17 @@ class TenantScopeMiddleware
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user('sanctum') ?: auth('sanctum')->user();
-        $userRoleSlug = is_object($user?->role) ? ($user->role->slug ?? '') : (string)($user?->role ?? '');
-        $userRoleName = is_object($user?->role) ? ($user->role->name ?? '') : (string)($user?->role ?? '');
 
-        $isSuperAdmin = $user && (
-            in_array($userRoleSlug, ['super-admin', 'superadmin']) ||
-            in_array($userRoleName, ['super-admin', 'Super Admin', 'Super-Admin']) ||
-            $user->email === 'superadmin@dls.com' ||
-            !empty($user->is_superadmin)
-        );
+        // SOURCE DE VÉRITÉ UNIQUE (RISK-2.0-04) : délégation à AuthorizationService.
+        // Aucune logique RBAC en dur dans ce middleware.
+        $authService  = app(\App\Services\AuthorizationService::class);
+        $isSuperAdmin = $authService->isSuperAdmin($user);
 
-        $isPublicAuth = $request->is('*/auth/*') || $request->is('*/maintenance/status') || $request->is('*/tenant-test');
+        $isPublicAuth = $request->is('*/auth/*') || $request->is('*/maintenance/status') || $request->is('*/tenant-test') || $request->is('*/health') || $request->is('*/ready');
+
+        if ($request->is('*/health') || $request->is('*/ready')) {
+            return $next($request);
+        }
 
         // Vérification de sécurité pour le mode de maintenance applicatif
         if (!$request->is('*/maintenance*') && !$isPublicAuth && !$isSuperAdmin) {
@@ -171,8 +171,9 @@ class TenantScopeMiddleware
         }
 
         if ($branch) {
+            // SOURCE DE VÉRITÉ UNIQUE (RISK-2.0-04) : super-admin via AuthorizationService uniquement.
             $authRoleSlug   = is_object($authUser?->role) ? ($authUser->role->slug ?? '') : (string)($authUser?->role ?? '');
-            $isAdminOrSuper = $authUser && (in_array($authRoleSlug, ['super-admin', 'admin']) || $authUser->email === 'superadmin@dls.com');
+            $isAdminOrSuper = $authUser && ($authService->isSuperAdmin($authUser) || in_array($authRoleSlug, ['admin']));
             $isWriteOperation = in_array(strtoupper($request->method()), ['POST', 'PUT', 'PATCH', 'DELETE']);
 
             if ($isWriteOperation && !$isAdminOrSuper) {

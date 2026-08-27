@@ -14,12 +14,19 @@ use App\Traits\Auditable;
 use Laravel\Sanctum\HasApiTokens;
 use App\Traits\BelongsToTenant;
 
-#[Fillable(['company_id', 'branch_id', 'access_zone_id', 'role_id', 'name', 'email', 'password', 'pin_code', 'status'])]
+#[Fillable(['company_id', 'branch_id', 'access_zone_id', 'role_id', 'name', 'email', 'password', 'pin_code', 'status', 'google_id', 'google_email', 'google_avatar', 'google_verified_at'])]
 #[Hidden(['password', 'remember_token', 'pin_code'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, HasApiTokens, BelongsToTenant, Auditable;
+
+    protected $appends = ['has_pin'];
+
+    public function getHasPinAttribute(): bool
+    {
+        return !empty($this->attributes['pin_code']);
+    }
 
     /**
      * Get the attributes that should be cast.

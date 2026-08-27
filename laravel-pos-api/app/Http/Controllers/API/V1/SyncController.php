@@ -72,11 +72,14 @@ class SyncController extends Controller
             $authService = app(\App\Services\AuthorizationService::class);
             if (!$authService->canAccessModule($user, $entityType) || !$authService->canAccessBranch($user, $branchId)) {
                 DB::table('sync_idempotency')->insert([
-                    'uuid'       => $uuid,
-                    'company_id' => $companyId,
-                    'status'     => 'authorization_rejected',
-                    'created_at' => now(),
-                    'updated_at' => now(),
+                    'uuid'          => $uuid,
+                    'company_id'    => $companyId,
+                    'branch_id'     => $branchId,
+                    'user_id'       => $user->id,
+                    'entity_type'   => $entityType,
+                    'response_json' => json_encode(['status' => 'authorization_rejected']),
+                    'created_at'    => now(),
+                    'updated_at'    => now(),
                 ]);
 
                 \App\Services\AccessControlLogger::log('sync.authorization_rejected', $user, null, [
@@ -94,7 +97,7 @@ class SyncController extends Controller
             }
 
             try {
-                DB::transaction(function () use ($uuid, $entityType, $action, $payload, $companyId, $branchId, $user, &$syncedUuids, &$conflicts) {
+                DB::transaction(function () use ($op, $uuid, $entityType, $action, $payload, $companyId, $branchId, $user, &$syncedUuids, &$conflicts) {
                     
                     // --- VENTES HORS-LIGNE ---
                     if ($entityType === 'sale' && $action === 'create') {
@@ -140,6 +143,23 @@ class SyncController extends Controller
                             }
                         }
 
+                        // Calcul des totaux de vente
+                        $subtotal = 0;
+                        $itemDiscounts = 0;
+                        $globalDiscount = floatval($payload['global_discount'] ?? 0);
+
+                        foreach ($items as $it) {
+                            $q = floatval($it['quantity']);
+                            $p = floatval($it['selling_price']);
+                            $d = floatval($it['discount'] ?? 0);
+                            $subtotal += ($q * $p);
+                            $itemDiscounts += $d;
+                        }
+
+                        $netSubtotal = max(0, $subtotal - ($itemDiscounts + $globalDiscount));
+                        $tax = round($netSubtotal * 0.18, 2);
+                        $total = round($netSubtotal + $tax, 2);
+
                         // Vérifier la limite de crédit si vente à crédit
                         $customerId = $payload['customer_id'] ?? null;
                         $paymentMethod = $payload['payment_method'] ?? 'cash';
@@ -164,24 +184,9 @@ class SyncController extends Controller
                             }
                         }
 
-                        // Créer la vente
-                        $subtotal = 0;
-                        $itemDiscounts = 0;
-                        $globalDiscount = floatval($payload['global_discount'] ?? 0);
-
-                        foreach ($items as $it) {
-                            $q = floatval($it['quantity']);
-                            $p = floatval($it['selling_price']);
-                            $d = floatval($it['discount'] ?? 0);
-                            $subtotal += ($q * $p);
-                            $itemDiscounts += $d;
-                        }
-
-                        $netSubtotal = max(0, $subtotal - ($itemDiscounts + $globalDiscount));
-                        $tax = round($netSubtotal * 0.18, 2);
-                        $total = round($netSubtotal + $tax, 2);
-
-                        $saleNumber = 'VTE-' . strtoupper(substr(md5($uuid), 0, 8));
+                        $saleNumber = !empty($payload['sale_number'])
+                            ? $payload['sale_number']
+                            : ('VTE-' . strtoupper(substr(md5($uuid), 0, 8)));
 
                         $sale = Sale::create([
                             'company_id' => $companyId,
@@ -214,6 +219,7 @@ class SyncController extends Controller
                                 'quantity' => $q,
                                 'selling_price' => $p,
                                 'discount' => $d,
+                                'tax' => floatval($it['tax'] ?? 0),
                                 'total' => $lTotal,
                             ]);
 
@@ -326,6 +332,32 @@ class SyncController extends Controller
                         }
                     }
 
+                    // --- MODIFICATIONS DE PRODUIT HORS-LIGNE (AVEC RESOLUTION DE CONFLIT) ---
+                    else if ($entityType === 'product') {
+                        $pId = $payload['id'] ?? $payload['product_id'] ?? null;
+                        $product = Product::withoutGlobalScope('tenant')->where('id', $pId)->where('company_id', $companyId)->lockForUpdate()->first();
+
+                        if ($product) {
+                            $clientTimeStr = $op['created_at'] ?? $payload['updated_at'] ?? null;
+                            $clientTime = $clientTimeStr ? \Carbon\Carbon::parse($clientTimeStr) : null;
+                            $serverTime = $product->updated_at;
+
+                            // Si le serveur a été modifié APRES l'action hors-ligne du client -> CONFLIT
+                            if ($clientTime && $serverTime && $serverTime->gt($clientTime->copy()->addSeconds(1))) {
+                                throw new \Exception("CONFLIT_PRIX: Produit \"{$product->name}\" modifié plus récemment sur le serveur (" . floatval($product->selling_price) . " FCFA le {$serverTime->toDateTimeString()}). Modification hors-ligne rejetée.");
+                            }
+
+                            $updateData = [];
+                            if (isset($payload['selling_price'])) $updateData['selling_price'] = $payload['selling_price'];
+                            if (isset($payload['name'])) $updateData['name'] = $payload['name'];
+                            if (isset($payload['purchase_price'])) $updateData['purchase_price'] = $payload['purchase_price'];
+
+                            if (!empty($updateData)) {
+                                $product->update($updateData);
+                            }
+                        }
+                    }
+
                     // 2. Enregistrer la clé d'Idempotence dans la BDD serveur
                     DB::table('sync_idempotency')->insert([
                         'uuid' => $uuid,
@@ -341,11 +373,45 @@ class SyncController extends Controller
                 });
             } catch (\Exception $e) {
                 $msg = $e->getMessage();
-                if (str_contains($msg, 'CONFLIT_STOCK') || str_contains($msg, 'CONFLIT_CREDIT') || str_contains($msg, 'CONFLIT_TRANSFERT')) {
+                if (str_contains($msg, 'CONFLIT_STOCK') || str_contains($msg, 'CONFLIT_CREDIT') || str_contains($msg, 'CONFLIT_TRANSFERT') || str_contains($msg, 'CONFLIT_PRIX')) {
                     $conflicts[] = [
                         'uuid' => $uuid,
                         'reason' => $msg,
                     ];
+
+                    try {
+                        $requestId = request()->attributes->get('request_id')
+                            ?? request()->header('X-Request-ID')
+                            ?? (app()->bound('request_id') ? app('request_id') : null);
+
+                        $conflictType = 'CONFLIT_PRIX';
+                        if (str_contains($msg, 'CONFLIT_STOCK')) $conflictType = 'CONFLIT_STOCK';
+                        elseif (str_contains($msg, 'CONFLIT_CREDIT')) $conflictType = 'CONFLIT_CREDIT';
+                        elseif (str_contains($msg, 'CONFLIT_TRANSFERT')) $conflictType = 'CONFLIT_TRANSFERT';
+
+                        \App\Models\AuditLog::create([
+                            'company_id'     => $companyId,
+                            'branch_id'      => $branchId,
+                            'user_id'        => $user->id,
+                            'user_role'      => is_object($user->role) ? ($user->role->slug ?? null) : null,
+                            'auditable_type' => 'SyncConflict',
+                            'auditable_id'   => 0,
+                            'action'         => 'sync_conflict',
+                            'module'         => 'Sync',
+                            'new_values'     => [
+                                'conflict_type'  => $conflictType,
+                                'reason'         => $msg,
+                                'operation_uuid' => $uuid,
+                                'entity_type'    => $entityType,
+                                'action'         => $action,
+                                'request_id'     => $requestId,
+                            ],
+                            'ip_address'     => request()->ip(),
+                            'user_agent'     => request()->userAgent(),
+                            'result'         => 'conflict',
+                            'created_at'     => now(),
+                        ]);
+                    } catch (\Throwable $logEx) {}
                 } else {
                     $failed[] = [
                         'uuid' => $uuid,
@@ -383,7 +449,8 @@ class SyncController extends Controller
         }
 
         // Produits avec Tombstones (deleted_at) et ordre déterministe
-        $products = Product::withTrashed()
+        $products = Product::withoutGlobalScope('tenant')
+            ->withTrashed()
             ->where('company_id', $companyId)
             ->where(function ($q) use ($cursorUpdatedAt, $cursorId) {
                 $q->where('updated_at', '>', $cursorUpdatedAt)
@@ -398,10 +465,10 @@ class SyncController extends Controller
             ->get();
 
         // Catégories
-        $categories = Category::where('company_id', $companyId)->get();
+        $categories = Category::withoutGlobalScope('tenant')->where('company_id', $companyId)->get();
 
         // Clients
-        $customers = Customer::where('company_id', $companyId)->get();
+        $customers = Customer::withoutGlobalScope('tenant')->where('company_id', $companyId)->get();
 
         // Stocks de la boutique
         $stocks = BranchProduct::where('branch_id', $branchId)->get();

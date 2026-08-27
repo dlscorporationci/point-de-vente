@@ -7,7 +7,7 @@ import { CustomRolesModal } from '../components/CustomRolesModal';
 import { AccessZonesModal } from '../components/AccessZonesModal';
 
 export const Settings = () => {
-  const { token, user, companyId, updateCompanyLogo } = useApp();
+  const { token, user, companyId, updateCompanyLogo, updateUser } = useApp();
 
   const isAdmin = user?.role === 'admin' || user?.role === 'super-admin' ||
                   user?.role?.slug === 'admin' || user?.role?.slug === 'super-admin';
@@ -63,6 +63,11 @@ export const Settings = () => {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword]       = useState('');
   const [newPasswordConfirm, setNewPasswordConfirm] = useState('');
+
+  const [dedicatedPin, setDedicatedPin]             = useState('');
+  const [dedicatedPinLoading, setDedicatedPinLoading] = useState(false);
+  const [pinSuccessMsg, setPinSuccessMsg]           = useState(null);
+  const [pinErrorMsg, setPinErrorMsg]               = useState(null);
 
   // ─── États Boutiques ──────────────────────────────────────────────────────
   const [branches, setBranches]             = useState([]);
@@ -312,10 +317,32 @@ export const Settings = () => {
       const res = await axios.post('/v1/auth/profile', payload);
       setSuccess("✅ " + res.data.message);
       setCurrentPassword(''); setNewPassword(''); setNewPasswordConfirm(''); setUserPin('');
+      if (res.data.user) updateUser(res.data.user);
     } catch (err) {
       setError(err.response?.data?.error || err.response?.data?.message || "Erreur de modification du profil.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveDedicatedPin = async (e) => {
+    e.preventDefault();
+    setPinErrorMsg(null);
+    setPinSuccessMsg(null);
+    if (!dedicatedPin || dedicatedPin.length !== 4) {
+      setPinErrorMsg("Le Code PIN doit comporter exactement 4 chiffres (ex: 1234).");
+      return;
+    }
+    setDedicatedPinLoading(true);
+    try {
+      const res = await axios.post('/v1/auth/update-pin', { pin_code: dedicatedPin });
+      setPinSuccessMsg("✅ " + (res.data.message || "Code PIN de caisse mis à jour avec succès !"));
+      setDedicatedPin('');
+      updateUser({ has_pin: true });
+    } catch (err) {
+      setPinErrorMsg(err.response?.data?.error || err.response?.data?.message || "Échec de la modification du Code PIN.");
+    } finally {
+      setDedicatedPinLoading(false);
     }
   };
 
@@ -1217,49 +1244,109 @@ export const Settings = () => {
 
             {/* ══════════════ ONGLET PROFIL ══════════════ */}
             {activeTab === 'profile' && (
-              <form onSubmit={handleUpdateProfile}>
-                <h3>👤 Mon Profil Utilisateur</h3>
-                <div className="row mt-3">
-                  <div className="col-md-6 form-group">
-                    <label className="form-label">Nom complet</label>
-                    <input type="text" className="form-control" value={userName} onChange={(e) => setUserName(e.target.value)} required />
+              <div>
+                <form onSubmit={handleUpdateProfile}>
+                  <h3>👤 Mon Profil Utilisateur</h3>
+                  <div className="row mt-3">
+                    <div className="col-md-6 form-group">
+                      <label className="form-label">Nom complet</label>
+                      <input type="text" className="form-control" value={userName} onChange={(e) => setUserName(e.target.value)} required />
+                    </div>
+                    <div className="col-md-6 form-group">
+                      <label className="form-label">Adresse E-mail</label>
+                      <input type="email" className="form-control" value={userEmail} onChange={(e) => setUserEmail(e.target.value)} required />
+                    </div>
                   </div>
-                  <div className="col-md-6 form-group">
-                    <label className="form-label">Adresse E-mail</label>
-                    <input type="email" className="form-control" value={userEmail} onChange={(e) => setUserEmail(e.target.value)} required />
+                  <div className="mt-3 text-end">
+                    <button type="submit" className="btn btn-secondary btn-sm" disabled={loading}>
+                      <i className="fa-solid fa-user-pen me-1"></i> {loading ? 'Sauvegarde...' : 'Mettre à jour les informations du profil'}
+                    </button>
                   </div>
-                </div>
-                <div className="row">
-                  <div className="col-md-6 form-group">
-                    <label className="form-label">Code PIN de caisse (4 chiffres)</label>
-                    <input type="password" className="form-control" maxLength="4" pattern="\d{4}"
-                      placeholder="Laisser vide pour ne pas modifier" value={userPin}
-                      onChange={(e) => setUserPin(e.target.value.replace(/\D/g, ''))} />
-                    <small className="text-muted">Utilisé pour la connexion rapide sur le terminal POS.</small>
+                </form>
+
+                {/* ══════════════ SECTION CODE PIN DE CAISSE DÉDIÉE ══════════════ */}
+                <div className="card p-3 my-4" style={{ background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+                    <div>
+                      <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: 'var(--text-main)' }}>
+                        <i className="fa-solid fa-key text-primary me-2"></i> Code PIN Caisse POS (4 chiffres)
+                      </h4>
+                      <small className="text-muted">Utilisé pour la connexion rapide et le déverrouillage de caisse sur les terminaux POS.</small>
+                    </div>
+                    <div>
+                      {user?.has_pin ? (
+                        <span className="badge bg-success" style={{ padding: '6px 10px', fontSize: '12px', borderRadius: '6px' }}>
+                          <i className="fa-solid fa-shield-halved me-1"></i> PIN Actif (Configuré)
+                        </span>
+                      ) : (
+                        <span className="badge bg-warning text-dark" style={{ padding: '6px 10px', fontSize: '12px', borderRadius: '6px' }}>
+                          <i className="fa-solid fa-triangle-exclamation me-1"></i> Aucun PIN configuré
+                        </span>
+                      )}
+                    </div>
                   </div>
+
+                  <form onSubmit={handleSaveDedicatedPin} style={{ marginTop: '8px' }}>
+                    {pinSuccessMsg && <div className="success-banner mb-2" style={{ fontSize: '13px' }}>{pinSuccessMsg}</div>}
+                    {pinErrorMsg && <div className="error-banner mb-2" style={{ fontSize: '13px' }}>{pinErrorMsg}</div>}
+                    
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: '220px', maxWidth: '280px' }}>
+                        <PasswordInput
+                          value={dedicatedPin}
+                          onChange={(e) => setDedicatedPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                          placeholder="Nouveau PIN (4 chiffres)"
+                          maxLength="4"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          autoComplete="off"
+                        />
+                      </div>
+                      <button 
+                        type="submit" 
+                        className="btn btn-primary"
+                        disabled={dedicatedPinLoading || dedicatedPin.length !== 4}
+                        style={{ whiteSpace: 'nowrap', fontWeight: 700 }}
+                      >
+                        <i className="fa-solid fa-floppy-disk me-1"></i> {dedicatedPinLoading ? 'Enregistrement...' : 'Enregistrer le Code PIN'}
+                      </button>
+                    </div>
+                    <small className="text-muted d-block mt-2" style={{ fontSize: '12px' }}>
+                      💡 Saisissez 4 chiffres (ex: 1234). Vous pouvez cliquer sur l'icône de l'œil 👁️ pour afficher ou masquer votre saisie.
+                    </small>
+                  </form>
                 </div>
-                <div className="panel-divider my-4" style={{ borderTop: '1px solid var(--border-color)' }} />
-                <h3>🔑 Modifier mon mot de passe (sécurisé)</h3>
-                <div className="form-group mt-3">
-                  <label className="form-label">Mot de passe actuel</label>
-                  <PasswordInput value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="Indispensable pour changer de mot de passe" />
+
+                {/* ══════════════ SECTION CHANGEMENT DE MOT DE PASSE COMPTE ══════════════ */}
+                <div className="card p-3 my-4" style={{ background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '12px' }}>
+                  <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: 700, color: 'var(--text-main)' }}>
+                    <i className="fa-solid fa-lock text-warning me-2"></i> Modifier le Mot de Passe du Compte (Connexion E-mail)
+                  </h4>
+                  <small className="text-muted">Ce mot de passe est utilisé pour la connexion classique par E-mail + Mot de passe (min. 8 caractères, majuscule, chiffre).</small>
+                  
+                  <form onSubmit={handleUpdateProfile} style={{ marginTop: '16px' }}>
+                    <div className="form-group mb-3">
+                      <label className="form-label" style={{ fontWeight: 600 }}>Mot de passe actuel</label>
+                      <PasswordInput value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="Indispensable pour valider le changement" />
+                    </div>
+                    <div className="row">
+                      <div className="col-md-6 form-group mb-3">
+                        <label className="form-label" style={{ fontWeight: 600 }}>Nouveau mot de passe</label>
+                        <PasswordInput value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Min. 8 caractères, 1 Majuscule, 1 Chiffre" />
+                      </div>
+                      <div className="col-md-6 form-group mb-3">
+                        <label className="form-label" style={{ fontWeight: 600 }}>Confirmer le nouveau mot de passe</label>
+                        <PasswordInput value={newPasswordConfirm} onChange={(e) => setNewPasswordConfirm(e.target.value)} placeholder="Confirmer le nouveau mot de passe" />
+                      </div>
+                    </div>
+                    <div className="text-end mt-2">
+                      <button type="submit" className="btn btn-primary btn-sm" disabled={loading || !newPassword}>
+                        <i className="fa-solid fa-key me-1"></i> {loading ? 'Modification...' : 'Mettre à jour le mot de passe'}
+                      </button>
+                    </div>
+                  </form>
                 </div>
-                <div className="row">
-                  <div className="col-md-6 form-group">
-                    <label className="form-label">Nouveau mot de passe</label>
-                    <PasswordInput value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Min. 8 caractères" />
-                  </div>
-                  <div className="col-md-6 form-group">
-                    <label className="form-label">Confirmer le mot de passe</label>
-                    <PasswordInput value={newPasswordConfirm} onChange={(e) => setNewPasswordConfirm(e.target.value)} placeholder="Confirmer" />
-                  </div>
-                </div>
-                <div className="mt-4 text-end">
-                  <button type="submit" className="btn btn-primary" disabled={loading}>
-                    <i className="fa-solid fa-circle-check me-1"></i> Mettre à jour mon profil
-                  </button>
-                </div>
-              </form>
+              </div>
             )}
 
             {/* ══════════════ ONGLET SÉCURITÉ ══════════════ */}

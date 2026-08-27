@@ -50,6 +50,7 @@ export const Catalog = () => {
   const [showCategoryForm, setShowCategoryForm] = useState(false);
   const [showTemplatesModal, setShowTemplatesModal] = useState(false);
   const [showMassDeleteModal, setShowMassDeleteModal] = useState(false);
+  const [quickCreateFromProduct, setQuickCreateFromProduct] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null); // null = création, objet = édition
   
   // États de création de produit
@@ -255,9 +256,20 @@ export const Catalog = () => {
       }
 
       setSuccess(`Catégorie "${res.data.category.name}" créée avec succès !`);
+      const createdCatId = res.data.category.id;
       setNewCategoryName('');
       setNewCategoryImage(null);
       setShowCategoryForm(false);
+      
+      // Auto-sélectionner la nouvelle catégorie
+      setNewProductCategoryId(String(createdCatId));
+
+      // Si l'utilisateur venait de la création de produit, y retourner directement
+      if (quickCreateFromProduct) {
+        setShowProductForm(true);
+        setQuickCreateFromProduct(false);
+      }
+
       loadData();
     } catch (err) {
       const apiErrors = err.response?.data?.errors;
@@ -476,7 +488,26 @@ export const Catalog = () => {
               <button onClick={() => { setShowCategoryForm(true); setShowProductForm(false); }} className="btn btn-secondary">
                 <i className="fa-solid fa-folder-open me-1"></i> Nouvelle Catégorie
               </button>
-              <button onClick={() => { setEditingProduct(null); setNewProductName(''); setNewProductSku(''); setNewProductBarcode(''); setNewProductPrice(''); setNewProductCategoryId(''); setNewProductDescription(''); setNewProductAlertQty('10'); setNewProductImage(null); setShowProductForm(true); setShowCategoryForm(false); }} className="btn btn-primary">
+              <button onClick={() => {
+                if (categories.length === 0) {
+                  setError("⚠️ Création impossible : vous devez préalablement créer au moins une catégorie dans votre entreprise avant d'ajouter un produit.");
+                  setQuickCreateFromProduct(true);
+                  setShowCategoryForm(true);
+                  setShowProductForm(false);
+                  return;
+                }
+                setEditingProduct(null);
+                setNewProductName('');
+                setNewProductSku('');
+                setNewProductBarcode('');
+                setNewProductPrice('');
+                setNewProductCategoryId(categories.length > 0 ? String(categories[0].id) : '');
+                setNewProductDescription('');
+                setNewProductAlertQty('10');
+                setNewProductImage(null);
+                setShowProductForm(true);
+                setShowCategoryForm(false);
+              }} className="btn btn-primary">
                 <i className="fa-solid fa-plus me-1"></i> Ajouter un Produit
               </button>
               {isAdmin && (
@@ -575,18 +606,44 @@ export const Catalog = () => {
                     />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Catégorie *</label>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <label className="form-label mb-0">Catégorie *</label>
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          setQuickCreateFromProduct(true);
+                          setShowProductForm(false);
+                          setShowCategoryForm(true);
+                        }}
+                        style={{
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          color: 'var(--color-primary)',
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          textDecoration: 'underline'
+                        }}
+                      >
+                        <i className="fa-solid fa-plus-circle me-1"></i> + Créer une catégorie
+                      </button>
+                    </div>
                     <select 
                       className="form-control"
                       value={newProductCategoryId}
                       onChange={(e) => setNewProductCategoryId(e.target.value)}
                       required
                     >
-                      <option value="">Sélectionner...</option>
+                      <option value="">Sélectionner une catégorie...</option>
                       {categories.map(c => (
                         <option key={c.id} value={c.id}>{c.name}</option>
                       ))}
                     </select>
+                    {categories.length === 0 && (
+                      <small className="text-danger d-block mt-1" style={{ fontWeight: 700 }}>
+                        ⚠️ Aucune catégorie existante. Cliquez sur "+ Créer une catégorie" ci-dessus.
+                      </small>
+                    )}
                   </div>
                 </div>
 
@@ -784,7 +841,7 @@ export const Catalog = () => {
 
                 <div className="modal-actions">
                   <button type="button" onClick={() => { setShowProductForm(false); setEditingProduct(null); }} className="btn btn-cancel">Annuler</button>
-                  <button type="submit" className="btn btn-primary">
+                  <button type="submit" className="btn btn-primary" disabled={categories.length === 0}>
                     {editingProduct ? 'Enregistrer les modifications' : 'Enregistrer le produit'}
                   </button>
                 </div>

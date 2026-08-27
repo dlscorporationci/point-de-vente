@@ -15,19 +15,42 @@ Route::prefix('v1')->middleware('tenant')->group(function () {
         ]);
     });
 
-    // Routes publiques d'authentification avec limitation de débit (throttle:120,1)
-    Route::middleware('throttle:120,1')->group(function () {
-        Route::post('/auth/login',          [AuthController::class, 'login']);
-        Route::post('/auth/login-pin',      [AuthController::class, 'loginPin']);
-        Route::post('/auth/register',       [AuthController::class, 'register']);
-        Route::post('/auth/forgot-password',[AuthController::class, 'forgotPassword']);
-        Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
-        Route::get('/auth/companies',       [AuthController::class, 'getPublicCompanies']);
+    Route::get('/test-error-500-trigger', function () {
+        throw new \Exception('Simulated Server 500 Failure for Phase 3.2 Error Handling Qualification');
+    });
+
+    // Routes publiques d'authentification
+    // Phase 1 : throttle adapté sur login/pin/reset (20 req/min — protection POS & anti brute-force)
+    Route::middleware('throttle:20,1')->group(function () {
+        Route::post('/auth/login',           [AuthController::class, 'login']);
+        Route::post('/auth/login-pin',       [AuthController::class, 'loginPin']);
+        Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
+        Route::post('/auth/reset-password',  [AuthController::class, 'resetPassword']);
+        
+        // Routes d'authentification Google OAuth 2.0 / OpenID Connect
+        Route::get('/auth/google/redirect',  [\App\Http\Controllers\API\V1\GoogleAuthController::class, 'redirect']);
+        Route::get('/auth/google/callback',  [\App\Http\Controllers\API\V1\GoogleAuthController::class, 'callback']);
+        Route::post('/auth/google/callback', [\App\Http\Controllers\API\V1\GoogleAuthController::class, 'callback']);
+    });
+
+    // Phase 1.5 — Verification Email (public token verification, throttle 10/min)
+    Route::middleware('throttle:10,1')->group(function () {
+        Route::post('/auth/verify-email',    [AuthController::class, 'verifyEmail']);
+    });
+
+    // Endpoints publics d'observabilité et disponibilité (Liveness & Readiness)
+    Route::get('/health', [\App\Http\Controllers\API\V1\HealthCheckController::class, 'liveness']);
+    Route::get('/ready',  [\App\Http\Controllers\API\V1\HealthCheckController::class, 'readiness']);
+
+    // Routes publiques — throttle modéré (20 req/min)
+    Route::middleware('throttle:20,1')->group(function () {
+        Route::post('/auth/register',        [AuthController::class, 'register']);
+        Route::get('/auth/companies',        [AuthController::class, 'getPublicCompanies']);
         Route::get('/auth/companies/{id}/users', [AuthController::class, 'getPublicUsers']);
-        Route::get('/public/plans',         function () {
+        Route::get('/public/plans', function () {
             return response()->json(\App\Models\SubscriptionPlan::where('is_active', true)->orderBy('id', 'asc')->get());
         });
-        Route::get('/maintenance/status',   [\App\Http\Controllers\API\V1\MaintenanceController::class, 'status']);
+        Route::get('/maintenance/status', [\App\Http\Controllers\API\V1\MaintenanceController::class, 'status']);
     });
 
     // Routes d'authentification protégées par Sanctum
@@ -35,7 +58,22 @@ Route::prefix('v1')->middleware('tenant')->group(function () {
         Route::post('/auth/logout',        [AuthController::class, 'logout']);
         Route::get('/auth/me',             [AuthController::class, 'me']);
         Route::post('/auth/profile',       [AuthController::class, 'updateProfile']);
+        Route::post('/auth/update-pin',    [AuthController::class, 'updatePin']);
         Route::post('/auth/switch-branch', [AuthController::class, 'switchBranch']);
+
+        // Phase 1.5 — Renvoi e-mail de vérification (throttle 5/min)
+        Route::middleware('throttle:5,1')->group(function () {
+            Route::post('/auth/resend-verification-email', [AuthController::class, 'resendVerificationEmail']);
+        });
+
+        // Phase 1.3 — Session Lock : vérification sécurisée du PIN (throttle 10/min par utilisateur)
+        Route::middleware('throttle:10,1')->group(function () {
+            Route::post('/auth/verify-pin',     [AuthController::class, 'verifyPin']);
+            Route::post('/auth/unlock-session', [AuthController::class, 'verifyPin']);
+        });
+
+        // Phase 1.5 — Restriction Backend : Seuls les utilisateurs avec e-mail vérifié ont accès aux routes métiers
+        Route::middleware(\App\Http\Middleware\EnsureEmailVerified::class)->group(function () {
 
         // -----------------------------------------------------------------------
         // Dashboard & Statistiques Contextuelles
@@ -325,6 +363,7 @@ Route::prefix('v1')->middleware('tenant')->group(function () {
                 ->get();
             return response()->json($roles);
         });
+        }); // Fin du groupe EnsureEmailVerified
     });
 });
 

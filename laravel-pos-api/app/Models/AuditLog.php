@@ -14,14 +14,19 @@ class AuditLog extends Model
 
     protected $fillable = [
         'company_id',
+        'branch_id',
         'user_id',
+        'user_role',
         'auditable_type',
         'auditable_id',
         'action',
+        'module',
         'old_values',
         'new_values',
         'ip_address',
         'user_agent',
+        'device',
+        'result',
         'created_at',
     ];
 

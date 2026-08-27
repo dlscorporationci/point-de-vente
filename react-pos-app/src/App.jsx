@@ -36,6 +36,7 @@ import { DocumentCenter } from './pages/DocumentCenter'
 import { CommunicationCenter } from './pages/CommunicationCenter'
 import { MaintenanceCenter } from './pages/MaintenanceCenter'
 import { MaintenanceScreen } from './components/MaintenanceScreen'
+import { VerifyEmail } from './pages/VerifyEmail'
 
 const getRoleSlug = (r) => {
   if (!r) return '';
@@ -83,7 +84,15 @@ function MainContent() {
   const isAdmin = role === 'admin' || isSuperAdmin;
 
   const [activeTab, setActiveTabState] = useState(() => {
-    if (!user) return 'home';
+    if (!user) {
+      if (typeof window !== 'undefined') {
+        const search = window.location.search;
+        if (search.includes('google_token=') || search.includes('google_error=') || search.includes('token=') || window.location.pathname.includes('reset-password')) {
+          return 'auth';
+        }
+      }
+      return 'home';
+    }
     const savedTab = sessionStorage.getItem('apex_active_tab');
     if (savedTab && savedTab !== 'home' && savedTab !== 'auth') return savedTab;
     if (isSuperAdmin) return 'backoffice';
@@ -95,9 +104,25 @@ function MainContent() {
     setActiveTabState(tab);
   };
 
+  // Détection automatique des pages d'authentification / vérification par URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const path = window.location.pathname;
+    if (path.includes('verify-email')) {
+      setActiveTabState('verify-email');
+    } else if (path.includes('reset-password')) {
+      setActiveTabState('auth');
+    }
+  }, []);
+
   // Synchronisation automatique : lorsqu'un utilisateur se connecte, le diriger immédiatement sur le Dashboard
   useEffect(() => {
     if (user) {
+      const isEmailVerified = !!(user.email_verified_at || user.google_id || user.google_verified_at || user.status === 'active');
+      if (!isEmailVerified && !isSuperAdmin) {
+        setActiveTabState('verify-email');
+        return;
+      }
       const savedTab = sessionStorage.getItem('apex_active_tab');
       if (!savedTab || savedTab === 'home' || savedTab === 'auth' || (isSuperAdmin && savedTab === 'select-branch')) {
         const target = isSuperAdmin ? 'backoffice' : 'dashboard';
@@ -215,31 +240,44 @@ function MainContent() {
     };
   }, []);
 
-  // Partie 7 : Verrouillage automatique de session par inactivité (5 minutes)
+  // Partie 7 : Verrouillage automatique de session par inactivité (3 minutes)
   const [isSessionLocked, setIsSessionLocked] = useState(false);
   const { logout } = useApp();
 
   useEffect(() => {
-    if (!user) return;
-    let idleTimer;
-    const IDLE_TIMEOUT = 5 * 60 * 1000;
+    if (!user?.id || isSessionLocked) return;
 
-    const resetIdleTimer = () => {
+    let idleTimer;
+    // Timeout d'inactivité de 3 minutes d'inactivité humaine (180 000 ms)
+    const IDLE_TIMEOUT = 3 * 60 * 1000;
+
+    const startTimer = () => {
       if (idleTimer) clearTimeout(idleTimer);
       idleTimer = setTimeout(() => {
         setIsSessionLocked(true);
       }, IDLE_TIMEOUT);
     };
 
-    const events = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart'];
-    events.forEach(evt => window.addEventListener(evt, resetIdleTimer));
-    resetIdleTimer();
+    let lastReset = Date.now();
+    const handleUserActivity = () => {
+      const now = Date.now();
+      if (now - lastReset > 1000) {
+        lastReset = now;
+        startTimer();
+      }
+    };
+
+    // Événements d'action utilisateur réels (exclut mousemove pour éviter les micro-bruits de curseur)
+    const events = ['click', 'mousedown', 'keydown', 'touchstart', 'scroll', 'wheel'];
+    events.forEach(evt => window.addEventListener(evt, handleUserActivity, { passive: true }));
+    
+    startTimer();
 
     return () => {
       if (idleTimer) clearTimeout(idleTimer);
-      events.forEach(evt => window.removeEventListener(evt, resetIdleTimer));
+      events.forEach(evt => window.removeEventListener(evt, handleUserActivity));
     };
-  }, [user]);
+  }, [user?.id, isSessionLocked]);
 
   // État des accordéons de la navigation latérale (ouvert/fermé)
   const [openNavGroups, setOpenNavGroups] = useState({
@@ -262,11 +300,18 @@ function MainContent() {
     // Si l'utilisateur n'est pas connecté
     if (!user) {
       switch (activeTab) {
-        case 'register': return <Register setActiveTab={setActiveTab} />
-        case 'home':     return <Home setActiveTab={setActiveTab} />
+        case 'verify-email': return <VerifyEmail onNavigate={(t) => setActiveTab(t)} />
+        case 'register':     return <Register setActiveTab={setActiveTab} />
+        case 'home':         return <Home setActiveTab={setActiveTab} />
         case 'auth':
-        default:         return <Login setActiveTab={setActiveTab} />
+        default:             return <Login setActiveTab={setActiveTab} />
       }
+    }
+
+    // Bloquer l'accès aux pages métiers si l'adresse e-mail n'est pas vérifiée (non super-admin)
+    const isEmailVerified = !!(user?.email_verified_at || user?.google_id || user?.google_verified_at || user?.status === 'active');
+    if (user && !isEmailVerified && !isSuperAdmin) {
+      return <VerifyEmail onNavigate={(t) => setActiveTab(t)} />;
     }
 
 
@@ -310,6 +355,7 @@ function MainContent() {
 
     // Utilisateur connecté : Rendu des pages selon le profil
     switch (activeTab) {
+      case 'verify-email':  return <VerifyEmail onNavigate={(t) => setActiveTab(t)} />
       case 'home':          return <Home setActiveTab={setActiveTab} />
       case 'backoffice':    return <BackOffice />
       case 'dashboard':     return isSuperAdmin ? <BackOffice /> : <Dashboard setActiveTab={setActiveTab} />
@@ -458,7 +504,7 @@ function MainContent() {
   }
 
   const isAuthenticated = !!(user && (user.id || user.email || user.name));
-  const isAppHeaderVisible = isAuthenticated && activeTab !== 'home' && activeTab !== 'auth' && activeTab !== 'register';
+  const isAppHeaderVisible = isAuthenticated && activeTab !== 'home' && activeTab !== 'auth' && activeTab !== 'register' && activeTab !== 'verify-email' && !(user && user.email_verified_at === null && !isSuperAdmin);
 
   return (
     <>

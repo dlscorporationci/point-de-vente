@@ -176,7 +176,9 @@ export const purgeLocalCacheOnLogout = async () => {
     await db.transaction('rw', [
       db.products, db.categories, db.customers, db.suppliers, db.stock, 
       db.notifications, db.sales, db.sale_items, db.cash_sessions, 
-      db.purchases, db.transfers, db.sync_metadata
+      db.purchases, db.transfers, db.sync_metadata,
+      db.catalog_templates, db.custom_roles, db.access_zones,
+      db.business_rules, db.supplier_packs, db.supplier_types, db.stock_adjustments
     ], async () => {
       await db.products.clear();
       await db.categories.clear();
@@ -190,8 +192,16 @@ export const purgeLocalCacheOnLogout = async () => {
       await db.purchases.clear();
       await db.transfers.clear();
       await db.sync_metadata.clear();
+      await db.catalog_templates.clear();
+      await db.custom_roles.clear();
+      await db.access_zones.clear();
+      await db.business_rules.clear();
+      await db.supplier_packs.clear();
+      await db.supplier_types.clear();
+      await db.stock_adjustments.clear();
     });
   } catch (err) {
     console.warn('Purge sélective Dexie lors du logout:', err);
   }
 };
+

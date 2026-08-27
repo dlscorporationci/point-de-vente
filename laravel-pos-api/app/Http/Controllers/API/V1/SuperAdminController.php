@@ -527,20 +527,28 @@ class SuperAdminController extends Controller
         );
 
         // Créer l'utilisateur Administrateur par défaut de cette entreprise
+        // Phase 1 : mot de passe initial aléatoire (16 caractères) et PIN aléatoire (4 chiffres)
+        $initialPassword = \Illuminate\Support\Str::password(16);
+        $initialPin      = (string) random_int(1000, 9999);
+
         \App\Models\User::create([
             'company_id' => $company->id,
-            'branch_id' => $branch->id,
-            'role_id' => $adminRole->id,
-            'name' => 'Admin ' . $company->name,
-            'email' => 'admin_' . $company->id . '@' . \Illuminate\Support\Str::slug($company->name ?: 'company') . '.com',
-            'password' => \Illuminate\Support\Facades\Hash::make('password'),
-            'pin_code' => '1234',
-            'status' => 'active',
+            'branch_id'  => $branch->id,
+            'role_id'    => $adminRole->id,
+            'name'       => 'Admin ' . $company->name,
+            'email'      => 'admin_' . $company->id . '@' . \Illuminate\Support\Str::slug($company->name ?: 'company') . '.com',
+            'password'   => \Illuminate\Support\Facades\Hash::make($initialPassword),
+            'pin_code'   => \Illuminate\Support\Facades\Hash::make($initialPin),
+            'status'     => 'active',
         ]);
 
         return response()->json([
-            'message' => 'Entreprise créée avec succès sur la plateforme.',
-            'company' => $company
+            'message'          => 'Entreprise créée avec succès sur la plateforme.',
+            'company'          => $company,
+            // Credentials initiaux — à transmettre de manière sécurisée à l\'administrateur
+            'admin_email'      => 'admin_' . $company->id . '@' . \Illuminate\Support\Str::slug($company->name ?: 'company') . '.com',
+            'admin_password'   => $initialPassword,
+            'admin_pin'        => $initialPin,
         ], 201);
     }
 

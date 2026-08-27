@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'google' => [
+        'client_id'     => env('GOOGLE_CLIENT_ID', 'demo-apexpos.apps.googleusercontent.com'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET', 'demo-google-secret'),
+        'redirect_uri'  => env('GOOGLE_REDIRECT_URI', 'http://127.0.0.1:8000/api/v1/auth/google/callback'),
+    ],
+
 ];

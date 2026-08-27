@@ -2208,3 +2208,22 @@ p {
   box-shadow: none;
 }
 
+/* Page de Connexion ApexPOS & Bouton Google OAuth */
+.login-page-container {
+  min-height: calc(100vh - 80px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  box-sizing: border-box;
+}
+
+.login-box {
+  width: 100%;
+  max-width: 440px;
+  margin: 0 auto;
+  padding: 32px 28px;
+  box-sizing: border-box;
+}
+
+

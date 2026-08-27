@@ -97,6 +97,7 @@ class SaleController extends Controller
                 'branch_id' => $branchId,
                 'user_id' => $user->id,
                 'opening_amount' => 0,
+                'opening_balance' => 0,
                 'opened_at' => now(),
                 'status' => 'open'
             ]);
@@ -187,177 +188,178 @@ class SaleController extends Controller
             }
         }
 
-        return DB::transaction(function () use ($request, $user, $session, $customer, $totalSim, $taxFactor) {
-            // Calculer les totaux réels pour la transaction
-            $subtotal = 0;
-            $itemDiscounts = 0;
-            $globalDiscount = floatval($request->global_discount ?? 0);
-            $details = [];
+        try {
+            return DB::transaction(function () use ($request, $user, $session, $customer, $taxFactor) {
+                // Calculer les totaux réels pour la transaction
+                $subtotal = 0;
+                $itemDiscounts = 0;
+                $globalDiscount = floatval($request->global_discount ?? 0);
+                $details = [];
 
-            foreach ($request->items as $item) {
-                $qty   = floatval($item['quantity']);
-                $price = floatval($item['selling_price']);
-                $disc  = floatval($item['discount'] ?? 0);
+                foreach ($request->items as $item) {
+                    $qty   = floatval($item['quantity']);
+                    $price = floatval($item['selling_price']);
+                    $disc  = floatval($item['discount'] ?? 0);
 
-                $lineSubtotal = $qty * $price;
-                $subtotal += $lineSubtotal;
-                $itemDiscounts += $disc;
+                    $lineSubtotal = $qty * $price;
+                    $subtotal += $lineSubtotal;
+                    $itemDiscounts += $disc;
 
-                // TVA par ligne selon les paramètres de l'entreprise
-                $lineTax   = ($lineSubtotal - $disc) * $taxFactor;
-                $lineTotal = ($lineSubtotal - $disc) + $lineTax;
+                    // TVA par ligne selon les paramètres de l'entreprise
+                    $lineTax   = ($lineSubtotal - $disc) * $taxFactor;
+                    $lineTotal = ($lineSubtotal - $disc) + $lineTax;
 
-                $details[] = [
-                    'product_id'    => $item['product_id'],
-                    'quantity'      => $qty,
-                    'selling_price' => $price,
-                    'discount'      => $disc,
-                    'tax'           => round($lineTax, 2),
-                    'total'         => round($lineTotal, 2),
-                ];
-            }
-
-            $totalDiscount = $itemDiscounts + $globalDiscount;
-            $netSubtotal   = max(0, $subtotal - $totalDiscount);
-            $tax           = round($netSubtotal * $taxFactor, 2);
-            $total         = round($netSubtotal + $tax, 2);
-
-            $amountReceived = floatval($request->amount_received ?? $total);
-            $change = max(0, round($amountReceived - $total, 2));
-
-            // Numéro de vente séquentiel
-            $lastSale = Sale::where('company_id', $user->company_id)
-                ->orderByDesc('id')
-                ->first();
-            $nextNum = $lastSale ? intval(substr($lastSale->sale_number, 4)) + 1 : 1;
-            $saleNumber = 'VTE-' . str_pad($nextNum, 6, '0', STR_PAD_LEFT);
-
-            $paymentStatus = 'paid';
-            if ($request->payment_method === 'credit') {
-                $paymentStatus = 'unpaid';
-                $customer->update([
-                    'debt_balance' => $customer->debt_balance + $total
-                ]);
-            }
-
-            // Gérer les points de fidélité (1 point par 1000 XOF d'achat)
-            if ($customer) {
-                $points = floor($total / 1000);
-                if ($points > 0) {
-                    $customer->increment('loyalty_points', $points);
-                }
-            }
-
-            $activeBranchId = app(\App\Services\TenantManager::class)->getBranchId() ?: ($user->branch_id ?: $session->branch_id);
-
-            // Créer la vente
-            $sale = Sale::create([
-                'idempotency_key' => $request->idempotency_key,
-                'company_id'      => $user->company_id ?: $session->company_id,
-                'branch_id'       => $activeBranchId,
-                'user_id'         => $user->id,
-                'cash_session_id' => $session->id,
-                'customer_id'     => $customer ? $customer->id : null,
-                'sale_number'     => $saleNumber,
-                'client_name'     => $customer ? $customer->name : ($request->client_name ?? 'Client Comptant'),
-                'client_phone'    => $customer ? $customer->phone : $request->client_phone,
-                'subtotal'        => round($subtotal, 2),
-                'discount'        => round($totalDiscount, 2),
-                'tax'             => $tax,
-                'total'           => $total,
-                'payment_method'  => $request->payment_method,
-                'payment_status'  => $paymentStatus,
-                'amount_received' => $request->payment_method === 'credit' ? 0 : $amountReceived,
-                'amount_change'   => $request->payment_method === 'credit' ? 0 : $change,
-            ]);
-
-            // Créer les détails et décrémenter le stock avec verrouillage pessimiste lockForUpdate()
-            foreach ($details as $d) {
-                $sale->details()->create($d);
-
-                // Auto-initialiser la ligne de stock si elle n'existe pas encore
-                $branchProduct = \App\Models\BranchProduct::firstOrCreate([
-                    'branch_id'  => $activeBranchId,
-                    'product_id' => $d['product_id'],
-                ], [
-                    'quantity'  => 0.00,
-                    'is_active' => true,
-                ]);
-
-                // Verrouiller la ligne de stock pour la transaction
-                $branchProduct = \App\Models\BranchProduct::where('id', $branchProduct->id)
-                    ->lockForUpdate()
-                    ->first();
-
-                $availableQty = $branchProduct ? floatval($branchProduct->quantity) : 0;
-                if ($availableQty < $d['quantity']) {
-                    $product = \App\Models\Product::find($d['product_id']);
-                    $pName = $product ? $product->name : "ID {$d['product_id']}";
-                    throw new \Exception("Stock insuffisant pour \"{$pName}\" dans cette boutique (Disponible: {$availableQty}, Demandé: {$d['quantity']}).");
+                    $details[] = [
+                        'product_id'    => $item['product_id'],
+                        'quantity'      => $qty,
+                        'selling_price' => $price,
+                        'discount'      => $disc,
+                        'tax'           => round($lineTax, 2),
+                        'total'         => round($lineTotal, 2),
+                    ];
                 }
 
-                $branchProduct->decrement('quantity', $d['quantity']);
+                $totalDiscount = $itemDiscounts + $globalDiscount;
+                $netSubtotal   = max(0, $subtotal - $totalDiscount);
+                $tax           = round($netSubtotal * $taxFactor, 2);
+                $total         = round($netSubtotal + $tax, 2);
 
-                // Mouvement de stock de type "sale"
-                DB::table('stock_movements')->insert([
-                    'company_id'   => $user->company_id,
-                    'branch_id'    => $activeBranchId,
-                    'product_id'   => $d['product_id'],
-                    'type'         => 'sale',
-                    'quantity'     => -$d['quantity'],
-                    'reference_id' => $sale->id,
-                    'description'  => "Vente {$saleNumber} par {$user->name}",
-                    'created_at'   => now(),
-                    'updated_at'   => now(),
-                ]);
-            }
+                $amountReceived = floatval($request->amount_received ?? $total);
+                $change = max(0, round($amountReceived - $total, 2));
 
-            // Enregistrer la transaction dans la session de caisse
-            CashSessionTransaction::create([
-                'cash_session_id' => $session->id,
-                'type'            => 'deposit',
-                'amount'          => $total,
-                'description'     => "Vente {$saleNumber} ({$request->payment_method})",
-            ]);
+                // Numéro de vente séquentiel atomique (Résistant à la concurrence)
+                $activeBranchId = app(\App\Services\TenantManager::class)->getBranchId() ?: ($user->branch_id ?: $session->branch_id);
+                $saleNumber = \App\Services\SaleNumberGenerator::generate($user->company_id ?: $session->company_id, $activeBranchId);
 
-            $sale->load('details.product', 'user', 'branch');
+                $paymentStatus = 'paid';
+                if ($request->payment_method === 'credit') {
+                    $paymentStatus = 'unpaid';
+                    $customer->update([
+                        'debt_balance' => $customer->debt_balance + $total
+                    ]);
+                }
 
-            // ── Événement SaleCreated → NotifySaleEvents listener (ciblé par rôle) ──
-            try {
-                event(new SaleCreated($sale, $user));
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::error('SaleCreated event error: ' . $e->getMessage());
-            }
-
-            // ── Détection automatique de stock faible après la vente ──
-            try {
-                foreach ($details as $d) {
-                    $bp = \App\Models\BranchProduct::where('branch_id', $activeBranchId)
-                        ->where('product_id', $d['product_id'])
-                        ->first();
-                    $product = \App\Models\Product::find($d['product_id']);
-                    if ($bp && $product && $product->alert_quantity !== null) {
-                        if (floatval($bp->quantity) <= floatval($product->alert_quantity)) {
-                            event(new StockLow(
-                                $user->company_id,
-                                $activeBranchId,
-                                $product->id,
-                                $product->name,
-                                floatval($bp->quantity),
-                                floatval($product->alert_quantity)
-                            ));
-                        }
+                // Gérer les points de fidélité (1 point par 1000 XOF d'achat)
+                if ($customer) {
+                    $points = floor($total / 1000);
+                    if ($points > 0) {
+                        $customer->increment('loyalty_points', $points);
                     }
                 }
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::error('StockLow event error: ' . $e->getMessage());
-            }
 
+                // Créer la vente
+                $sale = Sale::create([
+                    'idempotency_key' => $request->idempotency_key,
+                    'company_id'      => $user->company_id ?: $session->company_id,
+                    'branch_id'       => $activeBranchId,
+                    'user_id'         => $user->id,
+                    'cash_session_id' => $session->id,
+                    'customer_id'     => $customer ? $customer->id : null,
+                    'sale_number'     => $saleNumber,
+                    'client_name'     => $customer ? $customer->name : ($request->client_name ?? 'Client Comptant'),
+                    'client_phone'    => $customer ? $customer->phone : $request->client_phone,
+                    'subtotal'        => round($subtotal, 2),
+                    'discount'        => round($totalDiscount, 2),
+                    'tax'             => $tax,
+                    'total'           => $total,
+                    'payment_method'  => $request->payment_method,
+                    'payment_status'  => $paymentStatus,
+                    'amount_received' => $request->payment_method === 'credit' ? 0 : $amountReceived,
+                    'amount_change'   => $request->payment_method === 'credit' ? 0 : $change,
+                ]);
+
+                // Créer les détails et décrémenter le stock avec verrouillage pessimiste lockForUpdate()
+                foreach ($details as $d) {
+                    $sale->details()->create($d);
+
+                    // Auto-initialiser la ligne de stock si elle n'existe pas encore
+                    $branchProduct = \App\Models\BranchProduct::firstOrCreate([
+                        'branch_id'  => $activeBranchId,
+                        'product_id' => $d['product_id'],
+                    ], [
+                        'quantity'  => 0.00,
+                        'is_active' => true,
+                    ]);
+
+                    // Verrouiller la ligne de stock pour la transaction
+                    $branchProduct = \App\Models\BranchProduct::where('id', $branchProduct->id)
+                        ->lockForUpdate()
+                        ->first();
+
+                    $availableQty = $branchProduct ? floatval($branchProduct->quantity) : 0;
+                    if ($availableQty < $d['quantity']) {
+                        $product = \App\Models\Product::find($d['product_id']);
+                        $pName = $product ? $product->name : "ID {$d['product_id']}";
+                        throw new \Exception("Stock insuffisant pour \"{$pName}\" dans cette boutique (Disponible: {$availableQty}, Demandé: {$d['quantity']}).");
+                    }
+
+                    $branchProduct->decrement('quantity', $d['quantity']);
+
+                    // Mouvement de stock de type "sale"
+                    DB::table('stock_movements')->insert([
+                        'company_id'   => $user->company_id,
+                        'branch_id'    => $activeBranchId,
+                        'product_id'   => $d['product_id'],
+                        'type'         => 'sale',
+                        'quantity'     => -$d['quantity'],
+                        'reference_id' => $sale->id,
+                        'description'  => "Vente {$saleNumber} par {$user->name}",
+                        'created_at'   => now(),
+                        'updated_at'   => now(),
+                    ]);
+                }
+
+                // Enregistrer la transaction dans la session de caisse
+                CashSessionTransaction::create([
+                    'cash_session_id' => $session->id,
+                    'type'            => 'deposit',
+                    'amount'          => $total,
+                    'description'     => "Vente {$saleNumber} ({$request->payment_method})",
+                ]);
+
+                $sale->load('details.product', 'user', 'branch');
+
+                // ── Événement SaleCreated → NotifySaleEvents listener (ciblé par rôle) ──
+                try {
+                    event(new SaleCreated($sale, $user));
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::error('SaleCreated event error: ' . $e->getMessage());
+                }
+
+                // ── Détection automatique de stock faible après la vente ──
+                try {
+                    foreach ($details as $d) {
+                        $bp = \App\Models\BranchProduct::where('branch_id', $activeBranchId)
+                            ->where('product_id', $d['product_id'])
+                            ->first();
+                        $product = \App\Models\Product::find($d['product_id']);
+                        if ($bp && $product && $product->alert_quantity !== null) {
+                            if (floatval($bp->quantity) <= floatval($product->alert_quantity)) {
+                                event(new StockLow(
+                                    $user->company_id,
+                                    $activeBranchId,
+                                    $product->id,
+                                    $product->name,
+                                    floatval($bp->quantity),
+                                    floatval($product->alert_quantity)
+                                ));
+                            }
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::error('StockLow event error: ' . $e->getMessage());
+                }
+
+                return response()->json([
+                    'message' => 'Vente enregistrée avec succès.',
+                    'sale'    => $sale,
+                ], 201);
+            });
+        } catch (\Throwable $e) {
             return response()->json([
-                'message' => 'Vente enregistrée avec succès.',
-                'sale'    => $sale,
-            ], 201);
-        });
+                'error' => $e->getMessage()
+            ], 400);
+        }
     }
 
     /**

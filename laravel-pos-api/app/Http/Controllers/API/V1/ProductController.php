@@ -78,8 +78,20 @@ class ProductController extends Controller
 
         $companyId = app(\App\Services\TenantManager::class)->getCompanyId();
 
+        // Interdiction de création de produit sans catégorie préalable dans l'entreprise
+        $categoryCount = Category::where('company_id', $companyId)->count();
+        if ($categoryCount === 0) {
+            return response()->json([
+                'status'  => 'error',
+                'code'    => 'NO_CATEGORY_EXISTS',
+                'error'   => 'Création impossible : vous devez préalablement créer au moins une catégorie de produit dans votre entreprise.',
+                'message' => 'Création impossible : vous devez préalablement créer au moins une catégorie de produit dans votre entreprise.'
+            ], 422);
+        }
+
         $validated = $request->validate([
-            'category_id' => 'required|exists:categories,id',
+            // Phase 8 : Rule::exists avec scope company_id — évite le bypass du TenantScope
+            'category_id' => ['required', Rule::exists('categories', 'id')->where('company_id', $companyId)],
             'name' => 'required|string|max:150',
             'sku' => [
                 'required',
@@ -205,7 +217,8 @@ class ProductController extends Controller
         $companyId = app(\App\Services\TenantManager::class)->getCompanyId();
 
         $validated = $request->validate([
-            'category_id' => 'required|exists:categories,id',
+            // Phase 8 : Rule::exists avec scope company_id — évite le bypass du TenantScope
+            'category_id' => ['required', Rule::exists('categories', 'id')->where('company_id', $companyId)],
             'name' => 'required|string|max:150',
             'sku' => [
                 'required',
@@ -294,7 +307,8 @@ class ProductController extends Controller
         $companyId = app(\App\Services\TenantManager::class)->getCompanyId();
 
         $validated = $request->validate([
-            'parent_id' => 'nullable|exists:categories,id',
+            // Phase 8 : scope company_id pour éviter de lier une parentèle cross-tenant
+            'parent_id' => ['nullable', Rule::exists('categories', 'id')->where('company_id', $companyId)],
             'name' => 'required|string|max:100',
             'image' => 'nullable|file|mimes:jpeg,jpg,png,gif,webp,svg,bmp|max:5120',
         ], [

@@ -38,17 +38,44 @@ class EmailService
     }
 
     /**
-     * E-mail de réinitialisation de mot de passe (Code à 6 chiffres).
+     * E-mail de vérification d'adresse e-mail et activation de compte.
      */
-    public function sendPasswordResetEmail(User $user, string $code): EmailLog
+    public function sendVerificationEmail(User $user, string $tokenPlainText): EmailLog
     {
+        $frontendUrl = config('app.frontend_url') ?: 'http://localhost:5173';
+        $verificationUrl = rtrim($frontendUrl, '/') . "/verify-email?token=" . urlencode($tokenPlainText) . "&email=" . urlencode($user->email);
+
         return $this->dispatchEmail(
             recipient: $user->email,
-            subject: "🔑 [Code {$code}] Réinitialisation de votre mot de passe dls POS",
+            subject: '✉️ Vérification de votre adresse e-mail ApexPOS',
+            viewName: 'emails.auth.verify-email',
+            viewData: [
+                'user'            => ['name' => $user->name, 'email' => $user->email],
+                'verificationUrl' => $verificationUrl,
+                'token'           => $tokenPlainText,
+            ],
+            type: 'EMAIL_VERIFICATION',
+            companyId: $user->company_id,
+            userId: $user->id
+        );
+    }
+
+    /**
+     * E-mail de réinitialisation de mot de passe avec lien sécurisé.
+     */
+    public function sendPasswordResetEmail(User $user, string $token): EmailLog
+    {
+        $frontendUrl = config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:5173'));
+        $resetUrl = rtrim($frontendUrl, '/') . "/reset-password?token=" . urlencode($token) . "&email=" . urlencode($user->email);
+
+        return $this->dispatchEmail(
+            recipient: $user->email,
+            subject: "🔑 Réinitialisation de votre mot de passe dls POS",
             viewName: 'emails.auth.password-reset',
             viewData: [
-                'user' => ['name' => $user->name, 'email' => $user->email],
-                'code' => $code,
+                'user'     => ['name' => $user->name, 'email' => $user->email],
+                'token'    => $token,
+                'resetUrl' => $resetUrl,
             ],
             type: 'PASSWORD_RESET',
             companyId: $user->company_id,

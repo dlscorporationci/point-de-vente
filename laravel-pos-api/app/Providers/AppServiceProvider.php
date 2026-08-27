@@ -21,6 +21,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Allow Sanctum to read token from query parameter (for SSE EventSource)
+        \Laravel\Sanctum\Sanctum::getAccessTokenFromRequestUsing(function ($request) {
+            return $request->bearerToken() ?: $request->query('token');
+        });
     }
 }

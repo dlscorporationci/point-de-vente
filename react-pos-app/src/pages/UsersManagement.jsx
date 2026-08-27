@@ -21,6 +21,12 @@ export const UsersManagement = () => {
   const [saving, setSaving]           = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRole, setFilterRole]   = useState('');
+
+  // États Modal modification Code PIN
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [targetPinUser, setTargetPinUser] = useState(null);
+  const [newPinCode, setNewPinCode]     = useState('');
+  const [pinSaving, setPinSaving]       = useState(false);
   
   const [userForm, setUserForm]       = useState({
     name: '', email: '', password: '', pin_code: '', role_id: '', branch_id: '', access_zone_id: '', status: 'active'
@@ -156,16 +162,30 @@ export const UsersManagement = () => {
     }
   };
 
-  const handleResetPin = async (u) => {
-    const pin = window.prompt(`Saisir le nouveau code PIN (4 chiffres) pour ${u.name} :`);
-    if (!pin || pin.length < 4 || !/^\d+$/.test(pin)) {
-      alert('Code PIN invalide (4 chiffres requis).'); return;
+  const openPinModal = (u) => {
+    setTargetPinUser(u);
+    setNewPinCode('');
+    setShowPinModal(true);
+    setError(null);
+  };
+
+  const handleSaveUserPinModal = async (e) => {
+    e.preventDefault();
+    if (!targetPinUser) return;
+    if (!newPinCode || newPinCode.length !== 4) {
+      setError("Le Code PIN doit comporter exactement 4 chiffres.");
+      return;
     }
+    setPinSaving(true);
     try {
-      await axios.post(`/v1/users/${u.id}/reset-pin`, { pin_code: pin });
-      setSuccess(`✅ Code PIN de ${u.name} réinitialisé.`);
+      await axios.post(`/v1/users/${targetPinUser.id}/reset-pin`, { pin_code: newPinCode });
+      setSuccess(`✅ Code PIN de ${targetPinUser.name} mis à jour avec succès !`);
+      setShowPinModal(false);
+      load();
     } catch (err) {
-      setError(err.response?.data?.error || 'Erreur de réinitialisation du PIN.');
+      setError(err.response?.data?.error || err.response?.data?.message || 'Erreur lors de la mise à jour du PIN.');
+    } finally {
+      setPinSaving(false);
     }
   };
 
@@ -291,8 +311,8 @@ export const UsersManagement = () => {
                       <button onClick={() => openForm(u)} className="btn btn-secondary btn-sm me-1">
                         <i className="fa-solid fa-pen"></i>
                       </button>
-                      <button onClick={() => handleResetPin(u)} className="btn btn-outline-primary btn-sm me-1" title="Réinitialiser PIN">
-                        <i className="fa-solid fa-key"></i>
+                      <button onClick={() => openPinModal(u)} className="btn btn-outline-primary btn-sm me-1" title="Modifier/Définir le Code PIN">
+                        <i className="fa-solid fa-key me-1"></i> PIN
                       </button>
                       {u.id !== user.id && (
                         <button onClick={() => handleToggleStatus(u)} className={`btn btn-sm ${u.status === 'active' ? 'btn-danger' : 'btn-success'}`}>
@@ -307,65 +327,39 @@ export const UsersManagement = () => {
           </div>
         )}
 
-        {/* Modal de création / modification */}
+        {/* Modal de création / modification d'utilisateur */}
         {showForm && (
-          <div className="modal-overlay" onClick={() => setShowForm(false)}>
-            <div className="modal-card card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px', textAlign: 'left' }}>
-              <h3>{editingUser ? `Modifier ${editingUser.name}` : 'Créer un nouveau membre du personnel'}</h3>
-              <form onSubmit={handleSave} style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div className="form-group">
-                  <label className="form-label">Nom complet *</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    required
-                    placeholder="Ex: Kouassi Jean"
-                    value={userForm.name}
-                    onChange={(e) => setUserForm({ ...userForm, name: e.target.value })}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Adresse E-mail / Identifiant *</label>
-                  <input
-                    type="email"
-                    className="form-control"
-                    required
-                    placeholder="ex: kouassi@entreprise.com"
-                    value={userForm.email}
-                    onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
-                  />
-                </div>
-
+          <div className="modal-overlay">
+            <div className="modal-card card modal-large" style={{ maxWidth: '600px' }}>
+              <h3>{editingUser ? '✏️ Modifier l\'utilisateur' : '➕ Nouveau compte personnel'}</h3>
+              <form onSubmit={handleSave}>
                 <div className="row">
                   <div className="col-md-6 form-group">
-                    <label className="form-label">{editingUser ? 'Nouveau mot de passe (optionnel)' : 'Mot de passe *'}</label>
-                    <PasswordInput
-                      required={!editingUser}
-                      placeholder="Min 6 caractères"
-                      value={userForm.password}
-                      onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
-                    />
+                    <label className="form-label">Nom complet *</label>
+                    <input type="text" className="form-control" required value={userForm.name} onChange={(e) => setUserForm({ ...userForm, name: e.target.value })} />
                   </div>
                   <div className="col-md-6 form-group">
-                    <label className="form-label">{editingUser ? 'Nouveau PIN (optionnel)' : 'Code PIN (4 chiffres) *'}</label>
-                    <input
-                      type="password"
-                      maxLength="4"
-                      className="form-control"
-                      required={!editingUser}
-                      placeholder="Ex: 1234"
-                      value={userForm.pin_code}
-                      onChange={(e) => setUserForm({ ...userForm, pin_code: e.target.value })}
-                    />
+                    <label className="form-label">Adresse e-mail *</label>
+                    <input type="email" className="form-control" required value={userForm.email} onChange={(e) => setUserForm({ ...userForm, email: e.target.value })} />
                   </div>
                 </div>
 
                 <div className="row">
                   <div className="col-md-6 form-group">
-                    <label className="form-label">Rôle attribué *</label>
+                    <label className="form-label">{editingUser ? 'Mot de passe (vide = inchangé)' : 'Mot de passe *'}</label>
+                    <PasswordInput value={userForm.password} onChange={(e) => setUserForm({ ...userForm, password: e.target.value })} placeholder="••••••••" required={!editingUser} />
+                  </div>
+                  <div className="col-md-6 form-group">
+                    <label className="form-label">Code PIN (4 chiffres)</label>
+                    <PasswordInput value={userForm.pin_code} onChange={(e) => setUserForm({ ...userForm, pin_code: e.target.value.replace(/\D/g, '').slice(0, 4) })} placeholder="Ex: 1234" maxLength="4" inputMode="numeric" />
+                  </div>
+                </div>
+
+                <div className="row">
+                  <div className="col-md-6 form-group">
+                    <label className="form-label">Rôle *</label>
                     <select className="form-control" required value={userForm.role_id} onChange={(e) => setUserForm({ ...userForm, role_id: e.target.value })}>
-                      <option value="">Sélectionner un rôle</option>
+                      <option value="">Sélectionner un rôle...</option>
                       {roles.map(r => (
                         <option key={r.id} value={r.id}>{r.name}</option>
                       ))}
@@ -396,6 +390,59 @@ export const UsersManagement = () => {
                   <button type="button" onClick={() => setShowForm(false)} className="btn btn-cancel">Annuler</button>
                   <button type="submit" disabled={saving} className="btn btn-primary">
                     {saving ? 'Enregistrement...' : (editingUser ? 'Enregistrer' : 'Créer le compte')}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Définition / Modification du Code PIN */}
+        {showPinModal && targetPinUser && (
+          <div className="modal-overlay">
+            <div className="modal-card card" style={{ maxWidth: '420px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <h3 style={{ margin: 0, fontSize: '16px' }}>
+                  <i className="fa-solid fa-key text-primary me-2"></i> Code PIN de Caisse
+                </h3>
+                <button type="button" onClick={() => setShowPinModal(false)} className="btn-close-modal" style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer' }}>×</button>
+              </div>
+
+              <div className="p-2 mb-3 rounded" style={{ background: 'var(--bg-input)', border: '1px solid var(--border-color)', fontSize: '13px' }}>
+                <div><strong>Employé :</strong> {targetPinUser.name}</div>
+                <div className="text-muted"><strong>Email :</strong> {targetPinUser.email}</div>
+                <div className="mt-1">
+                  <strong>Statut PIN : </strong>
+                  {targetPinUser.has_pin ? (
+                    <span className="badge bg-success" style={{ fontSize: '11px' }}>✅ Actif</span>
+                  ) : (
+                    <span className="badge bg-warning text-dark" style={{ fontSize: '11px' }}>⚠️ Non configuré</span>
+                  )}
+                </div>
+              </div>
+
+              <form onSubmit={handleSaveUserPinModal}>
+                <div className="form-group mb-3">
+                  <label className="form-label" style={{ fontWeight: 700 }}>Nouveau Code PIN (4 chiffres) *</label>
+                  <PasswordInput
+                    value={newPinCode}
+                    onChange={(e) => setNewPinCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                    placeholder="Ex: 1234"
+                    maxLength="4"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    autoComplete="off"
+                    required
+                  />
+                  <small className="text-muted mt-1 d-block" style={{ fontSize: '11px' }}>
+                    💡 Cliquez sur l'œil 👁️ pour afficher ou vérifier votre saisie avant de valider.
+                  </small>
+                </div>
+
+                <div className="modal-actions d-flex justify-content-end gap-2">
+                  <button type="button" onClick={() => setShowPinModal(false)} className="btn btn-cancel">Annuler</button>
+                  <button type="submit" disabled={pinSaving || newPinCode.length !== 4} className="btn btn-primary">
+                    {pinSaving ? 'Enregistrement...' : 'Enregistrer le PIN'}
                   </button>
                 </div>
               </form>

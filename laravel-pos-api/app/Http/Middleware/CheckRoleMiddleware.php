@@ -20,9 +20,16 @@ class CheckRoleMiddleware
     {
         $user = $request->user('sanctum') ?: auth('sanctum')->user();
 
+        $reqId = $request->attributes->get('request_id') ?? $request->header('X-Request-ID') ?? (app()->bound('request_id') ? app('request_id') : null);
+
         if (!$user) {
+            $msg = 'Accès refusé. Authentification requise.';
             return response()->json([
-                'error' => 'Accès refusé. Authentification requise.'
+                'status'     => 'error',
+                'code'       => 'UNAUTHENTICATED',
+                'message'    => $msg,
+                'error'      => $msg,
+                'request_id' => $reqId,
             ], 401);
         }
 
@@ -36,10 +43,15 @@ class CheckRoleMiddleware
 
         // Vérifier que le rôle de l'utilisateur est dans la liste des rôles autorisés
         if (!in_array($userRoleSlug, $roles) && !in_array($userRoleName, $roles)) {
+            $msg = 'Accès refusé. Vous ne disposez pas des droits suffisants pour effectuer cette action.';
             return response()->json([
-                'error' => 'Accès refusé. Vous ne disposez pas des droits suffisants pour effectuer cette action.',
+                'status'         => 'error',
+                'code'           => 'FORBIDDEN',
+                'message'        => $msg,
+                'error'          => $msg,
                 'required_roles' => $roles,
-                'your_role' => $userRoleSlug,
+                'your_role'      => $userRoleSlug,
+                'request_id'     => $reqId,
             ], 403);
         }
 

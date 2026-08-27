@@ -18,9 +18,14 @@ class ReportController extends Controller
      */
     public function summary(Request $request)
     {
-        $user = $request->user();
-        if ($user->role->slug !== 'admin' && $user->role->slug !== 'gerant') {
-            return response()->json(['error' => 'Accès refusé. Autorisation insuffisante.'], 403);
+        $user        = $request->user();
+        $authService = app(\App\Services\AuthorizationService::class);
+
+        // RBAC centralisé (Phase 2.3) : reports.view uniquement via AuthorizationService.
+        // Rôles habilités en BDD : admin, super-admin, gerant, comptable.
+        // Caissier → 403.
+        if (!$authService->isSuperAdmin($user) && !$authService->hasPermission($user, 'reports.view')) {
+            return response()->json(['error' => 'Accès refusé. Permission reports.view requise.'], 403);
         }
 
         $startDate = $request->input('start_date') ? Carbon::parse($request->input('start_date'))->startOfDay() : Carbon::now()->startOfMonth();

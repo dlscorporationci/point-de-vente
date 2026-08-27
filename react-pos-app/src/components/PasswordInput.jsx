@@ -11,6 +11,7 @@ export const PasswordInput = ({
   name, 
   maxLength, 
   pattern,
+  inputMode,
   autoComplete
 }) => {
   const [show, setShow] = useState(false);
@@ -19,7 +20,7 @@ export const PasswordInput = ({
     <div className="password-input-wrapper" style={{ position: 'relative', width: '100%' }}>
       <input
         type={show ? 'text' : 'password'}
-        value={value}
+        value={value ?? ''}
         onChange={onChange}
         placeholder={placeholder}
         required={required}
@@ -27,6 +28,7 @@ export const PasswordInput = ({
         name={name}
         maxLength={maxLength}
         pattern={pattern}
+        inputMode={inputMode}
         autoComplete={autoComplete}
         className={className}
         style={{ ...style, paddingRight: '42px' }}

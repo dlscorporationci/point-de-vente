@@ -193,9 +193,10 @@ export const AppProvider = ({ children }) => {
 
   // Configurer l'en-tête authorization d'Axios si un token est présent
   useEffect(() => {
-    if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      localStorage.setItem('token', token);
+    const activeToken = token || localStorage.getItem('token');
+    if (activeToken) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${activeToken}`;
+      if (token) localStorage.setItem('token', activeToken);
     } else {
       delete axios.defaults.headers.common['Authorization'];
       localStorage.removeItem('token');
@@ -546,6 +547,15 @@ export const AppProvider = ({ children }) => {
   };
 
   // Met à jour le branding complet de l'entreprise en mémoire (logo, slogan, favicon, nom)
+  const updateUser = useCallback((userData) => {
+    setUser(prev => {
+      if (!prev) return prev;
+      const updated = typeof userData === 'function' ? userData(prev) : { ...prev, ...userData };
+      localStorage.setItem('user', JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
   const updateCompanyLogo = useCallback((newLogoPath, brandingUpdates = {}) => {
     setUser(prev => {
       if (!prev) return prev;
@@ -582,6 +592,7 @@ export const AppProvider = ({ children }) => {
       fetchNotifications,
       user,
       setUser,
+      updateUser,
       token,
       login,
       logout,

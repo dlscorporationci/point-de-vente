@@ -1,35 +1,47 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
+/**
+ * SessionLockScreen — Phase 2 (Sécurité Session Lock) + Phase 9 (UX Mobile)
+ *
+ * Corrections :
+ * - SUPPRESSION de la backdoor '1234' (P-03 CRITIQUE)
+ * - SUPPRESSION de btoa() (Base64 ≠ hash cryptographique)
+ * - SUPPRESSION de la comparaison user?.pin_code côté client (PIN jamais exposé)
+ * - Vérification du PIN UNIQUEMENT via POST /auth/verify-pin (backend Sanctum)
+ * - inputMode="numeric" + pattern="[0-9]*" pour le clavier numérique mobile
+ * - Throttle local : 3 tentatives → 60s de verrouillage
+ */
 export const SessionLockScreen = ({ user, onUnlock, onSwitchAccount }) => {
-  const [pin, setPin] = useState('');
-  const [attempts, setAttempts] = useState(0);
+  const [pin, setPin]             = useState('');
+  const [attempts, setAttempts]   = useState(0);
   const [lockoutTime, setLockoutTime] = useState(0);
-  const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [error, setError]         = useState(null);
+  const [loading, setLoading]     = useState(false);
 
+  // Minuterie de verrouillage après trop de tentatives
   useEffect(() => {
-    let timer;
-    if (lockoutTime > 0) {
-      timer = setInterval(() => {
-        setLockoutTime(prev => {
-          if (prev <= 1) {
-            clearInterval(timer);
-            setAttempts(0);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
+    if (lockoutTime <= 0) return;
+    const timer = setInterval(() => {
+      setLockoutTime(prev => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          setAttempts(0);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
     return () => clearInterval(timer);
   }, [lockoutTime]);
 
-  const handleUnlock = async (e) => {
+  const handleUnlock = useCallback(async (e) => {
     e.preventDefault();
+
     if (lockoutTime > 0) return;
+
     if (!pin || pin.length < 4) {
-      setError('Veuillez saisir votre code PIN (4 chiffres au minimum).');
+      setError('Veuillez saisir votre code PIN (4 chiffres minimum).');
       return;
     }
 
@@ -37,46 +49,50 @@ export const SessionLockScreen = ({ user, onUnlock, onSwitchAccount }) => {
     setError(null);
 
     try {
-      // 1. Vérification en ligne si connecté au serveur
-      let isValid = false;
-      try {
-        const res = await axios.post('/v1/auth/login-pin', {
-          user_id: user?.id,
-          pin_code: pin
-        });
-        if (res.data?.token || res.data?.user) {
-          isValid = true;
-        }
-      } catch (netErr) {
-        // Mode Offline: Vérification sécurisée locale
-        const storedPinHash = sessionStorage.getItem('apex_user_pin_hash');
-        const inputHash = btoa(pin + (user?.id || 'salt'));
-        if (storedPinHash && storedPinHash === inputHash) {
-          isValid = true;
-        } else if (pin === '1234' || pin === user?.pin_code) {
-          isValid = true;
-        }
-      }
+      /**
+       * Phase 2 — Vérification UNIQUEMENT côté serveur via /auth/verify-pin.
+       * L'utilisateur est déjà authentifié (Sanctum) → on vérifie son propre PIN.
+       * Plus de comparaison locale, plus de btoa, plus de backdoor '1234'.
+       */
+      const res = await axios.post('/v1/auth/verify-pin', { pin_code: pin });
 
-      if (isValid) {
+      if (res.data?.verified === true) {
         setPin('');
         setAttempts(0);
         setError(null);
         onUnlock();
       } else {
-        const nextAttempts = attempts + 1;
-        setAttempts(nextAttempts);
-        if (nextAttempts >= 3) {
-          setLockoutTime(60);
-          setError('Trop de tentatives incorrectes. Session bloquée pendant 60 secondes.');
-        } else {
-          setError(`Code PIN incorrect. Tentative ${nextAttempts}/3.`);
-        }
+        // Cas inattendu (le serveur devrait retourner 401 si invalide)
+        incrementAttempts();
       }
     } catch (err) {
-      setError('Erreur lors de la vérification du code PIN.');
+      const status = err?.response?.status;
+
+      if (status === 401) {
+        // PIN incorrect → signalé par le backend
+        incrementAttempts();
+      } else if (status === 422) {
+        setError(err?.response?.data?.error || 'Aucun code PIN configuré pour ce compte.');
+      } else {
+        // Erreur réseau ou serveur indisponible
+        setError(
+          'Impossible de joindre le serveur. Vérifiez votre connexion réseau et réessayez.'
+        );
+      }
     } finally {
       setLoading(false);
+    }
+  }, [pin, lockoutTime, attempts, onUnlock]);
+
+  const incrementAttempts = () => {
+    const next = attempts + 1;
+    setAttempts(next);
+    setPin('');
+    if (next >= 3) {
+      setLockoutTime(60);
+      setError('Trop de tentatives incorrectes. Session verrouillée pendant 60 secondes.');
+    } else {
+      setError(`Code PIN incorrect. Tentative ${next}/3.`);
     }
   };
 
@@ -123,7 +139,7 @@ export const SessionLockScreen = ({ user, onUnlock, onSwitchAccount }) => {
           SESSION VERROUILLÉE
         </h2>
         <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#94a3b8' }}>
-          DLS POS • Inactivité détectée
+          APEXPOS • Inactivité détectée
         </p>
 
         <div style={{
@@ -149,22 +165,45 @@ export const SessionLockScreen = ({ user, onUnlock, onSwitchAccount }) => {
         )}
 
         {lockoutTime > 0 ? (
-          <div style={{ padding: '16px', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderRadius: '8px', marginBottom: '20px', fontWeight: 'bold' }}>
-            <i className="fa-solid fa-stopwatch me-2"></i> Réessayez dans {lockoutTime} secondes
+          <div style={{
+            padding: '16px',
+            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+            color: '#ef4444',
+            borderRadius: '8px',
+            marginBottom: '20px',
+            fontWeight: 'bold'
+          }}>
+            <i className="fa-solid fa-stopwatch me-2"></i>
+            Réessayez dans {lockoutTime} secondes
           </div>
         ) : (
           <form onSubmit={handleUnlock}>
             <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', textAlign: 'left', fontSize: '13px', color: '#cbd5e1', marginBottom: '6px' }}>
+              <label style={{
+                display: 'block',
+                textAlign: 'left',
+                fontSize: '13px',
+                color: '#cbd5e1',
+                marginBottom: '6px'
+              }}>
                 Saisissez votre code PIN
               </label>
+              {/* Phase 9 — inputMode="numeric" + pattern="[0-9]*" pour le clavier numérique mobile */}
               <input
                 type="password"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                autoComplete="current-password"
                 maxLength={8}
                 value={pin}
-                onChange={(e) => setPin(e.target.value)}
+                onChange={(e) => {
+                  // Autoriser uniquement les chiffres
+                  const v = e.target.value.replace(/\D/g, '');
+                  setPin(v);
+                }}
                 placeholder="• • • •"
                 autoFocus
+                disabled={loading}
                 style={{
                   width: '100%',
                   padding: '12px 16px',
@@ -182,30 +221,30 @@ export const SessionLockScreen = ({ user, onUnlock, onSwitchAccount }) => {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || pin.length < 4}
               style={{
                 width: '100%',
                 padding: '12px',
-                backgroundColor: '#3b82f6',
+                backgroundColor: loading ? '#1e40af' : '#3b82f6',
                 color: '#ffffff',
                 border: 'none',
                 borderRadius: '8px',
                 fontWeight: '600',
                 fontSize: '15px',
-                cursor: 'pointer',
+                cursor: loading ? 'wait' : 'pointer',
                 marginBottom: '16px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '8px'
+                gap: '8px',
+                opacity: pin.length < 4 ? 0.6 : 1,
+                transition: 'opacity 0.2s'
               }}
             >
               {loading ? (
-                <span>Vérification...</span>
+                <span><i className="fa-solid fa-spinner fa-spin me-2"></i>Vérification...</span>
               ) : (
-                <>
-                  <i className="fa-solid fa-key"></i> DÉVERROUILLER
-                </>
+                <><i className="fa-solid fa-key"></i> DÉVERROUILLER</>
               )}
             </button>
           </form>
