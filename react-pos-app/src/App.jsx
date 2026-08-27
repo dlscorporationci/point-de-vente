@@ -309,7 +309,7 @@ function MainContent() {
     }
 
     // Bloquer l'accès aux pages métiers si l'adresse e-mail n'est pas vérifiée (non super-admin)
-    const isEmailVerified = !!(user?.email_verified_at || user?.google_id || user?.google_verified_at || user?.status === 'active');
+    const isEmailVerified = !!(user?.email_verified_at || user?.google_id || user?.google_verified_at);
     if (user && !isEmailVerified && !isSuperAdmin) {
       return <VerifyEmail onNavigate={(t) => setActiveTab(t)} />;
     }

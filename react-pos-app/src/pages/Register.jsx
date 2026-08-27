@@ -206,14 +206,19 @@ export const Register = ({ setActiveTab }) => {
               </button>
             </div>
 
+            <div className="alert alert-info text-start mb-3" style={{ fontSize: '13px', borderRadius: '8px' }}>
+              <i className="fa-solid fa-envelope-circle-check me-2"></i>
+              Un e-mail de confirmation a été envoyé à <strong>{registeredData.email}</strong>. Cliquez sur le lien reçu ou saisissez votre jeton pour activer définitivement votre compte.
+            </div>
+
             <button 
               type="button" 
               onClick={handleGoToWorkspace} 
               className="btn btn-primary w-100 py-3"
               style={{ fontWeight: 800, fontSize: '15px', borderRadius: '10px' }}
             >
-              <i className="fa-solid fa-rocket me-2"></i>
-              Accéder à mon Espace de Travail
+              <i className="fa-solid fa-envelope-circle-check me-2"></i>
+              Vérifier mon adresse e-mail & Activer mon Compte
             </button>
           </div>
         ) : (
