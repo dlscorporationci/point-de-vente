@@ -1295,11 +1295,11 @@ export const Settings = () => {
                         <PasswordInput
                           value={dedicatedPin}
                           onChange={(e) => setDedicatedPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                          placeholder="Nouveau PIN (4 chiffres)"
+                          placeholder="Saisir un nouveau PIN (4 chiffres)"
                           maxLength="4"
                           inputMode="numeric"
                           pattern="[0-9]*"
-                          autoComplete="off"
+                          autoComplete="new-password"
                         />
                       </div>
                       <button 
@@ -1312,7 +1312,7 @@ export const Settings = () => {
                       </button>
                     </div>
                     <small className="text-muted d-block mt-2" style={{ fontSize: '12px' }}>
-                      💡 Saisissez 4 chiffres (ex: 1234). Vous pouvez cliquer sur l'icône de l'œil 👁️ pour afficher ou masquer votre saisie.
+                      💡 Saisissez 4 chiffres pour modifier ou mettre à jour votre PIN Caisse (ex: 9876). Le PIN actuel est masqué et sécurisé.
                     </small>
                   </form>
                 </div>
