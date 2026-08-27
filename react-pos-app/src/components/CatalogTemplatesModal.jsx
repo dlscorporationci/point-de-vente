@@ -9,7 +9,66 @@ const DEFAULT_TEMPLATES = [
     icon: 'fa-screwdriver-wrench',
     description: 'Pack complet d\'outillage, ciment, peinture, boulonnerie et matériel de construction.',
     categories_count: 5,
-    products_count: 24
+    products_count: 24,
+    categories: [
+      {
+        id: 101,
+        name: 'Matériaux de construction',
+        icon: 'fa-cubes',
+        products: [
+          { name: 'Ciment CPJ 42.5 (Sac 50kg)', unit: 'sac', selling_price: 4800, cost_price: 4300, alert_quantity: 20 },
+          { name: 'Fer à béton Ø10 (Barre 12m)', unit: 'barre', selling_price: 3800, cost_price: 3400, alert_quantity: 50 },
+          { name: 'Fer à béton Ø12 (Barre 12m)', unit: 'barre', selling_price: 5400, cost_price: 4900, alert_quantity: 40 },
+          { name: 'Clous à charpente 100mm (Carton 25kg)', unit: 'carton', selling_price: 22000, cost_price: 18500, alert_quantity: 5 },
+          { name: 'Gravier Concassé 15/25 (Tonne)', unit: 'tonne', selling_price: 14000, cost_price: 11000, alert_quantity: 10 }
+        ]
+      },
+      {
+        id: 102,
+        name: 'Peinture & Solvants',
+        icon: 'fa-paint-roller',
+        products: [
+          { name: 'Peinture Latex Blanc 20L', unit: 'seau', selling_price: 18500, cost_price: 14000, alert_quantity: 10 },
+          { name: 'Peinture Huile Glycéro 5L Blanc', unit: 'pot', selling_price: 12000, cost_price: 9500, alert_quantity: 8 },
+          { name: 'Diluant Cellulosique 5L', unit: 'bidon', selling_price: 6500, cost_price: 4800, alert_quantity: 12 },
+          { name: 'Rouleau de peinture 220mm complet', unit: 'unité', selling_price: 2500, cost_price: 1600, alert_quantity: 15 },
+          { name: 'Pinceau Plat Professionnel 50mm', unit: 'unité', selling_price: 1200, cost_price: 700, alert_quantity: 20 }
+        ]
+      },
+      {
+        id: 103,
+        name: 'Plomberie & Sanitaires',
+        icon: 'fa-faucet',
+        products: [
+          { name: 'Tuyau PVC Ø110 4m', unit: 'barre', selling_price: 4500, cost_price: 3200, alert_quantity: 25 },
+          { name: 'Tuyau PVC Ø40 4m', unit: 'barre', selling_price: 1800, cost_price: 1200, alert_quantity: 30 },
+          { name: 'Robinet Mélangeur Inox Lavabo', unit: 'unité', selling_price: 14500, cost_price: 9800, alert_quantity: 6 },
+          { name: 'Colle PVC Pinceau 500g', unit: 'pot', selling_price: 3200, cost_price: 2100, alert_quantity: 15 }
+        ]
+      },
+      {
+        id: 104,
+        name: 'Électricité & Éclairage',
+        icon: 'fa-bolt',
+        products: [
+          { name: 'Câble TH 1.5mm² (Rouleau 100m)', unit: 'rouleau', selling_price: 16500, cost_price: 12800, alert_quantity: 5 },
+          { name: 'Câble TH 2.5mm² (Rouleau 100m)', unit: 'rouleau', selling_price: 24500, cost_price: 19500, alert_quantity: 5 },
+          { name: 'Disjoncteur Différentiel 16A Mono', unit: 'unité', selling_price: 4500, cost_price: 2900, alert_quantity: 10 },
+          { name: 'Ampoule LED E27 12W Blanc Froid', unit: 'unité', selling_price: 1000, cost_price: 600, alert_quantity: 50 }
+        ]
+      },
+      {
+        id: 105,
+        name: 'Outillage & Équipement',
+        icon: 'fa-screwdriver-wrench',
+        products: [
+          { name: 'Marteau d\'arrache 500g Manche Fibre', unit: 'unité', selling_price: 4200, cost_price: 2600, alert_quantity: 10 },
+          { name: 'Meuleuse d\'angle 115mm 850W', unit: 'unité', selling_price: 26500, cost_price: 19000, alert_quantity: 4 },
+          { name: 'Perceuse à percussion 710W', unit: 'unité', selling_price: 24000, cost_price: 17500, alert_quantity: 5 },
+          { name: 'Niveau à bulle Aluminium 60cm', unit: 'unité', selling_price: 3500, cost_price: 2200, alert_quantity: 12 }
+        ]
+      }
+    ]
   },
   {
     id: 2,
@@ -17,8 +76,63 @@ const DEFAULT_TEMPLATES = [
     domain: 'Alimentation',
     icon: 'fa-cart-shopping',
     description: 'Produits frais, boissons, épicerie sèche et entretien ménager.',
-    categories_count: 6,
-    products_count: 30
+    categories_count: 5,
+    products_count: 22,
+    categories: [
+      {
+        id: 201,
+        name: 'Riz & Céréales',
+        icon: 'fa-bowl-rice',
+        products: [
+          { name: 'Riz Parfumé Uncle Sam 25kg', unit: 'sac', selling_price: 18500, cost_price: 16200, alert_quantity: 10 },
+          { name: 'Riz Oncle Sam 5kg', unit: 'sac', selling_price: 4200, cost_price: 3650, alert_quantity: 15 },
+          { name: 'Spaghetti Panzani 500g', unit: 'paquet', selling_price: 600, cost_price: 480, alert_quantity: 50 },
+          { name: 'Macaroni Maman 500g', unit: 'paquet', selling_price: 500, cost_price: 390, alert_quantity: 40 }
+        ]
+      },
+      {
+        id: 202,
+        name: 'Huiles & Condiments',
+        icon: 'fa-bottle-droplet',
+        products: [
+          { name: 'Huile de Tournesol Dinor 5L', unit: 'bidon', selling_price: 7500, cost_price: 6400, alert_quantity: 12 },
+          { name: 'Huile de Palme Raffinée 1L', unit: 'bouteille', selling_price: 1200, cost_price: 980, alert_quantity: 20 },
+          { name: 'Concentré de Tomate 400g', unit: 'boîte', selling_price: 650, cost_price: 520, alert_quantity: 30 },
+          { name: 'Cube d\'Assaisonnement Maggi (Pack 60)', unit: 'paquet', selling_price: 1500, cost_price: 1200, alert_quantity: 15 }
+        ]
+      },
+      {
+        id: 203,
+        name: 'Boissons & Rafraîchissements',
+        icon: 'fa-wine-bottle',
+        products: [
+          { name: 'Eau Minérale Awa 1.5L (Pack de 6)', unit: 'pack', selling_price: 2400, cost_price: 1900, alert_quantity: 20 },
+          { name: 'Coca-Cola Canette 33cl (Pack 24)', unit: 'carton', selling_price: 9600, cost_price: 8000, alert_quantity: 10 },
+          { name: 'Jus d\'Orange Ceres 1L', unit: 'brique', selling_price: 1400, cost_price: 1100, alert_quantity: 15 }
+        ]
+      },
+      {
+        id: 204,
+        name: 'Produits Laitiers & Petit Déjeuner',
+        icon: 'fa-mug-hot',
+        products: [
+          { name: 'Lait Concentré Sucré Nestlé 397g', unit: 'boîte', selling_price: 850, cost_price: 700, alert_quantity: 25 },
+          { name: 'Lait en Poudre Nido 400g', unit: 'boîte', selling_price: 2800, cost_price: 2350, alert_quantity: 15 },
+          { name: 'Chocolat en Poudre Milo 400g', unit: 'boîte', selling_price: 2200, cost_price: 1800, alert_quantity: 12 },
+          { name: 'Café Nescafé Classic 100g', unit: 'bocal', selling_price: 1950, cost_price: 1600, alert_quantity: 15 }
+        ]
+      },
+      {
+        id: 205,
+        name: 'Hygiène & Entretien',
+        icon: 'fa-soap',
+        products: [
+          { name: 'Savon de Marseille 400g', unit: 'morceau', selling_price: 450, cost_price: 320, alert_quantity: 40 },
+          { name: 'Lessive en Poudre Omo 1kg', unit: 'sachet', selling_price: 1400, cost_price: 1100, alert_quantity: 20 },
+          { name: 'Eau de Javel Lacroix 1L', unit: 'bouteille', selling_price: 750, cost_price: 550, alert_quantity: 25 }
+        ]
+      }
+    ]
   },
   {
     id: 3,
@@ -27,7 +141,53 @@ const DEFAULT_TEMPLATES = [
     icon: 'fa-prescription-bottle-medical',
     description: 'Médicaments courants, parapharmacie, hygiène et soins.',
     categories_count: 4,
-    products_count: 20
+    products_count: 17,
+    categories: [
+      {
+        id: 301,
+        name: 'Analgésiques & Anti-douleurs',
+        icon: 'fa-pills',
+        products: [
+          { name: 'Paracétamol 500mg (Boîte de 16)', unit: 'boîte', selling_price: 500, cost_price: 320, alert_quantity: 50 },
+          { name: 'Ibuprofène 400mg (Boîte de 20)', unit: 'boîte', selling_price: 1200, cost_price: 850, alert_quantity: 30 },
+          { name: 'Doliprane 1000mg Effervescent', unit: 'boîte', selling_price: 1500, cost_price: 1100, alert_quantity: 25 },
+          { name: 'Aspirine 500mg', unit: 'boîte', selling_price: 800, cost_price: 550, alert_quantity: 20 }
+        ]
+      },
+      {
+        id: 302,
+        name: 'Hygiène & Parapharmacie',
+        icon: 'fa-pump-medical',
+        products: [
+          { name: 'Gel Hydroalcoolique 250ml', unit: 'flacon', selling_price: 1200, cost_price: 800, alert_quantity: 30 },
+          { name: 'Dentifrice Signal Protection 75ml', unit: 'tube', selling_price: 900, cost_price: 650, alert_quantity: 25 },
+          { name: 'Savon Antiseptique Dettol 100g', unit: 'pain', selling_price: 600, cost_price: 420, alert_quantity: 35 },
+          { name: 'Brosse à dents Médium', unit: 'unité', selling_price: 500, cost_price: 300, alert_quantity: 30 }
+        ]
+      },
+      {
+        id: 303,
+        name: 'Premiers Secours & Matériel',
+        icon: 'fa-kit-medical',
+        products: [
+          { name: 'Compresses Stériles 10x10 (Boîte de 10)', unit: 'boîte', selling_price: 800, cost_price: 500, alert_quantity: 20 },
+          { name: 'Alcool à 70° 250ml', unit: 'flacon', selling_price: 1000, cost_price: 700, alert_quantity: 20 },
+          { name: 'Pansements Assortis (Boîte de 20)', unit: 'boîte', selling_price: 700, cost_price: 450, alert_quantity: 30 },
+          { name: 'Spadadrap Sparaplast 5m', unit: 'rouleau', selling_price: 600, cost_price: 380, alert_quantity: 25 }
+        ]
+      },
+      {
+        id: 304,
+        name: 'Soins Bébé & Maternité',
+        icon: 'fa-baby',
+        products: [
+          { name: 'Couches Bébé Taille 3 (Pack 40)', unit: 'paquet', selling_price: 6500, cost_price: 5200, alert_quantity: 10 },
+          { name: 'Lingettes Bébé Douceur (Pack 72)', unit: 'paquet', selling_price: 1500, cost_price: 1100, alert_quantity: 20 },
+          { name: 'Biberon Anticolique 250ml', unit: 'unité', selling_price: 3200, cost_price: 2300, alert_quantity: 8 },
+          { name: 'Lait de Toilette Bébé 500ml', unit: 'flacon', selling_price: 2800, cost_price: 2000, alert_quantity: 10 }
+        ]
+      }
+    ]
   },
   {
     id: 4,
@@ -35,8 +195,43 @@ const DEFAULT_TEMPLATES = [
     domain: 'High-Tech',
     icon: 'fa-mobile-screen-button',
     description: 'Smartphones, câbles, écouteurs, accessoires informatiques et électroménager.',
-    categories_count: 4,
-    products_count: 18
+    categories_count: 3,
+    products_count: 12,
+    categories: [
+      {
+        id: 401,
+        name: 'Téléphonie & Accessoires',
+        icon: 'fa-mobile-screen-button',
+        products: [
+          { name: 'Câble USB-C Vers USB-C Rapide 1m', unit: 'unité', selling_price: 2500, cost_price: 1400, alert_quantity: 20 },
+          { name: 'Chargeur Rapide 20W Type-C', unit: 'unité', selling_price: 5500, cost_price: 3500, alert_quantity: 15 },
+          { name: 'Écouteurs Sans Fil Bluetooth TWS', unit: 'unité', selling_price: 9500, cost_price: 6200, alert_quantity: 10 },
+          { name: 'Verre Trempé Universel 6.5"', unit: 'unité', selling_price: 1500, cost_price: 600, alert_quantity: 30 }
+        ]
+      },
+      {
+        id: 402,
+        name: 'Informatique & Périphériques',
+        icon: 'fa-laptop',
+        products: [
+          { name: 'Clé USB 3.0 32Go SanDisk', unit: 'unité', selling_price: 4500, cost_price: 3100, alert_quantity: 15 },
+          { name: 'Souris Sans Fil Optique USB', unit: 'unité', selling_price: 3500, cost_price: 2200, alert_quantity: 12 },
+          { name: 'Tapis de Souris Ergonomique', unit: 'unité', selling_price: 1800, cost_price: 1000, alert_quantity: 20 },
+          { name: 'Casque Audio Filaire avec Micro', unit: 'unité', selling_price: 6500, cost_price: 4200, alert_quantity: 8 }
+        ]
+      },
+      {
+        id: 403,
+        name: 'Énergie & Éclairage',
+        icon: 'fa-battery-full',
+        products: [
+          { name: 'Multiprise 4 Prises avec Interrupteur 3m', unit: 'unité', selling_price: 4500, cost_price: 2900, alert_quantity: 15 },
+          { name: 'Piles Alcalines AA LR6 (Pack de 4)', unit: 'pack', selling_price: 1800, cost_price: 1200, alert_quantity: 25 },
+          { name: 'Powerbank 10000mAh Dual USB', unit: 'unité', selling_price: 8500, cost_price: 5800, alert_quantity: 10 },
+          { name: 'Lampe Torche LED Rechargeable USB', unit: 'unité', selling_price: 3500, cost_price: 2200, alert_quantity: 12 }
+        ]
+      }
+    ]
   }
 ];
 
