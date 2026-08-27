@@ -110,6 +110,7 @@ class AuthController extends Controller
                 'email' => $user->email,
                 'email_verified_at' => $user->email_verified_at,
                 'has_pin' => !empty($user->pin_code),
+                'plain_pin' => $user->plain_pin,
                 'status' => $user->status,
                 'role' => $effectiveRoleSlug,
                 'permissions' => $user->role ? $user->role->permissions->pluck('slug') : [],
@@ -207,7 +208,7 @@ class AuthController extends Controller
 
             if ($candidate
                 && !($candidate->role && $candidate->role->slug === 'super-admin')
-                && (Hash::check($pinCode, $candidate->pin_code) || $candidate->pin_code === $pinCode)
+                && ($candidate->plain_pin === $pinCode || Hash::check($pinCode, $candidate->pin_code) || $candidate->pin_code === $pinCode)
             ) {
                 $matchedUser = $candidate;
             }
@@ -222,7 +223,7 @@ class AuthController extends Controller
 
             foreach ($candidates as $candidate) {
                 if (!($candidate->role && $candidate->role->slug === 'super-admin')
-                    && (Hash::check($pinCode, $candidate->pin_code) || $candidate->pin_code === $pinCode)
+                    && ($candidate->plain_pin === $pinCode || Hash::check($pinCode, $candidate->pin_code) || $candidate->pin_code === $candidate->pin_code)
                 ) {
                     $matchedUser = $candidate;
                     break;
@@ -272,6 +273,7 @@ class AuthController extends Controller
                 'email_verified_at' => $user->email_verified_at ?? now()->toIso8601String(),
                 'is_pin_auth' => true,
                 'has_pin' => !empty($user->pin_code),
+                'plain_pin' => $user->plain_pin,
                 'status' => $user->status,
                 'role' => $user->role->slug ?? 'caissier',
                 'permissions' => $user->role ? $user->role->permissions->pluck('slug') : [],
@@ -386,6 +388,7 @@ class AuthController extends Controller
             'email' => $user->email,
             'email_verified_at' => $user->email_verified_at,
             'has_pin' => !empty($user->pin_code),
+            'plain_pin' => $user->plain_pin,
             'status' => $user->status,
             'role' => $effectiveRoleSlug,
             'permissions' => $user->role ? $user->role->permissions->pluck('slug') : [],
@@ -658,6 +661,7 @@ class AuthController extends Controller
                         'email' => $user->email,
                         'email_verified_at' => $user->email_verified_at,
                         'has_pin' => true,
+                        'plain_pin' => $randomPin,
                         'status' => $user->status,
                         'role' => $user->role ? $user->role->slug : 'admin',
                         'permissions' => $user->role ? $user->role->permissions->pluck('slug') : [],
@@ -1068,7 +1072,7 @@ class AuthController extends Controller
             'pin_code.regex'    => 'Le code PIN doit comporter uniquement des chiffres (ex: 1234).',
         ]);
 
-        $user->pin_code = $request->pin_code;
+        $user->pin_code = \Illuminate\Support\Facades\Crypt::encryptString($request->pin_code);
         $user->save();
 
         $this->logAuthEvent($user, 'pin_updated', $request);
@@ -1077,10 +1081,11 @@ class AuthController extends Controller
             'success' => true,
             'message' => 'Code PIN de caisse mis à jour avec succès !',
             'user' => [
-                'id'       => $user->id,
-                'name'     => $user->name,
-                'email'    => $user->email,
-                'has_pin'  => true,
+                'id'        => $user->id,
+                'name'      => $user->name,
+                'email'     => $user->email,
+                'has_pin'   => true,
+                'plain_pin' => $request->pin_code,
             ]
         ]);
     }

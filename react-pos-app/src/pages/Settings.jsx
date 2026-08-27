@@ -68,6 +68,8 @@ export const Settings = () => {
   const [dedicatedPinLoading, setDedicatedPinLoading] = useState(false);
   const [pinSuccessMsg, setPinSuccessMsg]           = useState(null);
   const [pinErrorMsg, setPinErrorMsg]               = useState(null);
+  const [showCurrentPin, setShowCurrentPin]         = useState(false);
+  const [copiedPin, setCopiedPin]                   = useState(false);
 
   // ─── États Boutiques ──────────────────────────────────────────────────────
   const [branches, setBranches]             = useState([]);
@@ -1285,6 +1287,57 @@ export const Settings = () => {
                       )}
                     </div>
                   </div>
+
+                  {user?.plain_pin && (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      backgroundColor: 'var(--bg-main)',
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      border: '1px dashed #10b981',
+                      marginBottom: '16px',
+                      flexWrap: 'wrap',
+                      gap: '8px'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>
+                          <i className="fa-solid fa-shield text-success me-1"></i> Code PIN Caisse Actuel :
+                        </span>
+                        <span style={{
+                          fontFamily: 'monospace',
+                          fontSize: '18px',
+                          fontWeight: 'bold',
+                          letterSpacing: showCurrentPin ? '3px' : '6px',
+                          color: '#10b981'
+                        }}>
+                          {showCurrentPin ? user.plain_pin : '••••'}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-secondary"
+                          onClick={() => setShowCurrentPin(!showCurrentPin)}
+                          title={showCurrentPin ? "Masquer le PIN" : "Afficher le PIN"}
+                        >
+                          <i className={showCurrentPin ? "fa-solid fa-eye-slash" : "fa-solid fa-eye"}></i> {showCurrentPin ? 'Masquer' : 'Afficher'}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-success"
+                          onClick={() => {
+                            navigator.clipboard.writeText(user.plain_pin);
+                            setCopiedPin(true);
+                            setTimeout(() => setCopiedPin(false), 2000);
+                          }}
+                        >
+                          <i className={copiedPin ? "fa-solid fa-check" : "fa-solid fa-copy"}></i> {copiedPin ? 'Copié !' : 'Copier le PIN'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   <form onSubmit={handleSaveDedicatedPin} style={{ marginTop: '8px' }}>
                     {pinSuccessMsg && <div className="success-banner mb-2" style={{ fontSize: '13px' }}>{pinSuccessMsg}</div>}

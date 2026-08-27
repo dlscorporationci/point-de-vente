@@ -21,11 +21,22 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, HasApiTokens, BelongsToTenant, Auditable;
 
-    protected $appends = ['has_pin'];
+    protected $appends = ['has_pin', 'plain_pin'];
 
     public function getHasPinAttribute(): bool
     {
         return !empty($this->attributes['pin_code']);
+    }
+
+    public function getPlainPinAttribute(): ?string
+    {
+        if (empty($this->attributes['pin_code'])) return null;
+        $raw = $this->attributes['pin_code'];
+        if (preg_match('/^[0-9]{4,8}$/', $raw)) return $raw;
+        try {
+            return \Illuminate\Support\Facades\Crypt::decryptString($raw);
+        } catch (\Throwable $e) {}
+        return null;
     }
 
     /**
@@ -37,7 +48,6 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
-            'pin_code' => 'hashed',
         ];
     }
 
