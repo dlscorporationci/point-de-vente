@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { useApp } from '../context/AppContext';
 import logo from '../assets/logo.jpg';
 
 export function VerifyEmail({ onNavigate }) {
-  const { user, token, logout, API_BASE_URL, checkAuthStatus } = useApp();
+  const { user, token, logout, checkAuthStatus } = useApp();
   
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
@@ -50,20 +51,12 @@ export function VerifyEmail({ onNavigate }) {
     setStatusMessage('Validation de votre jeton de vérification en cours...');
 
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/verify-email`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({ token: tokenVal, email: emailVal }),
-      });
+      const response = await axios.post('/v1/auth/verify-email', { token: tokenVal, email: emailVal });
+      const data = response.data;
 
-      const data = await response.json();
-
-      if (response.ok && data.success) {
+      if (data && data.success) {
         setSuccess(true);
-        setStatusMessage('Votre adresse e-mail a été vérifiée avec succès ! Votre compte est désormais actif.');
+        setStatusMessage(data.message || 'Votre adresse e-mail a été vérifiée avec succès ! Votre compte est désormais actif.');
         // Nettoyer l'URL
         window.history.replaceState({}, document.title, window.location.pathname);
         if (checkAuthStatus) {
@@ -75,7 +68,8 @@ export function VerifyEmail({ onNavigate }) {
       }
     } catch (err) {
       console.error('Erreur verify-email:', err);
-      setErrorMessage('Une erreur réseau est survenue lors de la vérification.');
+      const msg = err.response?.data?.error || err.response?.data?.message || 'Échec de la vérification. Le jeton est invalide ou a expiré.';
+      setErrorMessage(msg);
     } finally {
       setLoading(false);
     }
@@ -89,31 +83,15 @@ export function VerifyEmail({ onNavigate }) {
     setStatusMessage('');
 
     try {
-      const headers = {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
+      const response = await axios.post('/v1/auth/resend-verification-email', { email: targetEmail });
+      const data = response.data;
 
-      const response = await fetch(`${API_BASE_URL}/auth/resend-verification-email`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ email: targetEmail }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setStatusMessage(data.message || 'Un nouvel e-mail de vérification vous a été envoyé.');
-        setResendCooldown(60); // Cooldown anti-spam 60 secondes
-      } else {
-        setErrorMessage(data.error || 'Impossible d\'envoyer l\'e-mail de vérification.');
-      }
+      setStatusMessage(data.message || 'Un nouvel e-mail de vérification vous a été envoyé.');
+      setResendCooldown(60);
     } catch (err) {
       console.error('Erreur resend-verification:', err);
-      setErrorMessage('Erreur réseau lors de la demande de renvoi.');
+      const msg = err.response?.data?.error || err.response?.data?.message || 'Erreur lors de la demande de renvoi.';
+      setErrorMessage(msg);
     } finally {
       setResendLoading(false);
     }
