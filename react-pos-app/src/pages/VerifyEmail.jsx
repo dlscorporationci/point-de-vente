@@ -65,8 +65,8 @@ export function VerifyEmail({ onNavigate }) {
           try { await refreshUser(); } catch (e) {}
         }
         
-        // Nettoyer l'URL
-        window.history.replaceState({}, document.title, window.location.pathname);
+        // Nettoyer l'URL pour revenir à la racine /
+        window.history.replaceState({}, document.title, '/');
       } else {
         setSuccess(false);
         setErrorMessage(data.error || 'Échec de la vérification. Le jeton est invalide ou a expiré.');
@@ -81,6 +81,7 @@ export function VerifyEmail({ onNavigate }) {
   };
 
   const handleGoToApp = async () => {
+    window.history.replaceState({}, document.title, '/');
     if (updateUser) {
       updateUser({ email_verified_at: new Date().toISOString() });
     }

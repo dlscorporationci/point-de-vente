@@ -108,23 +108,33 @@ function MainContent() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const path = window.location.pathname;
+    const tokenParam = params.get('token');
+
     if (path.includes('verify-email')) {
-      setActiveTabState('verify-email');
+      const isEmailVerified = !!(user?.email_verified_at || user?.google_id || user?.google_verified_at || isSuperAdmin);
+      if (isEmailVerified && !tokenParam) {
+        window.history.replaceState({}, document.title, '/');
+        const target = isSuperAdmin ? 'backoffice' : 'dashboard';
+        sessionStorage.setItem('apex_active_tab', target);
+        setActiveTabState(target);
+      } else {
+        setActiveTabState('verify-email');
+      }
     } else if (path.includes('reset-password')) {
       setActiveTabState('auth');
     }
-  }, []);
+  }, [user, isSuperAdmin]);
 
-  // Synchronisation automatique : lorsqu'un utilisateur se connecte, le diriger immédiatement sur le Dashboard
+  // Synchronisation automatique : lorsqu'un utilisateur se connecte, le diriger immédiatement sur le Dashboard / BackOffice
   useEffect(() => {
     if (user) {
-      const isEmailVerified = !!(user.email_verified_at || user.google_id || user.google_verified_at || user.status === 'active');
+      const isEmailVerified = !!(user.email_verified_at || user.google_id || user.google_verified_at || isSuperAdmin);
       if (!isEmailVerified && !isSuperAdmin) {
         setActiveTabState('verify-email');
         return;
       }
       const savedTab = sessionStorage.getItem('apex_active_tab');
-      if (!savedTab || savedTab === 'home' || savedTab === 'auth' || (isSuperAdmin && savedTab === 'select-branch')) {
+      if (!savedTab || savedTab === 'home' || savedTab === 'auth' || savedTab === 'verify-email' || (isSuperAdmin && savedTab === 'select-branch')) {
         const target = isSuperAdmin ? 'backoffice' : 'dashboard';
         sessionStorage.setItem('apex_active_tab', target);
         setActiveTabState(target);
