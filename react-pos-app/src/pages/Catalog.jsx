@@ -489,19 +489,12 @@ export const Catalog = () => {
                 <i className="fa-solid fa-folder-open me-1"></i> Nouvelle Catégorie
               </button>
               <button onClick={() => {
-                if (categories.length === 0) {
-                  setError("⚠️ Création impossible : vous devez préalablement créer au moins une catégorie dans votre entreprise avant d'ajouter un produit.");
-                  setQuickCreateFromProduct(true);
-                  setShowCategoryForm(true);
-                  setShowProductForm(false);
-                  return;
-                }
                 setEditingProduct(null);
                 setNewProductName('');
                 setNewProductSku('');
                 setNewProductBarcode('');
                 setNewProductPrice('');
-                setNewProductCategoryId(categories.length > 0 ? String(categories[0].id) : '');
+                setNewProductCategoryId('');
                 setNewProductDescription('');
                 setNewProductAlertQty('10');
                 setNewProductImage(null);
