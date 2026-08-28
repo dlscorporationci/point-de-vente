@@ -76,10 +76,43 @@ class ErrorBoundary extends React.Component {
 }
 
 function MainContent() {
-  const { user, token, activeBranch, assignedBranches, maintenanceInfo } = useApp()
+  const { user, token, login, activeBranch, assignedBranches, maintenanceInfo } = useApp()
   
+  const isSuperAdmin = !!(
+    user?.email === 'superadmin@dls.com' ||
+    user?.role?.slug === 'super-admin' ||
+    user?.role?.slug === 'superadmin' ||
+    user?.role === 'super-admin' ||
+    user?.role === 'superadmin' ||
+    !!user?.is_superadmin
+  );
+
+  // Traitement automatique global des retours Google OAuth pour accès immédiat au Dashboard
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const googleToken = params.get('google_token');
+      const googleUserBase64 = params.get('google_user');
+
+      if (googleToken && googleUserBase64) {
+        try {
+          const userObj = JSON.parse(atob(googleUserBase64));
+          if (login) {
+            login(userObj, googleToken);
+          }
+          window.history.replaceState({}, document.title, window.location.pathname);
+          const isSuperAdminUser = (userObj.role === 'super-admin' || userObj.role?.slug === 'super-admin' || userObj.is_superadmin);
+          const target = isSuperAdminUser ? 'backoffice' : 'dashboard';
+          sessionStorage.setItem('apex_active_tab', target);
+          setActiveTabState(target);
+        } catch (e) {
+          console.error("Erreur de décodage du jeton Google OAuth:", e);
+        }
+      }
+    }
+  }, [login]);
+
   const role = getRoleSlug(user?.role);
-  const isSuperAdmin = role === 'super-admin' || role === 'Super Admin' || role === 'superadmin' || user?.email === 'superadmin@dls.com' || !!user?.is_superadmin;
   const isAdminOrGerant = role === 'admin' || isSuperAdmin;
   const isAdmin = role === 'admin' || isSuperAdmin;
 

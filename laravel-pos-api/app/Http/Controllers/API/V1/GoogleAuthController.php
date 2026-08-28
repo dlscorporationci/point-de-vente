@@ -273,17 +273,26 @@ class GoogleAuthController extends Controller
             $assignedBranchesList = collect([]);
         }
 
-        $frontendUrl = config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:5173'));
+        $frontendUrl = env('FRONTEND_URL', config('app.frontend_url', config('app.url', 'https://pos.dlscorporation.ci')));
         
         $userData = base64_encode(json_encode([
             'id'                => $user->id,
             'name'              => $user->name,
             'email'             => $user->email,
+            'plain_pin'         => $user->plain_pin,
             'google_id'         => $user->google_id,
             'google_avatar'     => $user->google_avatar,
-            'role'              => $user->role ? $user->role->slug : 'caissier',
+            'role'              => $user->role ? $user->role->slug : 'admin',
             'company_id'        => $user->company_id,
             'company_name'      => $company ? $company->name : null,
+            'company_code'      => $company ? $company->code : null,
+            'company'           => $company ? [
+                'id'            => $company->id,
+                'name'          => $company->name,
+                'code'          => $company->code,
+                'currency'      => $company->currency,
+                'pos_settings'  => $company->pos_settings ?? [],
+            ] : null,
             'branch_id'         => $user->branch_id,
             'assigned_branches' => $assignedBranchesList,
         ]));
