@@ -188,7 +188,7 @@ class GoogleAuthController extends Controller
                 'name'       => 'Boutique Principale',
                 'address'    => 'Siège Social',
                 'phone'      => '',
-                'status'     => 'active',
+                'status'     => 'open',
             ]);
 
             $adminRole = \App\Models\Role::withoutGlobalScopes()->firstOrCreate(['slug' => 'admin'], ['name' => 'Administrateur']);
