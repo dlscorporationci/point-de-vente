@@ -28,9 +28,12 @@ class GoogleAuthController extends Controller
             return $this->returnError($request, 'GOOGLE_OAUTH_NOT_CONFIGURED', 'L\'authentification Google OAuth n\'est pas encore configurée sur ce serveur.', 500);
         }
 
-        // Générer un jeton state cryptographique anti-CSRF
-        $state = Str::random(40);
-        Cache::put('google_oauth_state_' . $state, true, 300);
+        // Générer un jeton state cryptographique anti-CSRF (signé HMAC avec APP_KEY)
+        $timestamp = time();
+        $random    = Str::random(16);
+        $sig       = hash_hmac('sha256', $timestamp . '.' . $random, config('app.key'));
+        $state     = base64_encode($timestamp . '.' . $random . '.' . $sig);
+        Cache::put('google_oauth_state_' . $state, true, 900);
 
         $params = http_build_query([
             'client_id'     => $clientId,
@@ -72,11 +75,9 @@ class GoogleAuthController extends Controller
 
         // 1. Validation d'un code OAuth entrant avec validation de l'état anti-CSRF
         if ($code) {
-            if ($state) {
-                if (!Cache::pull('google_oauth_state_' . $state) && !app()->environment('testing')) {
-                    $this->logAuthFailure(null, 'google_login_invalid_state', $request);
-                    return $this->returnError($request, 'GOOGLE_INVALID_STATE', 'Requête Google OAuth invalide ou expirée (État anti-CSRF incorrect).', 403);
-                }
+            if ($state && !$this->validateState($state)) {
+                $this->logAuthFailure(null, 'google_login_invalid_state', $request);
+                return $this->returnError($request, 'GOOGLE_INVALID_STATE', 'Requête Google OAuth invalide ou expirée (État anti-CSRF incorrect).', 403);
             }
 
             // Échange du code OAuth contre les tokens auprès de Google
@@ -351,5 +352,28 @@ class GoogleAuthController extends Controller
 
         $frontendUrl = config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:5173'));
         return redirect()->away($frontendUrl . '?google_error=' . urlencode($message));
+    }
+
+    private function validateState(?string $state): bool
+    {
+        if (!$state) return true;
+
+        if (Cache::pull('google_oauth_state_' . $state)) {
+            return true;
+        }
+
+        try {
+            $decoded = base64_decode($state);
+            $parts = explode('.', $decoded);
+            if (count($parts) === 3) {
+                [$ts, $rand, $sig] = $parts;
+                $expectedSig = hash_hmac('sha256', $ts . '.' . $rand, config('app.key'));
+                if (hash_equals($expectedSig, $sig) && (time() - (int)$ts) < 900) {
+                    return true;
+                }
+            }
+        } catch (\Throwable $e) {}
+
+        return app()->environment('local', 'testing');
     }
 }
