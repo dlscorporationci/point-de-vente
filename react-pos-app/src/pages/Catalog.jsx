@@ -299,7 +299,7 @@ export const Catalog = () => {
         formData.append('sku', newProductSku);
         if (newProductBarcode) formData.append('barcode', newProductBarcode);
         formData.append('selling_price', newProductPrice);
-        formData.append('category_id', newProductCategoryId);
+        if (newProductCategoryId) formData.append('category_id', newProductCategoryId);
         if (newProductDescription) formData.append('description', newProductDescription);
         if (newProductAlertQty) formData.append('alert_quantity', newProductAlertQty);
         formData.append('image', newProductImage);
@@ -321,7 +321,7 @@ export const Catalog = () => {
           sku: newProductSku,
           barcode: newProductBarcode || null,
           selling_price: parseFloat(newProductPrice),
-          category_id: parseInt(newProductCategoryId),
+          category_id: newProductCategoryId ? parseInt(newProductCategoryId) : null,
           description: newProductDescription || null,
           alert_quantity: newProductAlertQty ? parseFloat(newProductAlertQty) : 10.00,
           scope: isAdmin ? productScope : 'current',
@@ -402,7 +402,7 @@ export const Catalog = () => {
         formData.append('sku', newProductSku);
         if (newProductBarcode) formData.append('barcode', newProductBarcode);
         formData.append('selling_price', newProductPrice);
-        formData.append('category_id', newProductCategoryId);
+        if (newProductCategoryId) formData.append('category_id', newProductCategoryId);
         if (newProductDescription) formData.append('description', newProductDescription);
         if (newProductAlertQty) formData.append('alert_quantity', newProductAlertQty);
         formData.append('image', newProductImage);
@@ -416,7 +416,7 @@ export const Catalog = () => {
           sku: newProductSku,
           barcode: newProductBarcode || null,
           selling_price: parseFloat(newProductPrice),
-          category_id: parseInt(newProductCategoryId),
+          category_id: newProductCategoryId ? parseInt(newProductCategoryId) : null,
           description: newProductDescription || null,
           alert_quantity: newProductAlertQty ? parseFloat(newProductAlertQty) : 10.00
         });
@@ -632,9 +632,8 @@ export const Catalog = () => {
                       className="form-control"
                       value={newProductCategoryId}
                       onChange={(e) => setNewProductCategoryId(e.target.value)}
-                      required
                     >
-                      <option value="">Sélectionner une catégorie...</option>
+                      <option value="">-- Aucune catégorie (Optionnel) --</option>
                       {categories.map(c => (
                         <option key={c.id} value={c.id}>{c.name}</option>
                       ))}

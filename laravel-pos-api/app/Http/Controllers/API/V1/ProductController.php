@@ -91,7 +91,7 @@ class ProductController extends Controller
 
         $validated = $request->validate([
             // Phase 8 : Rule::exists avec scope company_id — évite le bypass du TenantScope
-            'category_id' => ['required', Rule::exists('categories', 'id')->where('company_id', $companyId)],
+            'category_id' => ['nullable', Rule::exists('categories', 'id')->where('company_id', $companyId)],
             'name' => 'required|string|max:150',
             'sku' => [
                 'required',
@@ -218,7 +218,7 @@ class ProductController extends Controller
 
         $validated = $request->validate([
             // Phase 8 : Rule::exists avec scope company_id — évite le bypass du TenantScope
-            'category_id' => ['required', Rule::exists('categories', 'id')->where('company_id', $companyId)],
+            'category_id' => ['nullable', Rule::exists('categories', 'id')->where('company_id', $companyId)],
             'name' => 'required|string|max:150',
             'sku' => [
                 'required',
