@@ -14,7 +14,7 @@ use App\Traits\Auditable;
 use Laravel\Sanctum\HasApiTokens;
 use App\Traits\BelongsToTenant;
 
-#[Fillable(['company_id', 'branch_id', 'access_zone_id', 'role_id', 'name', 'email', 'password', 'pin_code', 'status', 'google_id', 'google_email', 'google_avatar', 'google_verified_at'])]
+#[Fillable(['company_id', 'branch_id', 'access_zone_id', 'role_id', 'name', 'email', 'password', 'pin_code', 'status', 'google_id', 'google_email', 'google_avatar', 'google_verified_at', 'github_id', 'github_username', 'github_avatar'])]
 #[Hidden(['password', 'remember_token', 'pin_code'])]
 class User extends Authenticatable
 {

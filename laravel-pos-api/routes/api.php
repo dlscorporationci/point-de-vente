@@ -31,6 +31,11 @@ Route::prefix('v1')->middleware('tenant')->group(function () {
         Route::get('/auth/google/redirect',  [\App\Http\Controllers\API\V1\GoogleAuthController::class, 'redirect']);
         Route::get('/auth/google/callback',  [\App\Http\Controllers\API\V1\GoogleAuthController::class, 'callback']);
         Route::post('/auth/google/callback', [\App\Http\Controllers\API\V1\GoogleAuthController::class, 'callback']);
+
+        // Routes d'authentification GitHub OAuth 2.0
+        Route::get('/auth/github/redirect',  [\App\Http\Controllers\API\V1\GitHubAuthController::class, 'redirect']);
+        Route::get('/auth/github/callback',  [\App\Http\Controllers\API\V1\GitHubAuthController::class, 'callback']);
+        Route::post('/auth/github/callback', [\App\Http\Controllers\API\V1\GitHubAuthController::class, 'callback']);
     });
 
     // Phase 1.5 — Verification Email (public token verification, throttle 10/min)

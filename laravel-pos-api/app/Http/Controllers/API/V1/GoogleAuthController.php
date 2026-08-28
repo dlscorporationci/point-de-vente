@@ -166,10 +166,59 @@ class GoogleAuthController extends Controller
                  ?: User::withoutGlobalScopes()->whereRaw('LOWER(TRIM(email)) = ?', [$email])->first();
         }
 
-        // Règle d'Or : Interdiction stricte de l'auto-provisioning
+        // Auto-provisioning / Inscription avec Google si compte inexistant
         if (!$user) {
-            $this->logAuthFailure(null, 'google_account_not_provisioned', $request, $email);
-            return $this->returnError($request, 'GOOGLE_ACCOUNT_NOT_PROVISIONED', "Ce compte Google ({$email}) n'est associé à aucun compte ApexPOS. Veuillez contacter votre administrateur d'entreprise.", 403);
+            $companyName = !empty($googleUserData['name']) ? $googleUserData['name'] : explode('@', $email)[0];
+            $companyCode = strtoupper(\Illuminate\Support\Str::random(4) . '-' . \Illuminate\Support\Str::random(4));
+
+            $company = Company::create([
+                'name'         => $companyName,
+                'code'         => $companyCode,
+                'email'        => $email,
+                'phone'        => '',
+                'address'      => '',
+                'currency'     => 'XOF',
+                'status'       => 'active',
+                'is_suspended' => false,
+            ]);
+
+            $branch = Branch::create([
+                'company_id' => $company->id,
+                'name'       => 'Boutique Principale',
+                'address'    => 'Siège Social',
+                'phone'      => '',
+                'status'     => 'active',
+            ]);
+
+            $adminRole = \App\Models\Role::withoutGlobalScopes()->firstOrCreate(['slug' => 'admin'], ['name' => 'Administrateur']);
+            $adminRoleId = $adminRole ? $adminRole->id : 2;
+            $randomPin = (string) random_int(1000, 9999);
+
+            $userName = !empty($googleUserData['name']) ? $googleUserData['name'] : explode('@', $email)[0];
+
+            $user = User::create([
+                'company_id'        => $company->id,
+                'branch_id'         => $branch->id,
+                'role_id'           => $adminRoleId,
+                'name'              => $userName,
+                'email'             => $email,
+                'password'          => \Illuminate\Support\Facades\Hash::make(\Illuminate\Support\Str::random(16)),
+                'pin_code'          => \Illuminate\Support\Facades\Crypt::encryptString($randomPin),
+                'status'            => 'active',
+                'email_verified_at' => now(),
+                'google_id'         => $sub,
+                'google_email'      => $email,
+                'google_avatar'     => $googleUserData['picture'] ?? null,
+                'google_verified_at'=> now(),
+            ]);
+
+            if (method_exists($user, 'branches')) {
+                $user->branches()->syncWithoutDetaching([$branch->id]);
+            }
+
+            try {
+                app(\App\Services\EmailService::class)->sendWelcomeEmail($user, $company, $randomPin);
+            } catch (\Throwable $e) {}
         }
 
         // Vérification de l'état du compte utilisateur
