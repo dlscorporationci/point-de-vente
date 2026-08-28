@@ -78,17 +78,6 @@ class ProductController extends Controller
 
         $companyId = app(\App\Services\TenantManager::class)->getCompanyId();
 
-        // Interdiction de création de produit sans catégorie préalable dans l'entreprise
-        $categoryCount = Category::where('company_id', $companyId)->count();
-        if ($categoryCount === 0) {
-            return response()->json([
-                'status'  => 'error',
-                'code'    => 'NO_CATEGORY_EXISTS',
-                'error'   => 'Création impossible : vous devez préalablement créer au moins une catégorie de produit dans votre entreprise.',
-                'message' => 'Création impossible : vous devez préalablement créer au moins une catégorie de produit dans votre entreprise.'
-            ], 422);
-        }
-
         $validated = $request->validate([
             // Phase 8 : Rule::exists avec scope company_id — évite le bypass du TenantScope
             'category_id' => ['nullable', Rule::exists('categories', 'id')->where('company_id', $companyId)],
