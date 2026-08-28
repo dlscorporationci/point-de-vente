@@ -600,7 +600,7 @@ export const Catalog = () => {
                   </div>
                   <div className="form-group">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                      <label className="form-label mb-0">Catégorie *</label>
+                      <label className="form-label mb-0">Catégorie (Optionnel)</label>
                       <button 
                         type="button" 
                         onClick={() => {
@@ -632,8 +632,8 @@ export const Catalog = () => {
                       ))}
                     </select>
                     {categories.length === 0 && (
-                      <small className="text-danger d-block mt-1" style={{ fontWeight: 700 }}>
-                        ⚠️ Aucune catégorie existante. Cliquez sur "+ Créer une catégorie" ci-dessus.
+                      <small className="text-muted d-block mt-1" style={{ fontSize: '11px' }}>
+                        💡 Aucune catégorie créée pour l'instant. Vous pourrez lui en attribuer une plus tard.
                       </small>
                     )}
                   </div>
