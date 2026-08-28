@@ -833,7 +833,7 @@ export const Catalog = () => {
 
                 <div className="modal-actions">
                   <button type="button" onClick={() => { setShowProductForm(false); setEditingProduct(null); }} className="btn btn-cancel">Annuler</button>
-                  <button type="submit" className="btn btn-primary" disabled={categories.length === 0}>
+                  <button type="submit" className="btn btn-primary">
                     {editingProduct ? 'Enregistrer les modifications' : 'Enregistrer le produit'}
                   </button>
                 </div>
