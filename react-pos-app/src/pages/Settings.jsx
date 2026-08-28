@@ -53,8 +53,9 @@ export const Settings = () => {
 
   const [requireInitialCash, setRequireInitialCash] = useState(true);
   const [requireManagerPinForOpen, setRequireManagerPinForOpen] = useState(false);
-  const [requireManagerPinForDiscrepancy, setRequireManagerPinForDiscrepancy] = useState(true);
+  const [requireManagerPinForDiscrepancy, setRequireManagerPinForDiscrepancy] = useState(false);
   const [hideTheoreticalCashBeforeClose, setHideTheoreticalCashBeforeClose] = useState(false);
+  const [autoLockDuration, setAutoLockDuration] = useState(3);
 
   // ─── États Profil ─────────────────────────────────────────────────────────
   const [userName, setUserName]             = useState('');
@@ -165,6 +166,7 @@ export const Settings = () => {
           if (pos.require_manager_pin_for_open !== undefined) setRequireManagerPinForOpen(pos.require_manager_pin_for_open);
           if (pos.require_manager_pin_for_discrepancy !== undefined) setRequireManagerPinForDiscrepancy(pos.require_manager_pin_for_discrepancy);
           if (pos.hide_theoretical_cash_before_close !== undefined) setHideTheoreticalCashBeforeClose(pos.hide_theoretical_cash_before_close);
+          if (pos.auto_lock_duration !== undefined) setAutoLockDuration(parseInt(pos.auto_lock_duration));
         }
       }
       if (user) {
@@ -289,6 +291,7 @@ export const Settings = () => {
         require_manager_pin_for_open: requireManagerPinForOpen,
         require_manager_pin_for_discrepancy: requireManagerPinForDiscrepancy,
         hide_theoretical_cash_before_close: hideTheoreticalCashBeforeClose,
+        auto_lock_duration: parseInt(autoLockDuration),
       };
 
       await axios.post('/v1/company-settings', {
@@ -1179,6 +1182,31 @@ export const Settings = () => {
                 <p className="text-muted small mb-3">Définissez les contraintes de sécurité et d'habilitation pour les caissiers de votre entreprise.</p>
 
                 <div className="p-3 rounded border mb-3" style={{ background: 'var(--bg-input)', borderColor: 'var(--border-color)' }}>
+                  <div className="mb-3 pb-3 border-bottom" style={{ borderColor: 'var(--border-color)' }}>
+                    <label className="form-label fw-bold d-flex alignItems-center gap-2">
+                      <i className="fa-solid fa-user-lock text-warning" style={{ fontSize: '18px' }}></i>
+                      Temps de verrouillage automatique par inactivité
+                    </label>
+                    <select 
+                      className="form-select fw-bold"
+                      value={autoLockDuration}
+                      onChange={(e) => setAutoLockDuration(parseInt(e.target.value))}
+                      style={{ maxWidth: '320px' }}
+                    >
+                      <option value={1}>⏱️ 1 minute d'inactivité</option>
+                      <option value={2}>⏱️ 2 minutes d'inactivité</option>
+                      <option value={3}>⏱️ 3 minutes d'inactivité (Recommandé)</option>
+                      <option value={5}>⏱️ 5 minutes d'inactivité</option>
+                      <option value={10}>⏱️ 10 minutes d'inactivité</option>
+                      <option value={15}>⏱️ 15 minutes d'inactivité</option>
+                      <option value={30}>⏱️ 30 minutes d'inactivité</option>
+                      <option value={0}>🚫 Désactivé (Ne jamais verrouiller)</option>
+                    </select>
+                    <div className="text-muted small mt-1">
+                      Délai d'inactivité humaine avant que l'écran de verrouillage avec code PIN Caisse ne s'affiche automatiquement.
+                    </div>
+                  </div>
+
                   <div className="form-check form-switch mb-3">
                     <input
                       className="form-check-input"

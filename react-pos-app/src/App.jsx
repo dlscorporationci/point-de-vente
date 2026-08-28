@@ -257,9 +257,15 @@ function MainContent() {
   useEffect(() => {
     if (!user?.id || isSessionLocked) return;
 
+    // Délai configuré par l'entreprise en minutes (3 min par défaut). 0 = Désactivé.
+    const lockMinutes = user?.company?.pos_settings?.auto_lock_duration !== undefined 
+      ? parseInt(user?.company?.pos_settings?.auto_lock_duration) 
+      : 3;
+
+    if (lockMinutes <= 0) return;
+
     let idleTimer;
-    // Timeout d'inactivité de 3 minutes d'inactivité humaine (180 000 ms)
-    const IDLE_TIMEOUT = 3 * 60 * 1000;
+    const IDLE_TIMEOUT = lockMinutes * 60 * 1000;
 
     const startTimer = () => {
       if (idleTimer) clearTimeout(idleTimer);
@@ -287,7 +293,7 @@ function MainContent() {
       if (idleTimer) clearTimeout(idleTimer);
       events.forEach(evt => window.removeEventListener(evt, handleUserActivity));
     };
-  }, [user?.id, isSessionLocked]);
+  }, [user?.id, user?.company?.pos_settings?.auto_lock_duration, isSessionLocked]);
 
   // État des accordéons de la navigation latérale (ouvert/fermé)
   const [openNavGroups, setOpenNavGroups] = useState({
