@@ -459,37 +459,40 @@ textarea.form-control {
 /* Modaux globaux & Défilement dans le cadre */
 .modal-overlay {
   position: fixed;
-  top: 64px; /* Démarre sous la navbar fixe de 64px */
+  top: 0;
   left: 0;
   right: 0;
   bottom: 0;
+  width: 100vw;
+  height: 100vh;
   background: rgba(0, 0, 0, 0.7);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
-  z-index: 2000;
+  z-index: 9999;
   display: flex;
-  align-items: center; /* Centré au milieu de l'espace disponible sous le header */
+  align-items: center;
   justify-content: center;
-  padding: 20px 16px;
+  padding: 16px;
   box-sizing: border-box;
-  overflow: hidden; /* Empêche le conteneur extérieur de bouger */
+  overflow: hidden;
 }
 
 .modal-card {
   width: 100%;
   max-width: 540px;
-  max-height: calc(100vh - 110px);
+  max-height: 90vh;
   padding: 24px 28px;
   text-align: left;
-  margin: 0;
-  overflow-y: auto; /* Défilement interne propre à la carte */
+  margin: auto;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   position: relative;
   border-radius: 16px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
   scrollbar-width: thin;
   scrollbar-color: var(--color-primary, #2563eb) var(--bg-input, rgba(0, 0, 0, 0.05));
+  box-sizing: border-box;
 }
 
 .modal-card::-webkit-scrollbar,

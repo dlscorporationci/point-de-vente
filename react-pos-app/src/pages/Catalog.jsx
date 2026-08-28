@@ -579,15 +579,16 @@ export const Catalog = () => {
 
         {/* Formulaire Modal 2 : Nouveau Produit / Modifier Produit */}
         {showProductForm && (
-          <div className="modal-overlay" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
-            <div className="modal-card card modal-large" style={{ maxHeight: '85vh', overflowY: 'auto', position: 'relative' }}>
-              <h3>
+          <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+            <div className="modal-card card modal-large" style={{ width: '100%', maxWidth: '750px', maxHeight: '88vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '24px', position: 'relative' }}>
+              <h3 style={{ flexShrink: 0, marginBottom: '16px' }}>
                 {editingProduct
                   ? <><i className="fa-solid fa-pen me-2 text-warning"></i> Modifier le produit</>  
                   : <><i className="fa-solid fa-box me-2 text-primary"></i> Ajouter un produit au catalogue</>}
               </h3>
-              <form onSubmit={editingProduct ? handleUpdateProduct : handleCreateProduct}>
-                <div className="form-row-grid">
+              <form onSubmit={editingProduct ? handleUpdateProduct : handleCreateProduct} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+                <div style={{ flex: 1, overflowY: 'auto', paddingRight: '6px', marginBottom: '12px' }}>
+                  <div className="form-row-grid">
                   <div className="form-group">
                     <label className="form-label">Nom de l'article *</label>
                     <input 
@@ -830,17 +831,18 @@ export const Catalog = () => {
                     onChange={(e) => setNewProductImage(e.target.files[0])}
                   />
                 </div>
+              </div>
 
-                <div className="modal-actions" style={{ marginTop: '20px', paddingTop: '14px', borderTop: '1px solid var(--border-color)', position: 'sticky', bottom: '-24px', background: 'var(--card-bg, #ffffff)', zIndex: 10, paddingBottom: '10px' }}>
-                  <button type="button" onClick={() => { setShowProductForm(false); setEditingProduct(null); }} className="btn btn-cancel">Annuler</button>
-                  <button type="submit" className="btn btn-primary">
-                    {editingProduct ? 'Enregistrer les modifications' : 'Enregistrer le produit'}
-                  </button>
-                </div>
-              </form>
-            </div>
+              <div className="modal-actions" style={{ flexShrink: 0, paddingTop: '14px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: 0, background: 'var(--card-bg, #ffffff)' }}>
+                <button type="button" onClick={() => { setShowProductForm(false); setEditingProduct(null); }} className="btn btn-cancel">Annuler</button>
+                <button type="submit" className="btn btn-primary" style={{ fontWeight: 700, padding: '10px 20px' }}>
+                  {editingProduct ? 'Enregistrer les modifications' : 'Enregistrer le produit'}
+                </button>
+              </div>
+            </form>
           </div>
-        )}
+        </div>
+      )}
 
         {/* Modal Scanner de Code-Barres par Caméra */}
         {showScannerModal && (
