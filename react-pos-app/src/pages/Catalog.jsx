@@ -579,8 +579,8 @@ export const Catalog = () => {
 
         {/* Formulaire Modal 2 : Nouveau Produit / Modifier Produit */}
         {showProductForm && (
-          <div className="modal-overlay">
-            <div className="modal-card card modal-large">
+          <div className="modal-overlay" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
+            <div className="modal-card card modal-large" style={{ maxHeight: '85vh', overflowY: 'auto', position: 'relative' }}>
               <h3>
                 {editingProduct
                   ? <><i className="fa-solid fa-pen me-2 text-warning"></i> Modifier le produit</>  
@@ -831,7 +831,7 @@ export const Catalog = () => {
                   />
                 </div>
 
-                <div className="modal-actions">
+                <div className="modal-actions" style={{ marginTop: '20px', paddingTop: '14px', borderTop: '1px solid var(--border-color)', position: 'sticky', bottom: '-24px', background: 'var(--card-bg, #ffffff)', zIndex: 10, paddingBottom: '10px' }}>
                   <button type="button" onClick={() => { setShowProductForm(false); setEditingProduct(null); }} className="btn btn-cancel">Annuler</button>
                   <button type="submit" className="btn btn-primary">
                     {editingProduct ? 'Enregistrer les modifications' : 'Enregistrer le produit'}
