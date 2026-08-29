@@ -290,6 +290,13 @@ export const Catalog = () => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
+
+    const priceNum = parseFloat(newProductPrice);
+    if (isNaN(priceNum) || priceNum <= 0) {
+      setError("⚠️ Le prix de vente unitaire doit être strictement supérieur à 0 XOF.");
+      return;
+    }
+
     try {
       let res;
       if (newProductImage) {
@@ -394,6 +401,13 @@ export const Catalog = () => {
   const handleUpdateProduct = async (e) => {
     e.preventDefault();
     setError(null); setSuccess(null);
+
+    const priceNum = parseFloat(newProductPrice);
+    if (isNaN(priceNum) || priceNum <= 0) {
+      setError("⚠️ Le prix de vente unitaire doit être strictement supérieur à 0 XOF.");
+      return;
+    }
+
     try {
       let res;
       if (newProductImage) {
@@ -714,10 +728,10 @@ export const Catalog = () => {
                       onChange={(e) => setNewProductPrice(e.target.value)}
                       onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
                       required
-                      min="0"
+                      min="1"
                       step="any"
                       inputMode="decimal"
-                      placeholder="0.00"
+                      placeholder="Ex: 500"
                     />
                   </div>
                   <div className="form-group">

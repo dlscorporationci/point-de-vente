@@ -64,7 +64,7 @@ class PurchaseController extends Controller
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|numeric|min:0.01',
-            'items.*.cost_price' => 'required|numeric|min:0',
+            'items.*.cost_price' => 'required|numeric|gt:0',
         ]);
 
         // Normalisation avec les ENUMs MySQL

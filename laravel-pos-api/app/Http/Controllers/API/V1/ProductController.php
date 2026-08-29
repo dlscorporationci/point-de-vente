@@ -95,7 +95,7 @@ class ProductController extends Controller
                 Rule::unique('products')->where('company_id', $companyId)
             ],
             'description' => 'nullable|string',
-            'selling_price' => 'required|numeric|min:0',
+            'selling_price' => 'required|numeric|gt:0',
             'cost_price' => 'nullable|numeric|min:0',
             'tax_rate' => 'nullable|numeric|min:0|max:100',
             'alert_quantity' => 'nullable|numeric|min:0',
@@ -222,7 +222,7 @@ class ProductController extends Controller
                 Rule::unique('products')->where('company_id', $companyId)->ignore($product->id)
             ],
             'description' => 'nullable|string',
-            'selling_price' => 'required|numeric|min:0',
+            'selling_price' => 'required|numeric|gt:0',
             'tax_rate' => 'nullable|numeric|min:0|max:100',
             'alert_quantity' => 'nullable|numeric|min:0',
             'status' => 'nullable|in:active,inactive',

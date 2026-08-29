@@ -113,7 +113,7 @@ class SaleController extends Controller
             'items'           => 'required|array|min:1',
             'items.*.product_id'    => 'required|exists:products,id',
             'items.*.quantity'      => 'required|numeric|min:0.01',
-            'items.*.selling_price' => 'required|numeric|min:0',
+            'items.*.selling_price' => 'required|numeric|gt:0',
             'items.*.discount'      => 'nullable|numeric|min:0',
             'global_discount'       => 'nullable|numeric|min:0',
             'amount_received'       => 'nullable|numeric|min:0',
