@@ -58,6 +58,39 @@ class ErrorBoundary extends React.Component {
   }
   render() {
     if (this.state.hasError) {
+      const isProduction = import.meta.env.PROD;
+
+      if (isProduction) {
+        return (
+          <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+            <div className="card text-center p-4 shadow-lg border-0" style={{ maxWidth: '520px', borderRadius: '16px', background: 'var(--bg-card)', color: 'var(--text-main)' }}>
+              <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(99, 102, 241, 0.12)', color: 'var(--color-primary)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', marginBottom: '16px' }}>
+                <i className="fa-solid fa-shield-halved"></i>
+              </div>
+              <h3 className="fw-bold mb-2">Une interruption temporaire s'est produite</h3>
+              <p className="text-muted small mb-4">
+                Le système a sécurisé votre session. Vos données restent intactes. Veuillez rafraîchir la page pour reprendre vos activités.
+              </p>
+              <div className="d-flex justify-content-center gap-2">
+                <button 
+                  onClick={() => window.location.reload()} 
+                  className="btn btn-primary px-4 py-2 rounded-pill fw-bold"
+                >
+                  <i className="fa-solid fa-rotate-right me-2"></i> Recharger l'application
+                </button>
+                <button 
+                  onClick={() => { window.location.href = '/'; }} 
+                  className="btn btn-outline-secondary px-4 py-2 rounded-pill"
+                >
+                  <i className="fa-solid fa-house me-2"></i> Accueil
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // En mode développement (Dev Mode)
       return (
         <div style={{ padding: '30px', background: '#fee2e2', color: '#991b1b', fontFamily: 'sans-serif', margin: '20px', borderRadius: '12px', border: '1px solid #f87171' }}>
           <h2 style={{ margin: '0 0 10px' }}>⚠️ Erreur d'affichage applicative (React Error)</h2>
