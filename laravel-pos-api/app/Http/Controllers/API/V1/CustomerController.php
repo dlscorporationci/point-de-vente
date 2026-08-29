@@ -66,7 +66,13 @@ class CustomerController extends Controller
         $activeBranchId = app(\App\Services\TenantManager::class)->getBranchId();
 
         $validated = $request->validate([
-            'name' => 'required|string|min:2|max:100',
+            'name' => [
+                'required',
+                'string',
+                'min:2',
+                'max:100',
+                'regex:/^(?=.*[a-zA-ZÀ-ÿ])[a-zA-ZÀ-ÿ0-9\s\'\._-]{2,100}$/u'
+            ],
             'email' => 'nullable|email|max:100',
             'phone' => [
                 'nullable',
@@ -86,6 +92,7 @@ class CustomerController extends Controller
             'branch_ids.*' => 'exists:branches,id',
         ], [
             'name.min' => 'Le nom du client doit comporter au moins 2 caractères.',
+            'name.regex' => 'Le nom du client doit contenir au moins une lettre (ex: Koffi Manassé) et ne peut pas être composé uniquement de chiffres (ex: 0000).',
             'phone.regex' => 'Le numéro de téléphone doit comporter au moins 8 chiffres (ex: +225 0700000000).',
             'phone.min' => 'Le numéro de téléphone doit comporter au moins 8 chiffres.',
         ]);
@@ -142,7 +149,13 @@ class CustomerController extends Controller
         $companyId = app(\App\Services\TenantManager::class)->getCompanyId();
 
         $validated = $request->validate([
-            'name' => 'required|string|min:2|max:100',
+            'name' => [
+                'required',
+                'string',
+                'min:2',
+                'max:100',
+                'regex:/^(?=.*[a-zA-ZÀ-ÿ])[a-zA-ZÀ-ÿ0-9\s\'\._-]{2,100}$/u'
+            ],
             'email' => 'nullable|email|max:100',
             'phone' => [
                 'nullable',
@@ -162,6 +175,7 @@ class CustomerController extends Controller
             'branch_ids.*' => 'exists:branches,id',
         ], [
             'name.min' => 'Le nom du client doit comporter au moins 2 caractères.',
+            'name.regex' => 'Le nom du client doit contenir au moins une lettre (ex: Koffi Manassé) et ne peut pas être composé uniquement de chiffres (ex: 0000).',
             'phone.regex' => 'Le numéro de téléphone doit comporter au moins 8 chiffres (ex: +225 0700000000).',
             'phone.min' => 'Le numéro de téléphone doit comporter au moins 8 chiffres.',
         ]);

@@ -60,7 +60,9 @@ class SupplierController extends Controller
             'name' => [
                 'required',
                 'string',
+                'min:2',
                 'max:100',
+                'regex:/^(?=.*[a-zA-ZÀ-ÿ])[a-zA-ZÀ-ÿ0-9\s\'\._-]{2,100}$/u',
                 Rule::unique('suppliers')->where('company_id', $companyId)
             ],
             'email' => 'nullable|email|max:100',
@@ -69,6 +71,9 @@ class SupplierController extends Controller
             'debt_balance' => 'nullable|numeric|min:0',
             'branch_ids' => 'nullable|array',
             'branch_ids.*' => 'exists:branches,id',
+        ], [
+            'name.min' => 'Le nom du fournisseur doit comporter au moins 2 caractères.',
+            'name.regex' => 'Le nom du fournisseur doit contenir au moins une lettre (ex: SIFCA, CFAO) et ne peut pas être composé uniquement de chiffres.',
         ]);
 
         $branchIds = $request->input('branch_ids');

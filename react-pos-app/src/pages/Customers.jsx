@@ -145,6 +145,11 @@ export const Customers = () => {
       return;
     }
 
+    if (!/^(?=.*[a-zA-ZÀ-ÿ])[a-zA-ZÀ-ÿ0-9\s'._-]{2,100}$/u.test(cleanName)) {
+      setError("⚠️ Le nom doit contenir au moins une lettre (ex: Koffi Manassé) et ne peut pas être composé uniquement de chiffres (ex: 0000).");
+      return;
+    }
+
     if (formData.phone && !/^[0-9+\s-]{8,20}$/.test(formData.phone)) {
       setError("⚠️ Le numéro de téléphone doit comporter entre 8 et 20 chiffres (ex: +225 0700000000).");
       return;
