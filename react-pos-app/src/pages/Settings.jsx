@@ -714,7 +714,9 @@ export const Settings = () => {
                           style={{ maxWidth: '140px', fontSize: '20px', fontWeight: 700, textAlign: 'center' }}
                           min="0" max="100" step="0.1"
                           value={taxRate}
-                          onChange={(e) => setTaxRate(parseFloat(e.target.value) || 0)}
+                          onChange={(e) => setTaxRate(e.target.value === '' ? '' : (parseFloat(e.target.value) || 0))}
+                          onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
+                          inputMode="decimal"
                           required
                         />
                         <span style={{ fontSize: '22px', fontWeight: 700, color: 'var(--color-primary)' }}>%</span>

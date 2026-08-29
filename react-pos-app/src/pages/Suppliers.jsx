@@ -351,11 +351,12 @@ export const Suppliers = () => {
                   <div className="form-group">
                     <label className="form-label">Téléphone</label>
                     <input 
-                      type="text" 
+                      type="tel" 
                       className="form-control" 
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="Ex: +221 33..."
+                      onChange={(e) => setPhone(e.target.value.replace(/[^0-9+\s-]/g, ''))}
+                      inputMode="tel"
+                      placeholder="Ex: +225 0700000000"
                     />
                   </div>
                 </div>
@@ -368,7 +369,7 @@ export const Suppliers = () => {
                       className="form-control" 
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="contact@fournisseur.sn"
+                      placeholder="contact@fournisseur.com"
                     />
                   </div>
                   <div className="form-group">
@@ -378,7 +379,11 @@ export const Suppliers = () => {
                       className="form-control" 
                       value={debtBalance}
                       onChange={(e) => setDebtBalance(e.target.value)}
+                      onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
                       min="0"
+                      step="any"
+                      inputMode="decimal"
+                      placeholder="0"
                     />
                   </div>
                 </div>

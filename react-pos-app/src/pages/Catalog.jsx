@@ -712,8 +712,12 @@ export const Catalog = () => {
                       className="form-control" 
                       value={newProductPrice}
                       onChange={(e) => setNewProductPrice(e.target.value)}
+                      onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
                       required
                       min="0"
+                      step="any"
+                      inputMode="decimal"
+                      placeholder="0.00"
                     />
                   </div>
                   <div className="form-group">
@@ -723,7 +727,11 @@ export const Catalog = () => {
                       className="form-control" 
                       value={newProductAlertQty}
                       onChange={(e) => setNewProductAlertQty(e.target.value)}
+                      onKeyDown={(e) => ['e', 'E', '+', '-', '.'].includes(e.key) && e.preventDefault()}
                       min="0"
+                      step="1"
+                      inputMode="numeric"
+                      placeholder="10"
                     />
                   </div>
                 </div>
@@ -736,8 +744,10 @@ export const Catalog = () => {
                       className="form-control" 
                       value={initialStock}
                       onChange={(e) => setInitialStock(e.target.value)}
+                      onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
                       min="0"
                       step="0.01"
+                      inputMode="decimal"
                       placeholder="0.00"
                     />
                   </div>

@@ -66,7 +66,7 @@ class SupplierController extends Controller
             'email' => 'nullable|email|max:100',
             'phone' => 'nullable|string|max:30',
             'address' => 'nullable|string|max:255',
-            'debt_balance' => 'nullable|numeric',
+            'debt_balance' => 'nullable|numeric|min:0',
             'branch_ids' => 'nullable|array',
             'branch_ids.*' => 'exists:branches,id',
         ]);

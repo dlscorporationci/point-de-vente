@@ -305,10 +305,12 @@ export const Customers = () => {
                 <div className="form-group">
                   <label className="form-label">Téléphone</label>
                   <input 
-                    type="text" 
+                    type="tel" 
                     className="form-control" 
                     value={formData.phone} 
-                    onChange={(e) => setFormData({...formData, phone: e.target.value})} 
+                    onChange={(e) => setFormData({...formData, phone: e.target.value.replace(/[^0-9+\s-]/g, '')})} 
+                    inputMode="tel"
+                    placeholder="Ex: +225 0700000000"
                   />
                 </div>
                 <div className="form-group">
@@ -318,6 +320,7 @@ export const Customers = () => {
                     className="form-control" 
                     value={formData.email} 
                     onChange={(e) => setFormData({...formData, email: e.target.value})} 
+                    placeholder="Ex: client@exemple.com"
                   />
                 </div>
               </div>
@@ -360,8 +363,12 @@ export const Customers = () => {
                     className="form-control" 
                     value={formData.credit_limit} 
                     onChange={(e) => setFormData({...formData, credit_limit: e.target.value})} 
+                    onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
                     required 
                     min="0"
+                    step="any"
+                    inputMode="decimal"
+                    placeholder="0"
                   />
                 </div>
                 <div className="form-group">
@@ -371,7 +378,11 @@ export const Customers = () => {
                     className="form-control" 
                     value={formData.debt_balance} 
                     onChange={(e) => setFormData({...formData, debt_balance: e.target.value})} 
+                    onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
                     min="0"
+                    step="any"
+                    inputMode="decimal"
+                    placeholder="0"
                   />
                 </div>
               </div>
@@ -383,7 +394,11 @@ export const Customers = () => {
                   className="form-control" 
                   value={formData.loyalty_points} 
                   onChange={(e) => setFormData({...formData, loyalty_points: e.target.value})} 
+                  onKeyDown={(e) => ['e', 'E', '+', '-', '.'].includes(e.key) && e.preventDefault()}
                   min="0"
+                  step="1"
+                  inputMode="numeric"
+                  placeholder="0"
                 />
               </div>
 

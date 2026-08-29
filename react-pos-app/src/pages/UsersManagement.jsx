@@ -351,7 +351,14 @@ export const UsersManagement = () => {
                   </div>
                   <div className="col-md-6 form-group">
                     <label className="form-label">Code PIN (4 chiffres)</label>
-                    <PasswordInput value={userForm.pin_code} onChange={(e) => setUserForm({ ...userForm, pin_code: e.target.value.replace(/\D/g, '').slice(0, 4) })} placeholder="Ex: 1234" maxLength="4" inputMode="numeric" />
+                    <PasswordInput 
+                      value={userForm.pin_code} 
+                      onChange={(e) => setUserForm({ ...userForm, pin_code: e.target.value.replace(/[^0-9]/g, '').slice(0, 4) })} 
+                      placeholder="Ex: 1234" 
+                      maxLength="4" 
+                      inputMode="numeric" 
+                      pattern="[0-9]{4}"
+                    />
                   </div>
                 </div>
 
