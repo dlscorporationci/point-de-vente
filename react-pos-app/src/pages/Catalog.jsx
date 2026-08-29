@@ -29,7 +29,7 @@ export const getImageUrl = (imagePath) => {
   return cleanPath;
 };
 
-export const ProductImageThumbnail = ({ imagePath, name }) => {
+export const ProductImageThumbnail = ({ imagePath, name, size = '48px', className = '' }) => {
   const [hasError, setHasError] = useState(false);
   useEffect(() => { setHasError(false); }, [imagePath]);
   const src = getImageUrl(imagePath);
@@ -37,15 +37,23 @@ export const ProductImageThumbnail = ({ imagePath, name }) => {
   if (!imagePath || hasError) {
     return (
       <div 
+        className={className}
         style={{ 
-          width: '48px', height: '48px', borderRadius: '8px', 
-          background: 'var(--bg-input)', display: 'inline-flex', 
-          alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)',
-          border: '1px dashed var(--border-color)' 
+          width: size, 
+          height: size, 
+          borderRadius: '10px', 
+          background: 'var(--bg-input)', 
+          display: 'inline-flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          color: 'var(--color-primary, #4f46e5)',
+          border: '1px dashed var(--border-color)',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.04)',
+          flexShrink: 0
         }}
         title={name}
       >
-        <i className="fa-solid fa-box" style={{ fontSize: '18px' }}></i>
+        <i className="fa-solid fa-box-open" style={{ fontSize: typeof size === 'string' && size.includes('px') ? `calc(${size} * 0.42)` : '20px' }}></i>
       </div>
     );
   }
@@ -53,9 +61,18 @@ export const ProductImageThumbnail = ({ imagePath, name }) => {
   return (
     <img 
       src={src} 
-      alt={name} 
+      alt="" 
       onError={() => setHasError(true)}
-      style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border-color)', boxShadow: '0 2px 4px rgba(0,0,0,0.08)' }}
+      className={className}
+      style={{ 
+        width: size, 
+        height: size, 
+        objectFit: 'cover', 
+        borderRadius: '10px', 
+        border: '1px solid var(--border-color)', 
+        boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
+        flexShrink: 0
+      }}
     />
   );
 };

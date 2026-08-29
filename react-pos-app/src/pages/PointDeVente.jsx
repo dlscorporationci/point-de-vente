@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
 import { useCartStore } from '../store/useCartStore';
-import { getImageUrl } from './Catalog';
+import { getImageUrl, ProductImageThumbnail } from './Catalog';
 import { offlineStorage } from '../services/offlineStorage';
 import { saleService } from '../services/SaleService';
 import { getAssetUrl } from '../utils/urlHelper';
@@ -475,17 +475,7 @@ export const PointDeVente = () => {
                   return (
                     <div key={p.id} onClick={() => handleAddToCart(p)} className="pos-product-card">
                       <div className="pos-prod-img-box" style={{ position: 'relative' }}>
-                        {p.image_path ? (
-                          <img 
-                            src={getImageUrl(p.image_path)} 
-                            alt={p.name} 
-                            className="pos-prod-img"
-                          />
-                        ) : (
-                          <div className="pos-prod-img-placeholder">
-                            <i className="fa-solid fa-box"></i>
-                          </div>
-                        )}
+                        <ProductImageThumbnail imagePath={p.image_path} name={p.name} size="70px" className="pos-prod-img" />
                         <span className="pos-prod-price-badge">
                           {new Intl.NumberFormat('fr-FR').format(p.selling_price)} XOF
                         </span>
