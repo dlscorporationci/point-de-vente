@@ -435,6 +435,9 @@ export const Suppliers = () => {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       required
+                      minLength={2}
+                      maxLength={100}
+                      placeholder="Ex: SIFCA ou CFAO"
                     />
                   </div>
                   <div className="form-group">
@@ -445,6 +448,8 @@ export const Suppliers = () => {
                       value={phone}
                       onChange={(e) => setPhone(e.target.value.replace(/[^0-9+\s-]/g, ''))}
                       inputMode="tel"
+                      minLength={8}
+                      maxLength={20}
                       placeholder="Ex: +225 0700000000"
                     />
                   </div>
@@ -458,6 +463,7 @@ export const Suppliers = () => {
                       className="form-control" 
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
+                      maxLength={100}
                       placeholder="contact@fournisseur.com"
                     />
                   </div>
@@ -484,7 +490,8 @@ export const Suppliers = () => {
                     className="form-control" 
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    placeholder="Ex: Rue 10, Dakar"
+                    maxLength={255}
+                    placeholder="Ex: Rue 10, Zone Industrielle, Dakar"
                   />
                 </div>
 
