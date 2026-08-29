@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
 import { db } from '../services/db';
+import { ExportModal } from '../components/ExportModal';
+
 const getCustomerInitials = (name) => {
   if (!name) return 'CL';
   const parts = name.trim().split(/\s+/);
