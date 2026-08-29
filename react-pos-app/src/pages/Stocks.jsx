@@ -358,7 +358,7 @@ export const Stocks = () => {
                           <div className="desc-sub">{item.branch?.name}</div>
                         </td>
                         <td className="price-cell" style={{ color: parseFloat(item.quantity) <= parseFloat(item.product?.alert_quantity || 10) ? 'var(--color-error)' : 'var(--color-success)' }}>
-                          {item.quantity} unités
+                          {new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(parseFloat(item.quantity) || 0)} unités
                           {parseFloat(item.quantity) <= parseFloat(item.product?.alert_quantity || 10) && (
                             <div className="alert-qty-cell" style={{ color: 'var(--color-error)', fontSize: '10px', fontWeight: '700' }}><i className="fa-solid fa-triangle-exclamation text-danger me-1"></i> SEUIL ALERTE</div>
                           )}
@@ -401,7 +401,9 @@ export const Stocks = () => {
                   <div key={mov.id} className="movement-log-item">
                     <div className="mov-left">
                       <span className={`mov-badge-qty ${parseFloat(mov.quantity) > 0 ? 'qty-pos' : 'qty-neg'}`}>
-                        {parseFloat(mov.quantity) > 0 ? `+${mov.quantity}` : mov.quantity}
+                        {parseFloat(mov.quantity) > 0 
+                          ? `+${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(parseFloat(mov.quantity))}` 
+                          : new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(parseFloat(mov.quantity))}
                       </span>
                     </div>
                     <div className="mov-middle">

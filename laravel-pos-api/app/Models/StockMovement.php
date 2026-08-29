@@ -21,6 +21,10 @@ class StockMovement extends Model
         'description',
     ];
 
+    protected $casts = [
+        'quantity' => 'float',
+    ];
+
     public function product()
     {
         return $this->belongsTo(Product::class);
