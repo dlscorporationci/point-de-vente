@@ -519,12 +519,6 @@ export const Catalog = () => {
           <span className="alert-icon"><i className="fa-solid fa-lock text-muted"></i></span>
           <h3>Accès Réservé</h3>
           <p>Vous devez vous connecter à une session pour gérer le catalogue de produits.</p>
-          <ExportModal
-            isOpen={showExportModal}
-            onClose={() => setShowExportModal(false)}
-            documentType="products_list"
-            documentTitle="Catalogue des Produits"
-          />
         </div>
       </div>
     );
@@ -1118,6 +1112,13 @@ export const Catalog = () => {
         productsCount={products.length}
         categoriesCount={categories.length}
         onSuccess={(msg) => { setSuccess(msg); loadData(); }}
+      />
+
+      <ExportModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        documentType="products_list"
+        documentTitle="Catalogue des Produits"
       />
 
       <style>{`

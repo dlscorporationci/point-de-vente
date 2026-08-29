@@ -274,6 +274,14 @@ class DocumentService
      */
     public function generateAndArchiveDocument(string $type, string $format, array $filters, Company $company, ?Branch $branch, ?User $user, ?array $customData = null): GeneratedDocument
     {
+        $aliasMap = [
+            'audit_logs' => 'audit_log',
+            'cash_sessions_list' => 'cash_sessions',
+        ];
+        if (isset($aliasMap[$type])) {
+            $type = $aliasMap[$type];
+        }
+
         $contracts = $this->getDocumentContracts();
         $contract  = $contracts[$type] ?? [
             'type'     => $type,
@@ -341,6 +349,14 @@ class DocumentService
     {
         $rows   = [];
         $totals = [];
+
+        $aliasMap = [
+            'audit_logs' => 'audit_log',
+            'cash_sessions_list' => 'cash_sessions',
+        ];
+        if (isset($aliasMap[$type])) {
+            $type = $aliasMap[$type];
+        }
 
         switch ($type) {
             case 'sales_report':
@@ -521,6 +537,8 @@ class DocumentService
                 $totals = ['Nombre d\'événements enregistrés' => count($logs)];
                 break;
 
+            case 'purchases_list':
+                $purchases = Purchase::where('company_id', $company->id)->with('supplier')->orderBy('id', 'desc')->get();
                 $sumPurchases = 0;
                 foreach ($purchases as $pur) {
                     $amt = floatval($pur->total_amount || 0);
@@ -535,7 +553,7 @@ class DocumentService
                 }
                 $totals = [
                     'Nombre de commandes' => count($purchases),
-                    'Montant total des achats' => $sumPurchases,
+                    'Montant total des achats' => number_format($sumPurchases, 0, ',', ' ') . ' FCFA',
                 ];
                 break;
 
