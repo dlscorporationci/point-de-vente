@@ -29,6 +29,12 @@ class CashSession extends Model
         'validation_notes',
     ];
 
+    protected $casts = [
+        'opening_balance'     => 'float',
+        'closing_balance'     => 'float',
+        'theoretical_balance' => 'float',
+    ];
+
     public function register()
     {
         return $this->belongsTo(CashRegister::class, 'cash_register_id');

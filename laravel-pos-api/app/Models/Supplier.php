@@ -21,6 +21,10 @@ class Supplier extends Model
         'debt_balance',
     ];
 
+    protected $casts = [
+        'debt_balance' => 'float',
+    ];
+
     public function branches()
     {
         return $this->belongsToMany(Branch::class, 'supplier_branches')->withTimestamps();

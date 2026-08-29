@@ -15,6 +15,11 @@ class BranchProduct extends Model
         'is_active',
     ];
 
+    protected $casts = [
+        'quantity'  => 'integer',
+        'is_active' => 'boolean',
+    ];
+
     public function branch()
     {
         return $this->belongsTo(Branch::class);

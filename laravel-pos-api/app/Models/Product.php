@@ -27,6 +27,13 @@ class Product extends Model
         'image_path',
     ];
 
+    protected $casts = [
+        'selling_price'  => 'float',
+        'cost_price'     => 'float',
+        'tax_rate'       => 'float',
+        'alert_quantity' => 'integer',
+    ];
+
     public function category()
     {
         return $this->belongsTo(Category::class);

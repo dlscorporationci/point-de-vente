@@ -16,6 +16,14 @@ class SaleDetail extends Model
         'total',
     ];
 
+    protected $casts = [
+        'quantity'       => 'integer',
+        'selling_price'  => 'float',
+        'discount'       => 'float',
+        'tax'            => 'float',
+        'total'          => 'float',
+    ];
+
     public function sale()
     {
         return $this->belongsTo(Sale::class);

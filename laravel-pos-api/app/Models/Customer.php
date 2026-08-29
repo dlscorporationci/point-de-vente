@@ -23,6 +23,12 @@ class Customer extends Model
         'loyalty_points',
     ];
 
+    protected $casts = [
+        'credit_limit'   => 'float',
+        'debt_balance'   => 'float',
+        'loyalty_points' => 'integer',
+    ];
+
     public function branch()
     {
         return $this->belongsTo(Branch::class);

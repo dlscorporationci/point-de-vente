@@ -33,6 +33,15 @@ class Sale extends Model
         'notes',
     ];
 
+    protected $casts = [
+        'subtotal'        => 'float',
+        'discount'        => 'float',
+        'tax'             => 'float',
+        'total'           => 'float',
+        'amount_received' => 'float',
+        'amount_change'   => 'float',
+    ];
+
     public function register()
     {
         return $this->belongsTo(CashRegister::class, 'cash_register_id');

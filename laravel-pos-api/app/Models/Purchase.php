@@ -25,6 +25,13 @@ class Purchase extends Model
         'notes',
     ];
 
+    protected $casts = [
+        'subtotal'     => 'float',
+        'tax_amount'   => 'float',
+        'total_amount' => 'float',
+        'amount_paid'  => 'float',
+    ];
+
     public function branch()
     {
         return $this->belongsTo(Branch::class);

@@ -383,7 +383,7 @@ export const Catalog = () => {
           selling_price: parseFloat(newProductPrice),
           category_id: newProductCategoryId ? parseInt(newProductCategoryId) : null,
           description: newProductDescription || null,
-          alert_quantity: newProductAlertQty ? parseFloat(newProductAlertQty) : 10.00,
+          alert_quantity: newProductAlertQty ? parseInt(newProductAlertQty) : 10,
           scope: isAdmin ? productScope : 'current',
           branch_ids: (isAdmin && productScope === 'custom') ? selectedBranchIds : undefined,
           initial_stock: initialStock ? parseFloat(initialStock) : 0
@@ -490,7 +490,7 @@ export const Catalog = () => {
           selling_price: parseFloat(newProductPrice),
           category_id: newProductCategoryId ? parseInt(newProductCategoryId) : null,
           description: newProductDescription || null,
-          alert_quantity: newProductAlertQty ? parseFloat(newProductAlertQty) : 10.00
+          alert_quantity: newProductAlertQty ? parseInt(newProductAlertQty) : 10
         });
       }
       setSuccess(`Produit "${res.data.product?.name || newProductName}" mis à jour avec succès !`);
@@ -813,11 +813,11 @@ export const Catalog = () => {
                       className="form-control" 
                       value={initialStock}
                       onChange={(e) => setInitialStock(e.target.value)}
-                      onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
+                      onKeyDown={(e) => ['e', 'E', '+', '-', '.'].includes(e.key) && e.preventDefault()}
                       min="0"
-                      step="0.01"
-                      inputMode="decimal"
-                      placeholder="0.00"
+                      step="1"
+                      inputMode="numeric"
+                      placeholder="0"
                     />
                   </div>
                 )}
@@ -1065,7 +1065,7 @@ export const Catalog = () => {
                     <td>
                       <span className="alert-qty-cell" title="Seuil minimal de déclenchement d'alerte stock">
                         <small className="text-muted d-block" style={{ fontSize: '10px' }}>Seuil min :</small>
-                        {product.alert_quantity || product.min_stock_alert || 10}.00 unités
+                        {Math.round(product.alert_quantity || product.min_stock_alert || 10)} unités
                       </span>
                     </td>
                     <td>
