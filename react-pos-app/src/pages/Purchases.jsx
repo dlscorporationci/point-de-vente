@@ -286,8 +286,49 @@ export const Purchases = () => {
           </div>
         </div>
 
-        {error && <div className="error-banner"><i className="fa-solid fa-circle-exclamation me-1"></i> {error}</div>}
-        {success && <div className="success-banner"><i className="fa-solid fa-circle-check me-1"></i> {success}</div>}
+        {error && <div className="error-banner mb-3"><i className="fa-solid fa-circle-exclamation me-1"></i> {error}</div>}
+        {success && <div className="success-banner mb-3"><i className="fa-solid fa-circle-check me-1"></i> {success}</div>}
+
+        {/* Résumé KPI Synthétique */}
+        <div className="row g-3 mb-4">
+          <div className="col-md-4">
+            <div className="p-3 border rounded shadow-sm d-flex align-items-center gap-3" style={{ background: 'var(--bg-input)', borderColor: 'var(--border-color)' }}>
+              <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(59, 130, 246, 0.12)', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+                <i className="fa-solid fa-truck-ramp-box"></i>
+              </div>
+              <div>
+                <div className="text-muted small fw-bold">TOTAL COMMANDES</div>
+                <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-main)' }}>{purchases.length}</div>
+              </div>
+            </div>
+          </div>
+          <div className="col-md-4">
+            <div className="p-3 border rounded shadow-sm d-flex align-items-center gap-3" style={{ background: 'var(--bg-input)', borderColor: 'var(--border-color)' }}>
+              <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.12)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+                <i className="fa-solid fa-receipt"></i>
+              </div>
+              <div>
+                <div className="text-muted small fw-bold">CUMUL ACHATS TTC</div>
+                <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-main)' }}>
+                  {new Intl.NumberFormat('fr-FR').format(purchases.reduce((sum, p) => sum + (parseFloat(p.total_amount) || 0), 0))} XOF
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="col-md-4">
+            <div className="p-3 border rounded shadow-sm d-flex align-items-center gap-3" style={{ background: 'var(--bg-input)', borderColor: 'var(--border-color)' }}>
+              <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(245, 158, 11, 0.12)', color: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+                <i className="fa-solid fa-file-invoice-dollar"></i>
+              </div>
+              <div>
+                <div className="text-muted small fw-bold">COMMANDES IMPAYÉES</div>
+                <div style={{ fontSize: '20px', fontWeight: 800, color: purchases.filter(p => p.payment_status !== 'paid').length > 0 ? '#ef4444' : 'var(--text-main)' }}>
+                  {purchases.filter(p => p.payment_status !== 'paid').length} Commandes
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* Modal de création */}
         {showForm && (
@@ -549,80 +590,93 @@ export const Purchases = () => {
           <div className="loading-spinner">Chargement des approvisionnements...</div>
         ) : purchases.length === 0 ? (
           <div className="empty-state">
-            <span className="empty-icon">📭</span>
+            <span className="empty-icon"><i className="fa-solid fa-truck-ramp-box text-muted"></i></span>
             <h4>Aucun approvisionnement enregistré</h4>
             <p>Cliquez sur "Nouvel Approvisionnement" pour commander ou réceptionner des marchandises.</p>
           </div>
         ) : (
-          <div className="table-responsive">
-            <table className="products-table">
-              <thead>
+          <div className="table-responsive rounded border shadow-sm">
+            <table className="table table-hover align-middle mb-0" style={{ background: 'var(--bg-card)', color: 'var(--text-main)' }}>
+              <thead style={{ background: 'var(--bg-input)', borderBottom: '2px solid var(--border-color)' }}>
                 <tr>
-                  <th>N° Bon d'Achat</th>
-                  <th>Fournisseur / Boutique</th>
-                  <th>Montant TTC</th>
-                  <th>Statut</th>
-                  <th>Paiement</th>
-                  <th>Action</th>
+                  <th style={{ padding: '14px 16px', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>N° Bon d'Achat & Date</th>
+                  <th style={{ padding: '14px 16px', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Fournisseur / Boutique</th>
+                  <th style={{ padding: '14px 16px', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Montant TTC</th>
+                  <th style={{ padding: '14px 16px', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Livraison</th>
+                  <th style={{ padding: '14px 16px', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Statut Règlement</th>
+                  <th style={{ padding: '14px 16px', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'center', width: '160px' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {purchases.map((pur) => (
-                  <tr key={pur.id}>
-                    <td>
-                      <div className="sku-cell">{pur.purchase_number}</div>
-                      <div className="barcode-sub">{new Date(pur.created_at).toLocaleDateString()}</div>
+                  <tr key={pur.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                    <td style={{ padding: '12px 16px' }}>
+                      <div className="fw-bold text-primary" style={{ fontSize: '14px' }}>{pur.purchase_number}</div>
+                      <div className="text-muted small" style={{ fontSize: '12px' }}>
+                        <i className="fa-regular fa-calendar me-1"></i>{pur.created_at ? new Date(pur.created_at).toLocaleDateString('fr-FR') : '—'}
+                      </div>
                     </td>
-                    <td>
-                      <div className="product-title-cell">{pur.supplier?.name}</div>
-                      <div className="desc-sub">Boutique : {pur.branch?.name}</div>
+                    <td style={{ padding: '12px 16px' }}>
+                      <div className="fw-bold" style={{ fontSize: '14px', color: 'var(--text-main)' }}>{pur.supplier?.name || 'Fournisseur Général'}</div>
+                      <div className="text-muted small" style={{ fontSize: '12px' }}>
+                        <i className="fa-solid fa-shop me-1 text-info"></i>{pur.branch?.name || 'Boutique'}
+                      </div>
                     </td>
-                    <td className="price-cell">
-                      {new Intl.NumberFormat('fr-FR').format(pur.total_amount)} XOF
-                    </td>
-                    <td>
-                      <span className={`badge-status status-${pur.status}`}>
-                        {pur.status === 'received' ? (
-                          <><i className="fa-solid fa-circle-check me-1"></i> Réceptionné</>
-                        ) : pur.status === 'ordered' ? (
-                          <><i className="fa-solid fa-clock me-1"></i> Commandé</>
-                        ) : (
-                          <><i className="fa-solid fa-pen-clip me-1"></i> Brouillon</>
-                        )}
+                    <td style={{ padding: '12px 16px' }}>
+                      <span className="fw-bold text-success" style={{ fontSize: '15px' }}>
+                        {new Intl.NumberFormat('fr-FR').format(pur.total_amount || 0)} XOF
                       </span>
                     </td>
-                    <td>
-                      <span className={`badge-status payment-${pur.payment_status}`}>
-                        {pur.payment_status === 'paid' ? (
-                          <><i className="fa-solid fa-circle-dollar-to-slot me-1"></i> Payé</>
-                        ) : pur.payment_status === 'partially_paid' ? (
-                          <><i className="fa-solid fa-wallet me-1"></i> Acompte</>
-                        ) : (
-                          <><i className="fa-solid fa-xmark me-1"></i> Non payé</>
-                        )}
-                      </span>
+                    <td style={{ padding: '12px 16px' }}>
+                      {pur.status === 'received' ? (
+                        <span className="badge bg-success-subtle text-success border border-success-subtle" style={{ fontSize: '11px', padding: '5px 10px' }}>
+                          <i className="fa-solid fa-circle-check me-1"></i>Réceptionné
+                        </span>
+                      ) : pur.status === 'ordered' ? (
+                        <span className="badge bg-warning-subtle text-warning border border-warning-subtle" style={{ fontSize: '11px', padding: '5px 10px' }}>
+                          <i className="fa-solid fa-clock me-1"></i>Commandé
+                        </span>
+                      ) : (
+                        <span className="badge bg-secondary-subtle text-secondary border border-secondary-subtle" style={{ fontSize: '11px', padding: '5px 10px' }}>
+                          <i className="fa-solid fa-pen-clip me-1"></i>Brouillon
+                        </span>
+                      )}
                     </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                    <td style={{ padding: '12px 16px' }}>
+                      {pur.payment_status === 'paid' ? (
+                        <span className="badge bg-success-subtle text-success border border-success-subtle" style={{ fontSize: '11px', padding: '5px 10px' }}>
+                          <i className="fa-solid fa-circle-dollar-to-slot me-1"></i>Payé intégralement
+                        </span>
+                      ) : pur.payment_status === 'partially_paid' || pur.payment_status === 'partial' ? (
+                        <span className="badge bg-info-subtle text-info border border-info-subtle" style={{ fontSize: '11px', padding: '5px 10px' }}>
+                          <i className="fa-solid fa-wallet me-1"></i>Acompte versé
+                        </span>
+                      ) : (
+                        <span className="badge bg-danger-subtle text-danger border border-danger-subtle" style={{ fontSize: '11px', padding: '5px 10px' }}>
+                          <i className="fa-solid fa-xmark me-1"></i>Non payé
+                        </span>
+                      )}
+                    </td>
+                    <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                      <div className="d-flex justify-content-center gap-1">
                         {pur.status === 'ordered' && (
                           <button 
                             onClick={() => triggerReceive(pur)}
-                            className="btn-receive-action"
-                            title="Réceptionner la marchandise"
+                            className="btn btn-sm btn-success fw-bold"
+                            title="Réceptionner la marchandise en stock"
+                            style={{ fontSize: '11px', padding: '4px 8px' }}
                           >
                             <i className="fa-solid fa-box-open me-1"></i> Réceptionner
                           </button>
                         )}
                         <button
                           onClick={() => openEditModal(pur)}
-                          className="btn btn-xs btn-secondary"
-                          title="Modifier les notes ou le paiement de l'achat"
+                          className="btn btn-sm btn-outline-warning"
+                          title="Modifier le statut ou les notes de l'achat"
+                          style={{ width: '32px', height: '32px', padding: 0, borderRadius: '8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                         >
-                          <i className="fa-solid fa-pen"></i>
+                          <i className="fa-solid fa-pen-to-square"></i>
                         </button>
-                        {pur.status === 'received' && (
-                          <span className="text-lock"><i className="fa-solid fa-circle-check text-success me-1"></i> Livré</span>
-                        )}
                       </div>
                     </td>
                   </tr>
@@ -632,6 +686,13 @@ export const Purchases = () => {
           </div>
         )}
       </div>
+
+      <ExportModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        documentType="purchases_list"
+        documentTitle="Historique des Achats & Approvisionnements"
+      />
 
       <style>{`
         .purchases-container {
