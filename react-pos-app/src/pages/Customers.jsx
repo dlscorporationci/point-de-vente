@@ -228,7 +228,7 @@ export const Customers = () => {
               </div>
               <div>
                 <div className="text-muted small fw-bold">TOTAL CLIENTS</div>
-                <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-main)' }}>{pagination.total || customers.length}</div>
+                <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-main)' }}>{customers.length}</div>
               </div>
             </div>
           </div>
