@@ -43,10 +43,30 @@ export const ExportModal = ({ isOpen, onClose, documentType, documentTitle, defa
       if (res.data.success && res.data.document) {
         setSuccessMsg(`✅ Document "${res.data.document.title}" généré et archivé avec succès !`);
         
-        // Déclencher le téléchargement du fichier généré
-        if (res.data.document.file_path) {
-          const downloadUrl = getAssetUrl(res.data.document.file_path);
-          window.open(downloadUrl, '_blank');
+        // Déclencher le téléchargement du fichier via flux binaire authentifié
+        if (res.data.document.id) {
+          try {
+            const fileRes = await axios.get(`/v1/documents/${res.data.document.id}/download?stream=1`, {
+              responseType: 'blob'
+            });
+            const mimeType = format === 'pdf' 
+              ? 'application/pdf' 
+              : (format === 'csv' ? 'text/csv' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            const blob = new Blob([fileRes.data], { type: mimeType });
+            const blobUrl = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.setAttribute('download', res.data.document.file_name || `document_${Date.now()}.${format}`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(blobUrl);
+          } catch (dlErr) {
+            console.warn("Blob download fallback:", dlErr);
+            if (res.data.document.file_path) {
+              window.open(getAssetUrl(res.data.document.file_path), '_blank');
+            }
+          }
         }
 
         setTimeout(() => {

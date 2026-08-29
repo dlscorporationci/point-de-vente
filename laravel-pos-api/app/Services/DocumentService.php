@@ -315,6 +315,9 @@ class DocumentService
 
         // Enregistrer le fichier dans le disk public
         Storage::disk('public')->put($filePath, $content);
+        $fullDiskPath = storage_path("app/public/{$filePath}");
+        @chmod(dirname($fullDiskPath), 0775);
+        @chmod($fullDiskPath, 0664);
         $fileSize = strlen($content);
 
         // Créer l'enregistrement dans la table des documents générés

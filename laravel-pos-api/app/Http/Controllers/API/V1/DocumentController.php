@@ -112,9 +112,13 @@ class DocumentController extends Controller
         $doc  = GeneratedDocument::where('company_id', $user->company_id)->findOrFail($id);
 
         $relative = str_replace('/storage/', '', $doc->file_path);
-        if (!Storage::disk('public')->exists($relative)) {
+        $fullPath = storage_path("app/public/{$relative}");
+
+        if (!file_exists($fullPath) && !Storage::disk('public')->exists($relative)) {
             return response()->json(['error' => "Le fichier spécifié n'existe plus sur le serveur."], 404);
         }
+
+        @chmod($fullPath, 0664);
 
         // Audit Log
         AuditLog::create([
@@ -128,6 +132,10 @@ class DocumentController extends Controller
             'ip_address'     => $request->ip(),
             'result'         => 'success',
         ]);
+
+        if ($request->has('stream') || !$request->wantsJson()) {
+            return response()->download($fullPath, $doc->file_name);
+        }
 
         return response()->json([
             'success'      => true,
