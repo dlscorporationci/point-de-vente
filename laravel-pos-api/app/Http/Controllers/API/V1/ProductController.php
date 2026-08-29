@@ -91,7 +91,7 @@ class ProductController extends Controller
             'barcode' => [
                 'nullable',
                 'string',
-                'max:50',
+                'regex:/^[0-9]{8,18}$/',
                 Rule::unique('products')->where('company_id', $companyId)
             ],
             'description' => 'nullable|string',
@@ -106,6 +106,7 @@ class ProductController extends Controller
             'branch_ids.*' => 'exists:branches,id',
             'initial_stock' => 'nullable|numeric|min:0',
         ], [
+            'barcode.regex' => 'Le code-barres doit comporter uniquement des chiffres (8 à 18 chiffres, ex: EAN-13).',
             'image.mimes' => 'L\'image doit être au format JPEG, PNG, GIF, WebP, SVG ou BMP.',
             'image.max' => 'L\'image ne doit pas dépasser 5 Mo.',
             'image.file' => 'Le fichier image est invalide.',
@@ -218,7 +219,7 @@ class ProductController extends Controller
             'barcode' => [
                 'nullable',
                 'string',
-                'max:50',
+                'regex:/^[0-9]{8,18}$/',
                 Rule::unique('products')->where('company_id', $companyId)->ignore($product->id)
             ],
             'description' => 'nullable|string',
@@ -228,6 +229,7 @@ class ProductController extends Controller
             'status' => 'nullable|in:active,inactive',
             'image' => 'nullable|file|mimes:jpeg,jpg,png,gif,webp,svg,bmp|max:5120',
         ], [
+            'barcode.regex' => 'Le code-barres doit comporter uniquement des chiffres (8 à 18 chiffres, ex: EAN-13).',
             'image.mimes' => 'L\'image doit être au format JPEG, PNG, GIF, WebP, SVG ou BMP.',
             'image.max' => 'L\'image ne doit pas dépasser 5 Mo.',
             'image.file' => 'Le fichier image est invalide.',

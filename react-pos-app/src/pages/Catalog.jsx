@@ -29,6 +29,37 @@ export const getImageUrl = (imagePath) => {
   return cleanPath;
 };
 
+export const ProductImageThumbnail = ({ imagePath, name }) => {
+  const [hasError, setHasError] = useState(false);
+  useEffect(() => { setHasError(false); }, [imagePath]);
+  const src = getImageUrl(imagePath);
+
+  if (!imagePath || hasError) {
+    return (
+      <div 
+        style={{ 
+          width: '48px', height: '48px', borderRadius: '8px', 
+          background: 'var(--bg-input)', display: 'inline-flex', 
+          alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)',
+          border: '1px dashed var(--border-color)' 
+        }}
+        title={name}
+      >
+        <i className="fa-solid fa-box" style={{ fontSize: '18px' }}></i>
+      </div>
+    );
+  }
+
+  return (
+    <img 
+      src={src} 
+      alt={name} 
+      onError={() => setHasError(true)}
+      style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border-color)', boxShadow: '0 2px 4px rgba(0,0,0,0.08)' }}
+    />
+  );
+};
+
 export const Catalog = () => {
   const { user, token } = useApp();
 
@@ -293,7 +324,12 @@ export const Catalog = () => {
 
     const priceNum = parseFloat(newProductPrice);
     if (isNaN(priceNum) || priceNum <= 0) {
-      setError("⚠️ Le prix de vente unitaire doit être strictement supérieur à 0 XOF.");
+      setError("⚠️ Le prix de vente unitaire doit être strictly supérieur à 0 XOF.");
+      return;
+    }
+
+    if (newProductBarcode && !/^[0-9]{8,18}$/.test(newProductBarcode)) {
+      setError("⚠️ Le code-barres doit comporter uniquement des chiffres (8 à 18 chiffres, ex: 3700021300051).");
       return;
     }
 
@@ -405,6 +441,11 @@ export const Catalog = () => {
     const priceNum = parseFloat(newProductPrice);
     if (isNaN(priceNum) || priceNum <= 0) {
       setError("⚠️ Le prix de vente unitaire doit être strictement supérieur à 0 XOF.");
+      return;
+    }
+
+    if (newProductBarcode && !/^[0-9]{8,18}$/.test(newProductBarcode)) {
+      setError("⚠️ Le code-barres doit comporter uniquement des chiffres (8 à 18 chiffres, ex: 3700021300051).");
       return;
     }
 
@@ -711,8 +752,11 @@ export const Catalog = () => {
                         type="text" 
                         className="form-control" 
                         value={newProductBarcode}
-                        onChange={(e) => setNewProductBarcode(e.target.value)}
-                        placeholder="Ex: 3700021300051 (ou scanner avec douchette USB / caméra)"
+                        onChange={(e) => setNewProductBarcode(e.target.value.replace(/[^0-9]/g, '').slice(0, 18))}
+                        inputMode="numeric"
+                        maxLength="18"
+                        pattern="[0-9]*"
+                        placeholder="Ex: 3700021300051 (chiffres uniquement ou douchette USB)"
                       />
                     </div>
                   </div>
@@ -991,24 +1035,7 @@ export const Catalog = () => {
                 {products.map((product) => (
                   <tr key={product.id}>
                     <td style={{ verticalAlign: 'middle', textAlign: 'center' }}>
-                      {product.image_path ? (
-                        <img 
-                          src={getImageUrl(product.image_path)} 
-                          alt={product.name} 
-                          style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border-color)', boxShadow: '0 2px 4px rgba(0,0,0,0.08)' }}
-                        />
-                      ) : (
-                        <div 
-                          style={{ 
-                            width: '48px', height: '48px', borderRadius: '8px', 
-                            background: 'var(--bg-input)', display: 'inline-flex', 
-                            alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)',
-                            border: '1px dashed var(--border-color)' 
-                          }}
-                        >
-                          <i className="fa-solid fa-box" style={{ fontSize: '18px' }}></i>
-                        </div>
-                      )}
+                      <ProductImageThumbnail imagePath={product.image_path} name={product.name} />
                     </td>
                     <td>
                       <div className="sku-cell">{product.sku}</div>
