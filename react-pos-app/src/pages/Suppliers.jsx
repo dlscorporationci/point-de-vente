@@ -4,6 +4,28 @@ import { useApp } from '../context/AppContext';
 import { db } from '../services/db';
 import { ExportModal } from '../components/ExportModal';
 
+const getSupplierInitials = (name) => {
+  if (!name) return 'FR';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return name.slice(0, 2).toUpperCase();
+};
+
+const supplierAvatarGradients = [
+  'linear-gradient(135deg, #059669 0%, #10b981 100%)',
+  'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
+  'linear-gradient(135deg, #d97706 0%, #f59e0b 100%)',
+  'linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%)',
+  'linear-gradient(135deg, #db2777 0%, #ec4899 100%)',
+];
+
+const getSupplierAvatarBg = (id) => {
+  const num = typeof id === 'number' ? id : (String(id).charCodeAt(0) || 0);
+  return supplierAvatarGradients[num % supplierAvatarGradients.length];
+};
+
 export const Suppliers = () => {
   const { user, token } = useApp();
 
@@ -223,9 +245,31 @@ export const Suppliers = () => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
+
+    const cleanName = name ? name.trim() : '';
+    if (cleanName.length < 2) {
+      setError("⚠️ Le nom du fournisseur doit comporter au moins 2 caractères.");
+      return;
+    }
+
+    if (!/^(?=.*[a-zA-ZÀ-ÿ])[a-zA-ZÀ-ÿ0-9\s'._-]{2,100}$/u.test(cleanName)) {
+      setError("⚠️ Le nom du fournisseur doit contenir au moins une lettre (ex: SIFCA, CFAO) et ne peut pas être composé uniquement de chiffres (ex: 0000).");
+      return;
+    }
+
+    if (phone && !/^[0-9+\s-]{8,20}$/.test(phone)) {
+      setError("⚠️ Le numéro de téléphone doit comporter entre 8 et 20 chiffres.");
+      return;
+    }
+
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError("⚠️ Veuillez entrer une adresse e-mail valide.");
+      return;
+    }
+
     try {
       const payload = {
-        name,
+        name: cleanName,
         email: email || null,
         phone: phone || null,
         address: address || null,
@@ -234,7 +278,7 @@ export const Suppliers = () => {
 
       if (editingSupplier) {
         const res = await axios.put(`/v1/suppliers/${editingSupplier.id}`, payload);
-        setSuccess(`Fournisseur "${res.data.supplier?.name || name}" mis à jour avec succès !`);
+        setSuccess(`Fournisseur "${res.data.supplier?.name || cleanName}" mis à jour avec succès !`);
       } else {
         const res = await axios.post('/v1/suppliers', payload);
         setSuccess(`Fournisseur "${res.data.supplier.name}" enregistré avec succès !`);
@@ -244,7 +288,13 @@ export const Suppliers = () => {
       setEditingSupplier(null);
       loadData();
     } catch (err) {
-      setError(err.response?.data?.error || err.response?.data?.message || 'Erreur lors de la sauvegarde du fournisseur.');
+      const apiErrs = err.response?.data?.errors;
+      if (apiErrs) {
+        const msgs = Object.values(apiErrs).flat();
+        setError(msgs.join(' '));
+      } else {
+        setError(err.response?.data?.error || err.response?.data?.message || 'Erreur lors de la sauvegarde du fournisseur.');
+      }
     }
   };
 
@@ -328,8 +378,47 @@ export const Suppliers = () => {
           </div>
         </div>
 
-        {error && <div className="error-banner"><i className="fa-solid fa-circle-exclamation me-1"></i> {error}</div>}
-        {success && <div className="success-banner"><i className="fa-solid fa-circle-check me-1"></i> {success}</div>}
+        {error && <div className="error-banner mb-3"><i className="fa-solid fa-circle-exclamation me-1"></i> {error}</div>}
+        {success && <div className="success-banner mb-3"><i className="fa-solid fa-circle-check me-1"></i> {success}</div>}
+
+        {/* Résumé KPI Synthétique */}
+        <div className="row g-3 mb-4">
+          <div className="col-md-4">
+            <div className="p-3 border rounded shadow-sm d-flex align-items-center gap-3" style={{ background: 'var(--bg-input)', borderColor: 'var(--border-color)' }}>
+              <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.12)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+                <i className="fa-solid fa-handshake"></i>
+              </div>
+              <div>
+                <div className="text-muted small fw-bold">TOTAL FOURNISSEURS</div>
+                <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-main)' }}>{suppliers.length}</div>
+              </div>
+            </div>
+          </div>
+          <div className="col-md-4">
+            <div className="p-3 border rounded shadow-sm d-flex align-items-center gap-3" style={{ background: 'var(--bg-input)', borderColor: 'var(--border-color)' }}>
+              <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(239, 68, 68, 0.12)', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+                <i className="fa-solid fa-file-invoice-dollar"></i>
+              </div>
+              <div>
+                <div className="text-muted small fw-bold">SOLDE DÉBITEUR GLOBAL</div>
+                <div style={{ fontSize: '20px', fontWeight: 800, color: suppliers.reduce((sum, s) => sum + (parseFloat(s.debt_balance) || 0), 0) > 0 ? '#ef4444' : 'var(--text-main)' }}>
+                  {new Intl.NumberFormat('fr-FR').format(suppliers.reduce((sum, s) => sum + (parseFloat(s.debt_balance) || 0), 0))} XOF
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="col-md-4">
+            <div className="p-3 border rounded shadow-sm d-flex align-items-center gap-3" style={{ background: 'var(--bg-input)', borderColor: 'var(--border-color)' }}>
+              <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(99, 102, 241, 0.12)', color: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+                <i className="fa-solid fa-boxes-packing"></i>
+              </div>
+              <div>
+                <div className="text-muted small fw-bold">PACKS MÉTIERS PRÊTS</div>
+                <div style={{ fontSize: '20px', fontWeight: 800, color: '#6366f1' }}>{DEFAULT_SUPPLIER_PACKS.length} Packs</div>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* Modal de création et édition */}
         {showForm && (
@@ -498,7 +587,8 @@ export const Suppliers = () => {
         ) : null}
 
         {/* Recherche */}
-        <form onSubmit={handleSearchSubmit} className="filters-bar">
+        <div className="search-bar mb-4">
+          <i className="fa-solid fa-magnifying-glass search-icon"></i>
           <input 
             type="text" 
             placeholder="Rechercher par nom, email, téléphone..." 
@@ -506,78 +596,111 @@ export const Suppliers = () => {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <button type="submit" className="btn btn-primary">🔍 Rechercher</button>
-        </form>
+        </div>
 
         {/* Tableau */}
         {loading ? (
           <div className="loading-spinner">Chargement des fournisseurs...</div>
         ) : suppliers.length === 0 ? (
           <div className="empty-state">
-            <span className="empty-icon">📭</span>
+            <span className="empty-icon"><i className="fa-solid fa-boxes-packing text-muted"></i></span>
             <h4>Aucun fournisseur enregistré</h4>
             <p>Commencez par ajouter votre premier partenaire d'approvisionnement.</p>
           </div>
         ) : (
-          <div className="table-responsive">
-            <table className="products-table">
-              <thead>
+          <div className="table-responsive rounded border shadow-sm">
+            <table className="table table-hover align-middle mb-0" style={{ background: 'var(--bg-card)', color: 'var(--text-main)' }}>
+              <thead style={{ background: 'var(--bg-input)', borderBottom: '2px solid var(--border-color)' }}>
                 <tr>
-                  <th>Nom du Partenaire</th>
-                  <th>Téléphone</th>
-                  <th>Adresse E-mail</th>
-                  <th>Compte Courant Crédit</th>
-                  <th>Actions</th>
+                  <th style={{ padding: '14px 16px', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Fournisseur & Adresse</th>
+                  <th style={{ padding: '14px 16px', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Téléphone</th>
+                  <th style={{ padding: '14px 16px', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Adresse E-mail</th>
+                  <th style={{ padding: '14px 16px', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Compte Courant / Dette</th>
+                  <th style={{ padding: '14px 16px', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'center', width: '130px' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {suppliers.map((sup) => (
-                  <tr key={sup.id}>
-                    <td>
-                      <div className="product-title-cell">{sup.name}</div>
-                      {sup.address && <div className="desc-sub">{sup.address}</div>}
-                    </td>
-                    <td>
-                      <div className="sku-cell">{sup.phone || 'Non renseigné'}</div>
-                    </td>
-                    <td>
-                      <div className="desc-sub">{sup.email || '-'}</div>
-                    </td>
-                    <td>
-                      {parseFloat(sup.debt_balance) > 0 ? (
-                        <span className="badge-debt-danger">
-                          🔴 Dette : {new Intl.NumberFormat('fr-FR').format(sup.debt_balance)} XOF
-                        </span>
-                      ) : (
-                        <span className="badge-debt-success">
-                          🟢 Solde à jour (0 XOF)
-                        </span>
-                      )}
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                        {hasUpdatePermission && (
-                          <button 
-                            onClick={() => openForm(sup)} 
-                            className="btn btn-xs btn-secondary" 
-                            title="Modifier ce fournisseur"
+                {suppliers.map((sup) => {
+                  const debtVal = parseFloat(sup.debt_balance || 0);
+                  return (
+                    <tr key={sup.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                      <td style={{ padding: '12px 16px' }}>
+                        <div className="d-flex align-items-center gap-3">
+                          <div 
+                            style={{ 
+                              width: '42px', height: '42px', borderRadius: '50%', 
+                              background: getSupplierAvatarBg(sup.id), color: '#ffffff', 
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                              fontWeight: 800, fontSize: '15px', flexShrink: 0,
+                              boxShadow: '0 2px 6px rgba(0,0,0,0.15)' 
+                            }}
                           >
-                            <i className="fa-solid fa-pen"></i>
-                          </button>
+                            {getSupplierInitials(sup.name)}
+                          </div>
+                          <div>
+                            <div className="fw-bold" style={{ fontSize: '15px', color: 'var(--text-main)' }}>{sup.name}</div>
+                            {sup.address ? (
+                              <div className="text-muted small mt-1" style={{ fontSize: '12px' }}>
+                                <i className="fa-solid fa-location-dot me-1 text-danger"></i>{sup.address}
+                              </div>
+                            ) : (
+                              <div className="text-muted small mt-1" style={{ fontSize: '12px' }}>—</div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ padding: '12px 16px', fontSize: '13px' }}>
+                        {sup.phone ? (
+                          <span className="fw-semibold text-primary"><i className="fa-solid fa-phone me-1"></i>{sup.phone}</span>
+                        ) : (
+                          <span className="text-muted">—</span>
                         )}
-                        {(user?.permissions?.includes('suppliers.delete') || user?.role === 'admin' || user?.role?.slug === 'admin') && (
-                          <button 
-                            onClick={() => handleDeleteSupplier(sup.id)}
-                            className="btn-delete"
-                            title="Supprimer ce fournisseur"
-                          >
-                            🗑️
-                          </button>
+                      </td>
+                      <td style={{ padding: '12px 16px', fontSize: '13px' }}>
+                        {sup.email ? (
+                          <span className="text-secondary"><i className="fa-solid fa-envelope me-1"></i>{sup.email}</span>
+                        ) : (
+                          <span className="text-muted">—</span>
                         )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        {debtVal > 0 ? (
+                          <span className="badge bg-danger-subtle text-danger border border-danger-subtle" style={{ fontSize: '12px', padding: '6px 10px' }}>
+                            <i className="fa-solid fa-circle-exclamation me-1"></i>Dette : {new Intl.NumberFormat('fr-FR').format(debtVal)} XOF
+                          </span>
+                        ) : (
+                          <span className="badge bg-success-subtle text-success border border-success-subtle" style={{ fontSize: '12px', padding: '6px 10px' }}>
+                            <i className="fa-solid fa-circle-check me-1"></i>Solde à jour (0 XOF)
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                        <div className="d-flex justify-content-center gap-2">
+                          {hasUpdatePermission && (
+                            <button 
+                              onClick={() => openForm(sup)} 
+                              className="btn btn-sm btn-outline-warning" 
+                              title="Modifier ce fournisseur"
+                              style={{ width: '32px', height: '32px', padding: 0, borderRadius: '8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                              <i className="fa-solid fa-pen-to-square"></i>
+                            </button>
+                          )}
+                          {(user?.permissions?.includes('suppliers.delete') || user?.role === 'admin' || user?.role?.slug === 'admin') && (
+                            <button 
+                              onClick={() => handleDeleteSupplier(sup.id)}
+                              className="btn btn-sm btn-outline-danger"
+                              title="Supprimer ce fournisseur"
+                              style={{ width: '32px', height: '32px', padding: 0, borderRadius: '8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                              <i className="fa-solid fa-trash-can"></i>
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
