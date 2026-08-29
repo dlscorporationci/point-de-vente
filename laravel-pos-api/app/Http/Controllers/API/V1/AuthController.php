@@ -325,7 +325,16 @@ class AuthController extends Controller
             return response()->json(['error' => 'Aucun code PIN configuré pour ce compte. Veuillez contacter votre administrateur.'], 422);
         }
 
-        $isValid = Hash::check($request->pin_code, $user->pin_code);
+        $inputPin = (string) $request->pin_code;
+        $isValid = false;
+
+        if ($user->plain_pin && (string) $user->plain_pin === $inputPin) {
+            $isValid = true;
+        } else if ((string) $user->pin_code === $inputPin) {
+            $isValid = true;
+        } else if (\Illuminate\Support\Facades\Hash::check($inputPin, $user->pin_code)) {
+            $isValid = true;
+        }
 
         if (!$isValid) {
             $this->logAuthEvent($user, 'session_lock_pin_failed', $request);

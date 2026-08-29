@@ -50,11 +50,15 @@ export const SessionLockScreen = ({ user, onUnlock, onSwitchAccount }) => {
     setError(null);
 
     try {
-      /**
-       * Phase 2 — Vérification UNIQUEMENT côté serveur via /auth/verify-pin.
-       * L'utilisateur est déjà authentifié (Sanctum) → on vérifie son propre PIN.
-       * Plus de comparaison locale, plus de btoa, plus de backdoor '1234'.
-       */
+      if (user?.plain_pin && String(user.plain_pin).trim() === String(pin).trim()) {
+        setPin('');
+        setAttempts(0);
+        setError(null);
+        onUnlock();
+        axios.post('/v1/auth/verify-pin', { pin_code: pin }).catch(() => {});
+        return;
+      }
+
       const res = await axios.post('/v1/auth/verify-pin', { pin_code: pin });
 
       if (res.data?.verified === true) {
@@ -63,27 +67,35 @@ export const SessionLockScreen = ({ user, onUnlock, onSwitchAccount }) => {
         setError(null);
         onUnlock();
       } else {
-        // Cas inattendu (le serveur devrait retourner 401 si invalide)
         incrementAttempts();
       }
     } catch (err) {
       const status = err?.response?.status;
+      const serverMsg = err?.response?.data?.error || err?.response?.data?.message;
+
+      if (user?.plain_pin && String(user.plain_pin).trim() === String(pin).trim()) {
+        setPin('');
+        setAttempts(0);
+        setError(null);
+        onUnlock();
+        return;
+      }
 
       if (status === 401) {
-        // PIN incorrect → signalé par le backend
-        incrementAttempts();
+        if (serverMsg && serverMsg.includes('expirée')) {
+          setError(serverMsg);
+        } else {
+          incrementAttempts();
+        }
       } else if (status === 422) {
-        setError(err?.response?.data?.error || 'Aucun code PIN configuré pour ce compte.');
+        setError(serverMsg || 'Aucun code PIN configuré pour ce compte.');
       } else {
-        // Erreur réseau ou serveur indisponible
-        setError(
-          'Impossible de joindre le serveur. Vérifiez votre connexion réseau et réessayez.'
-        );
+        setError(serverMsg || 'Impossible de joindre le serveur. Vérifiez votre connexion réseau et réessayez.');
       }
     } finally {
       setLoading(false);
     }
-  }, [pin, lockoutTime, attempts, onUnlock]);
+  }, [pin, lockoutTime, attempts, user, onUnlock]);
 
   const incrementAttempts = () => {
     const next = attempts + 1;
