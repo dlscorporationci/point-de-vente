@@ -2,7 +2,27 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
 import { db } from '../services/db';
-import { ExportModal } from '../components/ExportModal';
+const getCustomerInitials = (name) => {
+  if (!name) return 'CL';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return name.slice(0, 2).toUpperCase();
+};
+
+const avatarGradients = [
+  'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+  'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+  'linear-gradient(135deg, #10b981 0%, #047857 100%)',
+  'linear-gradient(135deg, #f59e0b 0%, #b45309 100%)',
+  'linear-gradient(135deg, #ec4899 0%, #be185d 100%)',
+];
+
+const getAvatarBg = (id) => {
+  const num = typeof id === 'number' ? id : (String(id).charCodeAt(0) || 0);
+  return avatarGradients[num % avatarGradients.length];
+};
 
 export const Customers = () => {
   const { token, user } = useApp();
@@ -116,9 +136,27 @@ export const Customers = () => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
+
+    const cleanName = formData.name ? formData.name.trim() : '';
+    if (cleanName.length < 2) {
+      setError("⚠️ Le nom complet du client doit comporter au moins 2 caractères.");
+      return;
+    }
+
+    if (formData.phone && !/^[0-9+\s-]{8,20}$/.test(formData.phone)) {
+      setError("⚠️ Le numéro de téléphone doit comporter entre 8 et 20 chiffres (ex: +225 0700000000).");
+      return;
+    }
+
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      setError("⚠️ Veuillez entrer une adresse e-mail valide (ex: client@exemple.com).");
+      return;
+    }
+
     try {
       const payload = {
         ...formData,
+        name: cleanName,
         credit_limit: parseFloat(formData.credit_limit || 0),
         debt_balance: parseFloat(formData.debt_balance || 0),
         loyalty_points: parseInt(formData.loyalty_points || 0)
@@ -134,7 +172,13 @@ export const Customers = () => {
       setShowModal(false);
       loadCustomers();
     } catch (err) {
-      setError(err.response?.data?.error || 'Erreur lors de l\'enregistrement du client.');
+      const apiErrs = err.response?.data?.errors;
+      if (apiErrs) {
+        const msgs = Object.values(apiErrs).flat();
+        setError(msgs.join(' '));
+      } else {
+        setError(err.response?.data?.error || err.response?.data?.message || 'Erreur lors de l\'enregistrement du client.');
+      }
     }
   };
 
@@ -172,11 +216,52 @@ export const Customers = () => {
           </div>
         </div>
 
-        {error && <div className="error-banner"><i className="fa-solid fa-circle-exclamation me-1"></i> {error}</div>}
-        {success && <div className="success-banner"><i className="fa-solid fa-circle-check me-1"></i> {success}</div>}
+        {error && <div className="error-banner mb-3"><i className="fa-solid fa-circle-exclamation me-1"></i> {error}</div>}
+        {success && <div className="success-banner mb-3"><i className="fa-solid fa-circle-check me-1"></i> {success}</div>}
+
+        {/* Résumé KPI Synthétique */}
+        <div className="row g-3 mb-4">
+          <div className="col-md-4">
+            <div className="p-3 border rounded shadow-sm d-flex align-items-center gap-3" style={{ background: 'var(--bg-input)', borderColor: 'var(--border-color)' }}>
+              <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(99, 102, 241, 0.12)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+                <i className="fa-solid fa-users"></i>
+              </div>
+              <div>
+                <div className="text-muted small fw-bold">TOTAL CLIENTS</div>
+                <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-main)' }}>{pagination.total || customers.length}</div>
+              </div>
+            </div>
+          </div>
+          <div className="col-md-4">
+            <div className="p-3 border rounded shadow-sm d-flex align-items-center gap-3" style={{ background: 'var(--bg-input)', borderColor: 'var(--border-color)' }}>
+              <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(239, 68, 68, 0.12)', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+                <i className="fa-solid fa-circle-exclamation"></i>
+              </div>
+              <div>
+                <div className="text-muted small fw-bold">DETTES EN COURS</div>
+                <div style={{ fontSize: '20px', fontWeight: 800, color: customers.reduce((sum, c) => sum + (parseFloat(c.debt_balance) || 0), 0) > 0 ? '#ef4444' : 'var(--text-main)' }}>
+                  {new Intl.NumberFormat('fr-FR').format(customers.reduce((sum, c) => sum + (parseFloat(c.debt_balance) || 0), 0))} XOF
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="col-md-4">
+            <div className="p-3 border rounded shadow-sm d-flex align-items-center gap-3" style={{ background: 'var(--bg-input)', borderColor: 'var(--border-color)' }}>
+              <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(234, 179, 8, 0.12)', color: '#ca8a04', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+                <i className="fa-solid fa-star"></i>
+              </div>
+              <div>
+                <div className="text-muted small fw-bold">POINTS FIDÉLITÉ CUMULÉS</div>
+                <div style={{ fontSize: '20px', fontWeight: 800, color: '#ca8a04' }}>
+                  {new Intl.NumberFormat('fr-FR').format(customers.reduce((sum, c) => sum + (parseInt(c.loyalty_points) || 0), 0))} Pts
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* Barre de recherche */}
-        <div className="search-bar">
+        <div className="search-bar mb-4">
           <i className="fa-solid fa-magnifying-glass search-icon"></i>
           <input 
             type="text" 
@@ -197,66 +282,131 @@ export const Customers = () => {
             <p>Cliquez sur "Nouveau Client" pour enregistrer votre premier client.</p>
           </div>
         ) : (
-          <div className="table-responsive mt-3">
-            <table className="table table-striped table-hover table-bordered align-middle mb-0">
-              <thead className="table-dark">
+          <div className="table-responsive rounded border shadow-sm">
+            <table className="table table-hover align-middle mb-0" style={{ background: 'var(--bg-card)', color: 'var(--text-main)' }}>
+              <thead style={{ background: 'var(--bg-input)', borderBottom: '2px solid var(--border-color)' }}>
                 <tr>
-                  <th>Nom & Contact</th>
-                  <th>Adresse</th>
-                  <th>Points Fidélité</th>
-                  <th>Crédit & Limite</th>
-                  <th style={{ width: '150px', textAlign: 'center' }}>Actions</th>
+                  <th style={{ padding: '14px 16px', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Client & Contact</th>
+                  <th style={{ padding: '14px 16px', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Adresse</th>
+                  <th style={{ padding: '14px 16px', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Fidélité</th>
+                  <th style={{ padding: '14px 16px', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Crédit & Solde</th>
+                  <th style={{ padding: '14px 16px', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'center', width: '160px' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {customers.map(cust => (
-                  <tr key={cust.id}>
-                    <td>
-                      <div className="fw-bold text-main">{cust.name}</div>
-                      <div className="small">
-                        {cust.email && <span className="me-2 text-muted"><i className="fa-solid fa-envelope me-1"></i>{cust.email}</span>}
-                        {cust.phone && <span className="text-muted"><i className="fa-solid fa-phone me-1"></i>{cust.phone}</span>}
-                      </div>
-                      <div className="mt-1">
-                        {!cust.branch_id && (!cust.branches || cust.branches.length === 0) ? (
-                          <span className="badge bg-primary me-1"><i className="fa-solid fa-globe me-1"></i>Global (Toutes boutiques)</span>
-                        ) : (
-                          <span className="badge bg-info text-dark me-1"><i className="fa-solid fa-shop me-1"></i>{cust.branch?.name || 'Multi-boutiques'}</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="text-main">{cust.address || '-'}</td>
-                    <td>
-                      <span className="badge bg-success">
-                        <i className="fa-solid fa-star me-1 text-warning"></i> {cust.loyalty_points} Pts
-                      </span>
-                    </td>
-                    <td>
-                      {parseFloat(cust.debt_balance) > 0 ? (
-                        <div className="text-danger fw-bold">
-                          <i className="fa-solid fa-circle-exclamation me-1"></i>
-                          Dette : {new Intl.NumberFormat('fr-FR').format(cust.debt_balance)} XOF
+                {customers.map(cust => {
+                  const debtVal = parseFloat(cust.debt_balance || 0);
+                  const isGlobal = !cust.branch_id && (!cust.branches || cust.branches.length === 0);
+                  return (
+                    <tr key={cust.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                      <td style={{ padding: '12px 16px' }}>
+                        <div className="d-flex align-items-center gap-3">
+                          <div 
+                            style={{ 
+                              width: '42px', height: '42px', borderRadius: '50%', 
+                              background: getAvatarBg(cust.id), color: '#ffffff', 
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                              fontWeight: 800, fontSize: '15px', flexShrink: 0,
+                              boxShadow: '0 2px 6px rgba(0,0,0,0.15)' 
+                            }}
+                          >
+                            {getCustomerInitials(cust.name)}
+                          </div>
+                          <div>
+                            <div className="fw-bold" style={{ fontSize: '15px', color: 'var(--text-main)' }}>{cust.name}</div>
+                            <div className="d-flex flex-wrap gap-2 mt-1 align-items-center small">
+                              {cust.phone && (
+                                <span className="text-muted" style={{ fontSize: '12px' }}>
+                                  <i className="fa-solid fa-phone me-1 text-primary"></i>{cust.phone}
+                                </span>
+                              )}
+                              {cust.email && (
+                                <span className="text-muted" style={{ fontSize: '12px' }}>
+                                  <i className="fa-solid fa-envelope me-1 text-secondary"></i>{cust.email}
+                                </span>
+                              )}
+                            </div>
+                            <div className="mt-1">
+                              {isGlobal ? (
+                                <span className="badge rounded-pill bg-primary-subtle text-primary border border-primary-subtle" style={{ fontSize: '10px', padding: '3px 8px' }}>
+                                  <i className="fa-solid fa-globe me-1"></i>Client Global
+                                </span>
+                              ) : (
+                                <span className="badge rounded-pill bg-info-subtle text-info border border-info-subtle" style={{ fontSize: '10px', padding: '3px 8px' }}>
+                                  <i className="fa-solid fa-shop me-1"></i>{cust.branch?.name || 'Boutique'}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      ) : (
-                        <div className="text-success small"><i className="fa-solid fa-circle-check me-1"></i> Solde à jour</div>
-                      )}
-                      <div className="text-muted small">Limite autorisée : {new Intl.NumberFormat('fr-FR').format(cust.credit_limit)} XOF</div>
-                    </td>
-                    <td className="text-center">
-                      <div className="d-flex justify-content-center gap-2">
-                        <button onClick={() => viewDetails(cust)} className="btn btn-sm btn-info text-white" title="Historique">
-                          <i className="fa-solid fa-clock-history"></i>
-                        </button>
-                        <button onClick={() => openEditModal(cust)} className="btn btn-sm btn-warning text-white" title="Modifier">
-                          <i className="fa-solid fa-pencil"></i>
-                        </button>
-                        <button onClick={() => handleDeleteCustomer(cust.id)} className="btn btn-sm btn-danger" title="Supprimer">
-                          <i className="fa-solid fa-trash"></i>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td style={{ padding: '12px 16px', fontSize: '13px' }}>
+                        {cust.address ? (
+                          <span><i className="fa-solid fa-location-dot me-1 text-danger"></i>{cust.address}</span>
+                        ) : (
+                          <span className="text-muted">—</span>
+                        )}
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <div 
+                          style={{ 
+                            display: 'inline-flex', alignItems: 'center', gap: '6px', 
+                            padding: '4px 10px', borderRadius: '20px', 
+                            background: 'rgba(234, 179, 8, 0.12)', border: '1px solid rgba(234, 179, 8, 0.3)', 
+                            color: '#ca8a04', fontWeight: 700, fontSize: '12px' 
+                          }}
+                        >
+                          <i className="fa-solid fa-star"></i> {cust.loyalty_points || 0} Pts
+                        </div>
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        {debtVal > 0 ? (
+                          <div className="p-2 rounded border border-danger-subtle bg-danger-subtle text-danger" style={{ fontSize: '12px' }}>
+                            <div className="fw-bold"><i className="fa-solid fa-circle-exclamation me-1"></i>Dette: {new Intl.NumberFormat('fr-FR').format(debtVal)} XOF</div>
+                            <div className="text-muted" style={{ fontSize: '11px' }}>Limite: {new Intl.NumberFormat('fr-FR').format(cust.credit_limit || 0)} XOF</div>
+                          </div>
+                        ) : (
+                          <div>
+                            <span className="badge bg-success-subtle text-success border border-success-subtle" style={{ fontSize: '11px', padding: '4px 8px' }}>
+                              <i className="fa-solid fa-circle-check me-1"></i>Solde à jour
+                            </span>
+                            <div className="text-muted small mt-1" style={{ fontSize: '11px' }}>
+                              Limite: {new Intl.NumberFormat('fr-FR').format(cust.credit_limit || 0)} XOF
+                            </div>
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                        <div className="d-flex justify-content-center gap-1">
+                          <button 
+                            onClick={() => viewDetails(cust)} 
+                            className="btn btn-sm btn-outline-info" 
+                            title="Historique des ventes & dettes"
+                            style={{ width: '32px', height: '32px', padding: 0, borderRadius: '8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                          >
+                            <i className="fa-solid fa-clock-rotate-left"></i>
+                          </button>
+                          <button 
+                            onClick={() => openEditModal(cust)} 
+                            className="btn btn-sm btn-outline-warning" 
+                            title="Modifier la fiche client"
+                            style={{ width: '32px', height: '32px', padding: 0, borderRadius: '8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                          >
+                            <i className="fa-solid fa-pen-to-square"></i>
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteCustomer(cust.id)} 
+                            className="btn btn-sm btn-outline-danger" 
+                            title="Supprimer le client"
+                            style={{ width: '32px', height: '32px', padding: 0, borderRadius: '8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                          >
+                            <i className="fa-solid fa-trash-can"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -298,6 +448,9 @@ export const Customers = () => {
                   value={formData.name} 
                   onChange={(e) => setFormData({...formData, name: e.target.value})} 
                   required 
+                  minLength={2}
+                  maxLength={100}
+                  placeholder="Ex: Koffi Manassé"
                 />
               </div>
 

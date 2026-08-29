@@ -66,12 +66,14 @@ class CustomerController extends Controller
         $activeBranchId = app(\App\Services\TenantManager::class)->getBranchId();
 
         $validated = $request->validate([
-            'name' => 'required|string|max:100',
+            'name' => 'required|string|min:2|max:100',
             'email' => 'nullable|email|max:100',
             'phone' => [
                 'nullable',
                 'string',
+                'min:8',
                 'max:30',
+                'regex:/^[0-9+\s-]{8,30}$/',
                 Rule::unique('customers')->where('company_id', $companyId)
             ],
             'address' => 'nullable|string|max:255',
@@ -82,6 +84,10 @@ class CustomerController extends Controller
             'is_global' => 'nullable|boolean',
             'branch_ids' => 'nullable|array',
             'branch_ids.*' => 'exists:branches,id',
+        ], [
+            'name.min' => 'Le nom du client doit comporter au moins 2 caractères.',
+            'phone.regex' => 'Le numéro de téléphone doit comporter au moins 8 chiffres (ex: +225 0700000000).',
+            'phone.min' => 'Le numéro de téléphone doit comporter au moins 8 chiffres.',
         ]);
 
         $isGlobal = $request->boolean('is_global');
@@ -136,12 +142,14 @@ class CustomerController extends Controller
         $companyId = app(\App\Services\TenantManager::class)->getCompanyId();
 
         $validated = $request->validate([
-            'name' => 'required|string|max:100',
+            'name' => 'required|string|min:2|max:100',
             'email' => 'nullable|email|max:100',
             'phone' => [
                 'nullable',
                 'string',
+                'min:8',
                 'max:30',
+                'regex:/^[0-9+\s-]{8,30}$/',
                 Rule::unique('customers')->where('company_id', $companyId)->ignore($customer->id)
             ],
             'address' => 'nullable|string|max:255',
@@ -152,6 +160,10 @@ class CustomerController extends Controller
             'is_global' => 'nullable|boolean',
             'branch_ids' => 'nullable|array',
             'branch_ids.*' => 'exists:branches,id',
+        ], [
+            'name.min' => 'Le nom du client doit comporter au moins 2 caractères.',
+            'phone.regex' => 'Le numéro de téléphone doit comporter au moins 8 chiffres (ex: +225 0700000000).',
+            'phone.min' => 'Le numéro de téléphone doit comporter au moins 8 chiffres.',
         ]);
 
         $isGlobal = $request->boolean('is_global');
