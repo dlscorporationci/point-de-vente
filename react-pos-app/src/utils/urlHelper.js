@@ -6,13 +6,21 @@ export const getAssetUrl = (filePath) => {
   if (!filePath) return '';
   if (filePath.startsWith('http://') || filePath.startsWith('https://')) return filePath;
 
-  let clean = String(filePath).trim().replace(/^(\/)?storage\//, '').replace(/^\//, '');
-
   const origin = typeof window !== 'undefined'
     ? ((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (window.location.port === '5173' || window.location.port === '3000')
         ? 'http://127.0.0.1:8000'
         : window.location.origin)
     : '';
 
+  let clean = String(filePath).trim();
+  if (clean.startsWith('/storage/')) {
+    return `${origin}${clean}`;
+  }
+  if (clean.startsWith('storage/')) {
+    return `${origin}/${clean}`;
+  }
+  if (clean.startsWith('/')) {
+    return `${origin}/storage${clean}`;
+  }
   return `${origin}/storage/${clean}`;
 };

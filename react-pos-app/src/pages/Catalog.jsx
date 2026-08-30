@@ -878,6 +878,9 @@ export const Catalog = () => {
                       <img
                         src={newProductImage ? URL.createObjectURL(newProductImage) : getImageUrl(editingProduct.image_path)}
                         alt="Aperçu du produit"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                        }}
                         style={{ width: '64px', height: '64px', objectFit: 'cover', borderRadius: '8px', border: '2px solid var(--color-primary)' }}
                       />
                       <small className="text-muted">
