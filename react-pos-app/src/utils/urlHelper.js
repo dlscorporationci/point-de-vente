@@ -4,7 +4,9 @@
  */
 export const getAssetUrl = (filePath) => {
   if (!filePath) return '';
-  if (filePath.startsWith('http')) return filePath;
+  if (filePath.startsWith('http://') || filePath.startsWith('https://')) return filePath;
+
+  let clean = String(filePath).trim().replace(/^(\/)?storage\//, '').replace(/^\//, '');
 
   const origin = typeof window !== 'undefined'
     ? ((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (window.location.port === '5173' || window.location.port === '3000')
@@ -12,5 +14,5 @@ export const getAssetUrl = (filePath) => {
         : window.location.origin)
     : '';
 
-  return `${origin}${filePath.startsWith('/') ? '' : '/'}${filePath}`;
+  return `${origin}/storage/${clean}`;
 };

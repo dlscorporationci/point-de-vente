@@ -5,28 +5,10 @@ import { db } from '../services/db';
 import { CatalogTemplatesModal } from '../components/CatalogTemplatesModal';
 import { MassProductDeleteModal } from '../components/MassProductDeleteModal';
 import { ExportModal } from '../components/ExportModal';
+import { getAssetUrl } from '../utils/urlHelper';
 
 export const getImageUrl = (imagePath) => {
-  if (!imagePath) return null;
-  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-    return imagePath;
-  }
-  let cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
-  
-  // Ajouter le préfixe /storage/ pour Nginx si nécessaire
-  if (!cleanPath.startsWith('/storage/')) {
-    cleanPath = `/storage${cleanPath}`;
-  }
-
-  // Si l'application tourne sur localhost avec le serveur Vite dev (port 5173)
-  if (typeof window !== 'undefined') {
-    if ((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.location.port === '5173') {
-      return `http://127.0.0.1:8000${cleanPath}`;
-    }
-    return `${window.location.origin}${cleanPath}`;
-  }
-
-  return cleanPath;
+  return getAssetUrl(imagePath);
 };
 
 export const ProductImageThumbnail = ({ imagePath, name, size = '48px', className = '' }) => {
