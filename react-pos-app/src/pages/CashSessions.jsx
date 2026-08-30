@@ -6,6 +6,32 @@ import { ExportModal } from '../components/ExportModal';
 import { useRealtime } from '../hooks/useRealtime';
 import { hasPermission } from '../services/permissionService';
 
+export const formatDateSafe = (dateString) => {
+  if (!dateString) return '-';
+  try {
+    const d = new Date(dateString);
+    return isNaN(d.getTime()) ? '-' : d.toLocaleDateString('fr-FR');
+  } catch {
+    return '-';
+  }
+};
+
+export const formatTimeSafe = (dateString) => {
+  if (!dateString) return '-';
+  try {
+    const d = new Date(dateString);
+    return isNaN(d.getTime()) ? '-' : d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return '-';
+  }
+};
+
+export const formatAmountSafe = (val) => {
+  const num = parseFloat(val);
+  if (isNaN(num)) return '0';
+  return new Intl.NumberFormat('fr-FR').format(num);
+};
+
 export const CashSessions = () => {
   const { user, token } = useApp();
 
@@ -273,7 +299,7 @@ export const CashSessions = () => {
                     <small className="text-muted">Session partagée active pour tous les vendeurs et caissiers de cette boutique</small>
                   </div>
                   <div className="text-end">
-                    <small className="text-muted d-block">Ouverte le {currentSession.opened_at ? new Date(currentSession.opened_at).toLocaleString('fr-FR') : '-'}</small>
+                    <small className="text-muted d-block">Ouverte le {formatDateSafe(currentSession.opened_at)} {formatTimeSafe(currentSession.opened_at)}</small>
                     <small className="text-muted">Responsable ouverture : <strong>{currentSession.user?.name || '-'}</strong></small>
                   </div>
                 </div>
@@ -283,7 +309,7 @@ export const CashSessions = () => {
                     <div className="p-3 rounded border text-center" style={{ background: 'var(--bg-card, #ffffff)' }}>
                       <span className="text-muted small d-block mb-1">💰 Solde Espèces (Tiroir-Caisse)</span>
                       <strong className="text-success" style={{ fontSize: '1.6rem', fontWeight: 900 }}>
-                        {new Intl.NumberFormat('fr-FR').format(activeTheoretical)} XOF
+                        {formatAmountSafe(activeTheoretical)} XOF
                       </strong>
                     </div>
                   </div>
@@ -291,7 +317,7 @@ export const CashSessions = () => {
                     <div className="p-3 rounded border text-center" style={{ background: 'var(--bg-card, #ffffff)' }}>
                       <span className="text-muted small d-block mb-1">💵 Ouverture</span>
                       <strong style={{ fontSize: '1.1rem', fontWeight: 700 }}>
-                        {new Intl.NumberFormat('fr-FR').format(parseFloat(currentSession.opening_balance) || 0)} XOF
+                        {formatAmountSafe(currentSession.opening_balance)} XOF
                       </strong>
                     </div>
                   </div>
@@ -299,7 +325,7 @@ export const CashSessions = () => {
                     <div className="p-3 rounded border text-center" style={{ background: 'var(--bg-card, #ffffff)' }}>
                       <span className="text-muted small d-block mb-1">🛒 Ventes Espèces</span>
                       <strong className="text-primary" style={{ fontSize: '1.1rem', fontWeight: 700 }}>
-                        +{new Intl.NumberFormat('fr-FR').format(currentSession.cash_sales || 0)} XOF
+                        +{formatAmountSafe(currentSession.cash_sales)} XOF
                       </strong>
                     </div>
                   </div>
@@ -307,7 +333,7 @@ export const CashSessions = () => {
                     <div className="p-3 rounded border text-center" style={{ background: 'var(--bg-card, #ffffff)' }}>
                       <span className="text-muted small d-block mb-1">💳 Ventes Carte</span>
                       <strong style={{ fontSize: '1.1rem', fontWeight: 700, color: '#6366f1' }}>
-                        {new Intl.NumberFormat('fr-FR').format(currentSession.card_sales || 0)} XOF
+                        {formatAmountSafe(currentSession.card_sales)} XOF
                       </strong>
                     </div>
                   </div>
@@ -315,7 +341,7 @@ export const CashSessions = () => {
                     <div className="p-3 rounded border text-center" style={{ background: 'var(--bg-card, #ffffff)' }}>
                       <span className="text-muted small d-block mb-1">📋 Ventes Crédit</span>
                       <strong style={{ fontSize: '1.1rem', fontWeight: 700, color: '#f59e0b' }}>
-                        {new Intl.NumberFormat('fr-FR').format(currentSession.credit_sales || 0)} XOF
+                        {formatAmountSafe(currentSession.credit_sales)} XOF
                       </strong>
                     </div>
                   </div>
@@ -323,8 +349,8 @@ export const CashSessions = () => {
 
                 {(currentSession.deposits_sum > 0 || currentSession.withdrawals_sum > 0) && (
                   <div className="mt-3 pt-2 d-flex gap-4 border-top text-muted small">
-                    <span>➕ Dépôts manuel : <strong>+{new Intl.NumberFormat('fr-FR').format(currentSession.deposits_sum || 0)} XOF</strong></span>
-                    <span>➖ Retraits manuel : <strong>-{new Intl.NumberFormat('fr-FR').format(currentSession.withdrawals_sum || 0)} XOF</strong></span>
+                    <span>➕ Dépôts manuel : <strong>+{formatAmountSafe(currentSession.deposits_sum)} XOF</strong></span>
+                    <span>➖ Retraits manuel : <strong>-{formatAmountSafe(currentSession.withdrawals_sum)} XOF</strong></span>
                   </div>
                 )}
               </div>
@@ -480,31 +506,33 @@ export const CashSessions = () => {
                   </thead>
                   <tbody>
                     {allSessions.map(session => {
-                      const difference = session.closing_balance ? (parseFloat(session.closing_balance) - parseFloat(session.theoretical_balance)) : 0;
+                      const theoretical = parseFloat(session.theoretical_balance) || 0;
+                      const closing = parseFloat(session.closing_balance) || 0;
+                      const difference = session.closing_balance ? (closing - theoretical) : 0;
                       return (
-                        <tr key={session.id}>
+                        <tr key={session.id || Math.random()}>
                           <td>
                             <div className="product-title-cell">{session.branch?.name || 'Boutique'}</div>
-                            <div className="barcode-sub">Par {session.user?.name || '-'} • {new Date(session.opened_at).toLocaleDateString('fr-FR')}</div>
+                            <div className="barcode-sub">Par {session.user?.name || '-'} • {formatDateSafe(session.opened_at)}</div>
                           </td>
                           <td>
-                            <div className="desc-sub">{new Date(session.opened_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</div>
+                            <div className="desc-sub">{formatTimeSafe(session.opened_at)}</div>
                           </td>
                           <td className="price-cell">
-                            {new Intl.NumberFormat('fr-FR').format(session.opening_balance)} XOF
+                            {formatAmountSafe(session.opening_balance)} XOF
                           </td>
                           <td>
                             {session.status === 'open' ? (
-                              <span style={{ color: 'var(--text-muted)' }}>En cours ({new Intl.NumberFormat('fr-FR').format(session.computed_theoretical_balance || session.opening_balance)} XOF)</span>
+                              <span style={{ color: 'var(--text-muted)' }}>En cours ({formatAmountSafe(session.computed_theoretical_balance || session.opening_balance)} XOF)</span>
                             ) : (
                               <div style={{ fontSize: '12px' }}>
-                                Th: {new Intl.NumberFormat('fr-FR').format(session.theoretical_balance)} XOF <br />
-                                Réel: {new Intl.NumberFormat('fr-FR').format(session.closing_balance)} XOF
+                                Th: {formatAmountSafe(session.theoretical_balance)} XOF <br />
+                                Réel: {formatAmountSafe(session.closing_balance)} XOF
                               </div>
                             )}
                           </td>
                           <td style={{ color: difference === 0 ? 'var(--color-success)' : 'var(--color-error)', fontWeight: '700' }}>
-                            {session.status === 'open' ? '-' : `${difference > 0 ? '+' : ''}${new Intl.NumberFormat('fr-FR').format(difference)} XOF`}
+                            {session.status === 'open' ? '-' : `${difference > 0 ? '+' : ''}${formatAmountSafe(difference)} XOF`}
                           </td>
                           <td>
                             <span className={`badge-status ${session.status === 'open' ? 'status-ordered' : session.status === 'closed' ? 'payment-unpaid' : 'status-received'}`}>
