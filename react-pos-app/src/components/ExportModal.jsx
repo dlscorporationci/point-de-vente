@@ -65,11 +65,6 @@ export const ExportModal = ({ isOpen, onClose, documentType, documentTitle, defa
             document.body.appendChild(link);
             link.click();
             
-            // Sur mobile, forcer le lien de téléchargement direct sans restriction 403
-            if (isMobile && directUrl) {
-              window.open(directUrl, '_blank');
-            }
-
             setTimeout(() => {
               link.remove();
               window.URL.revokeObjectURL(blobUrl);
