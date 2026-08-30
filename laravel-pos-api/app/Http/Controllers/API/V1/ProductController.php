@@ -391,25 +391,19 @@ class ProductController extends Controller
         }
 
         $file = $request->file('image');
-        $ext = strtolower($file->getClientOriginalExtension() ?: 'jpg');
-        $filename = time() . '_' . \Illuminate\Support\Str::random(10) . '.' . $ext;
+        $path = $file->store('products', 'public');
 
-        // 1. Sauvegarde directe dans public_path('storage/products')
+        $fullStoragePath = storage_path('app/public/' . $path);
+        @chmod(storage_path('app/public/products'), 0777);
+        @chmod($fullStoragePath, 0777);
+
+        // Si public/storage/products est un vrai dossier physique (non-symlink), y copier l'image
         $publicDir = public_path('storage/products');
-        if (!file_exists($publicDir)) {
-            @mkdir($publicDir, 0777, true);
+        if (is_dir($publicDir) && !is_link(public_path('storage'))) {
+            @copy($fullStoragePath, $publicDir . '/' . basename($path));
+            @chmod($publicDir . '/' . basename($path), 0777);
         }
-        $file->move($publicDir, $filename);
-        @chmod($publicDir . '/' . $filename, 0777);
 
-        // 2. Copie miroir dans storage_path('app/public/products')
-        $storageDir = storage_path('app/public/products');
-        if (!file_exists($storageDir)) {
-            @mkdir($storageDir, 0777, true);
-        }
-        @copy($publicDir . '/' . $filename, $storageDir . '/' . $filename);
-        @chmod($storageDir . '/' . $filename, 0777);
-
-        return '/storage/products/' . $filename;
+        return '/storage/' . $path;
     }
 }
