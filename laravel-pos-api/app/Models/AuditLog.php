@@ -45,4 +45,14 @@ class AuditLog extends Model
     {
         return $this->morphTo();
     }
+
+    public function setDeviceAttribute($value)
+    {
+        $this->attributes['device'] = substr($value ?? 'Web App', 0, 190);
+    }
+
+    public function setUserAgentAttribute($value)
+    {
+        $this->attributes['user_agent'] = substr($value ?? 'Web App', 0, 250);
+    }
 }

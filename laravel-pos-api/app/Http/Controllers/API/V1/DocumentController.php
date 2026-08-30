@@ -71,36 +71,48 @@ class DocumentController extends Controller
             'filters'       => 'nullable|array',
         ]);
 
-        $user    = $request->user();
-        $company = $user->company;
-        $branch  = $user->branch;
-        $type    = $request->document_type;
-        $format  = $request->format;
-        $filters = $request->filters ?? [];
+        try {
+            $user    = $request->user();
+            $company = $user->company;
+            $branch  = $user->branch;
+            $type    = $request->document_type;
+            $format  = $request->format;
+            $filters = $request->filters ?? [];
 
-        $doc = $this->documentService->generateAndArchiveDocument($type, $format, $filters, $company, $branch, $user);
+            $doc = $this->documentService->generateAndArchiveDocument($type, $format, $filters, $company, $branch, $user);
 
-        // Audit log
-        AuditLog::create([
-            'company_id'     => $company->id,
-            'branch_id'      => $branch ? $branch->id : null,
-            'user_id'        => $user->id,
-            'user_role'      => $user->role ? $user->role->name : 'User',
-            'auditable_type' => GeneratedDocument::class,
-            'auditable_id'   => $doc->id,
-            'action'         => 'DOCUMENT_EXPORTED',
-            'module'         => 'DocumentCenter',
-            'description'    => "Génération et archivage de document [Type: {$type}] [Format: {$format}] - UUID: {$doc->uuid}",
-            'ip_address'     => $request->ip(),
-            'device'         => $request->userAgent(),
-            'result'         => 'success',
-        ]);
+            // Audit log
+            try {
+                AuditLog::create([
+                    'company_id'     => $company->id,
+                    'branch_id'      => $branch ? $branch->id : null,
+                    'user_id'        => $user->id,
+                    'user_role'      => $user->role ? (is_string($user->role) ? $user->role : $user->role->name) : 'User',
+                    'auditable_type' => GeneratedDocument::class,
+                    'auditable_id'   => $doc->id,
+                    'action'         => 'DOCUMENT_EXPORTED',
+                    'module'         => 'DocumentCenter',
+                    'description'    => "Génération et archivage de document [Type: {$type}] [Format: {$format}] - UUID: {$doc->uuid}",
+                    'ip_address'     => $request->ip(),
+                    'device'         => substr($request->userAgent() ?? 'Web App', 0, 190),
+                    'result'         => 'success',
+                ]);
+            } catch (\Throwable $logEx) {
+                \Log::warning("Erreur secondaire AuditLog lors de l'export: " . $logEx->getMessage());
+            }
 
-        return response()->json([
-            'success'  => true,
-            'message'  => "Document {$doc->title} généré et archivé avec succès.",
-            'document' => $doc,
-        ]);
+            return response()->json([
+                'success'  => true,
+                'message'  => "Document {$doc->title} généré et archivé avec succès.",
+                'document' => $doc,
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error("Erreur d'exportation de document: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'error'   => "Impossible de générer le document. Veuillez réessayer ou ajuster vos critères de filtre."
+            ], 500);
+        }
     }
 
     /**
