@@ -189,4 +189,40 @@ class DocumentController extends Controller
             'message' => 'Document supprimé du centre d\'archivage avec succès.',
         ]);
     }
+
+    /**
+     * Télécharger un document archivé via son UUID (Direct stream sans blocage Sanctum/Apache).
+     */
+    public function publicDownload($uuid)
+    {
+        $doc = GeneratedDocument::where('uuid', $uuid)->firstOrFail();
+
+        $relative = str_replace('/storage/', '', $doc->file_path);
+        $fullPath = storage_path("app/public/{$relative}");
+
+        if (!file_exists($fullPath) && !Storage::disk('public')->exists($relative)) {
+            return response()->json(['error' => "Le fichier spécifié n'existe plus sur le serveur."], 404);
+        }
+
+        @chmod($fullPath, 0664);
+
+        try {
+            AuditLog::create([
+                'company_id'     => $doc->company_id,
+                'user_id'        => $doc->user_id,
+                'auditable_type' => GeneratedDocument::class,
+                'auditable_id'   => $doc->id,
+                'action'         => 'DOCUMENT_DOWNLOADED_DIRECT',
+                'module'         => 'DocumentCenter',
+                'description'    => "Téléchargement direct mobile du document UUID: {$doc->uuid}",
+                'ip_address'     => request()->ip(),
+                'device'         => substr(request()->userAgent() ?? 'Mobile Direct', 0, 190),
+                'result'         => 'success',
+            ]);
+        } catch (\Throwable $th) {
+            \Log::warning("AuditLog direct download: " . $th->getMessage());
+        }
+
+        return response()->download($fullPath, $doc->file_name);
+    }
 }

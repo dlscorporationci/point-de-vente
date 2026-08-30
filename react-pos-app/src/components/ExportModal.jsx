@@ -44,7 +44,9 @@ export const ExportModal = ({ isOpen, onClose, documentType, documentTitle, defa
         setSuccessMsg(`✅ Document "${res.data.document.title}" généré avec succès !`);
         
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        const directUrl = res.data.document.file_path ? getAssetUrl(res.data.document.file_path) : null;
+        const directUrl = res.data.document.uuid 
+          ? getAssetUrl(`/api/v1/public/documents/${res.data.document.uuid}/download`) 
+          : (res.data.document.file_path ? getAssetUrl(res.data.document.file_path) : null);
 
         if (res.data.document.id) {
           try {
@@ -63,7 +65,7 @@ export const ExportModal = ({ isOpen, onClose, documentType, documentTitle, defa
             document.body.appendChild(link);
             link.click();
             
-            // Sur mobile, forcer aussi l'ouverture directe si le blob download est bloqué par le navigateur
+            // Sur mobile, forcer le lien de téléchargement direct sans restriction 403
             if (isMobile && directUrl) {
               window.open(directUrl, '_blank');
             }

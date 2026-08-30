@@ -56,6 +56,7 @@ Route::prefix('v1')->middleware('tenant')->group(function () {
             return response()->json(\App\Models\SubscriptionPlan::where('is_active', true)->orderBy('id', 'asc')->get());
         });
         Route::get('/maintenance/status', [\App\Http\Controllers\API\V1\MaintenanceController::class, 'status']);
+        Route::get('/public/documents/{uuid}/download', [\App\Http\Controllers\API\V1\DocumentController::class, 'publicDownload']);
     });
 
     // Routes d'authentification protégées par Sanctum

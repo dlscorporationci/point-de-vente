@@ -53,8 +53,10 @@ export const DocumentCenter = () => {
     }
   };
 
-  const handleDownload = (filePath) => {
-    const url = getAssetUrl(filePath);
+  const handleDownload = (doc) => {
+    const url = doc?.uuid 
+      ? getAssetUrl(`/api/v1/public/documents/${doc.uuid}/download`) 
+      : getAssetUrl(typeof doc === 'string' ? doc : doc?.file_path);
     window.open(url, '_blank');
   };
 
@@ -327,7 +329,7 @@ export const DocumentCenter = () => {
                       <div className="d-flex justify-content-end gap-2">
                         <button
                           className="action-btn-circle"
-                          onClick={() => handleDownload(doc.file_path)}
+                          onClick={() => handleDownload(doc)}
                           title="Télécharger / Ouvrir"
                         >
                           <i className="fa-solid fa-download"></i>
