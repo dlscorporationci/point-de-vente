@@ -8,10 +8,12 @@ import { saleService } from '../services/SaleService';
 import { getAssetUrl } from '../utils/urlHelper';
 import { useRealtime } from '../hooks/useRealtime';
 import { hasPermission } from '../services/permissionService';
+import { BarcodeScannerModal } from '../components/BarcodeScannerModal';
 
 export const PointDeVente = () => {
   const { user, token, isOnline, refreshPendingSalesCount } = useApp();
   const { cart, globalDiscount, addItem, removeItem, updateQuantity, updateDiscount, setGlobalDiscount, clearCart, getTotals, setTaxSettings } = useCartStore();
+  const [isPosScannerOpen, setIsPosScannerOpen] = useState(false);
 
   // Liste des produits et catégories
   const [products, setProducts] = useState([]);
@@ -426,7 +428,7 @@ export const PointDeVente = () => {
         <div className="pos-grid-columns" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 340px', gap: '16px', alignItems: 'start', width: '100%', boxSizing: 'border-box', overflow: 'hidden' }}>
           {/* COLONNE GAUCHE: GRILLE DES PRODUITS TACTILE */}
           <div className="pos-left-panel" style={{ display: 'flex', flexDirection: 'column', gap: '12px', minWidth: 0, width: '100%', boxSizing: 'border-box', overflow: 'hidden' }}>
-            <div className="pos-search-box" style={{ width: '100%' }}>
+            <div className="pos-search-box" style={{ width: '100%', display: 'flex', gap: '8px', alignItems: 'center' }}>
               <input 
                 type="text" 
                 className="form-control pos-search-input" 
@@ -434,8 +436,33 @@ export const PointDeVente = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={handleSearchKeyDown}
+                style={{ flex: 1 }}
               />
+              <button
+                type="button"
+                className="btn btn-outline-primary"
+                onClick={() => setIsPosScannerOpen(true)}
+                title="Scanner par caméra"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 700, padding: '10px 14px', whiteSpace: 'nowrap' }}
+              >
+                <i className="fa-solid fa-camera"></i> <span className="d-none d-sm-inline">Scanner</span>
+              </button>
             </div>
+
+            <BarcodeScannerModal
+              isOpen={isPosScannerOpen}
+              onClose={() => setIsPosScannerOpen(false)}
+              onScanSuccess={(scannedBarcode) => {
+                setSearchQuery(scannedBarcode);
+                const match = products.find(p => p.barcode === scannedBarcode || p.sku === scannedBarcode);
+                if (match) {
+                  addItem(match);
+                  setSuccess(`✅ Article "${match.name}" ajouté au panier !`);
+                } else {
+                  setError(`Aucun produit trouvé pour le code-barres : ${scannedBarcode}`);
+                }
+              }}
+            />
 
             {/* Filtres Catégories */}
             <div className="pos-categories-bar">

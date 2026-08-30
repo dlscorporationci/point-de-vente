@@ -3,8 +3,8 @@ import axios from 'axios';
 import { useApp } from '../context/AppContext';
 import { db } from '../services/db';
 import { CatalogTemplatesModal } from '../components/CatalogTemplatesModal';
-import { MassProductDeleteModal } from '../components/MassProductDeleteModal';
 import { ExportModal } from '../components/ExportModal';
+import { BarcodeScannerModal } from '../components/BarcodeScannerModal';
 import { getAssetUrl } from '../utils/urlHelper';
 
 export const getImageUrl = (imagePath) => {
@@ -909,78 +909,14 @@ export const Catalog = () => {
       )}
 
         {/* Modal Scanner de Code-Barres par Caméra */}
-        {showScannerModal && (
-          <div className="modal-overlay">
-            <div className="modal-card card" style={{ maxWidth: '460px', textAlign: 'center' }}>
-              <h3><i className="fa-solid fa-camera me-2 text-primary"></i> Scanner le Code-Barres de l'Article</h3>
-              <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px' }}>
-                Pointez la caméra vers le code-barres sur l'emballage du produit.
-              </p>
-
-              {scanStatus && <div className="success-banner mb-3">{scanStatus}</div>}
-
-              {/* Rendu Vidéo de la Caméra avec Viseur Laser */}
-              <div className="scanner-video-wrapper" style={{
-                position: 'relative',
-                width: '100%',
-                height: '240px',
-                background: '#000000',
-                borderRadius: '12px',
-                overflow: 'hidden',
-                border: '2px solid var(--color-primary)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <video 
-                  ref={videoRef} 
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                  playsInline 
-                  muted 
-                />
-                {/* Ligne Laser de Balayage */}
-                <div className="scanner-laser" style={{
-                  position: 'absolute',
-                  top: '50%',
-                  left: '10%',
-                  right: '10%',
-                  height: '2px',
-                  background: '#00ff66',
-                  boxShadow: '0 0 12px #00ff66',
-                  animation: 'laserScan 2s infinite ease-in-out'
-                }}></div>
-              </div>
-
-              {/* Saisie alternative directe par douchette USB */}
-              <div style={{ marginTop: '16px', textAlign: 'left' }}>
-                <label className="form-label" style={{ fontSize: '12px', fontWeight: 700 }}>
-                  <i className="fa-solid fa-barcode me-1 text-primary"></i> Saisie directe ou Lecteur USB :
-                </label>
-                <input 
-                  type="text" 
-                  className="form-control"
-                  placeholder="Scannez ici avec votre lecteur USB..."
-                  autoFocus
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      if (e.target.value.trim()) {
-                        setNewProductBarcode(e.target.value.trim());
-                        setShowScannerModal(false);
-                      }
-                    }
-                  }}
-                />
-              </div>
-
-              <div className="modal-actions" style={{ marginTop: '16px' }}>
-                <button type="button" onClick={() => setShowScannerModal(false)} className="btn btn-cancel">
-                  Fermer le scanner
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <BarcodeScannerModal
+          isOpen={showScannerModal}
+          onClose={() => setShowScannerModal(false)}
+          onScanSuccess={(barcode) => {
+            setNewProductBarcode(barcode);
+            setSuccess(`✅ Code-barres scanné avec succès : ${barcode}`);
+          }}
+        />
 
         {/* Barre de Recherche et Filtres */}
         <form onSubmit={handleSearchSubmit} className="filters-bar">
