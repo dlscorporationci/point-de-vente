@@ -18,25 +18,28 @@ export const ProductImageThumbnail = ({ imagePath, name, size = '48px', classNam
   const src = getImageUrl(imagePath);
 
   if (!imagePath || hasError) {
+    const initials = name ? name.trim().slice(0, 2).toUpperCase() : 'PR';
     return (
       <div 
         className={className}
         style={{ 
           width: size, 
           height: size, 
-          borderRadius: '10px', 
-          background: 'var(--bg-input)', 
+          borderRadius: '12px', 
+          background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)', 
           display: 'inline-flex', 
           alignItems: 'center', 
           justifyContent: 'center', 
-          color: 'var(--color-primary, #4f46e5)',
-          border: '1px dashed var(--border-color)',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.04)',
-          flexShrink: 0
+          color: '#ffffff',
+          boxShadow: '0 4px 10px rgba(79, 70, 229, 0.22)',
+          flexShrink: 0,
+          fontWeight: 800,
+          fontSize: typeof size === 'string' && size.includes('px') ? `calc(${size} * 0.38)` : '16px',
+          letterSpacing: '0.5px'
         }}
         title={name}
       >
-        <i className="fa-solid fa-box-open" style={{ fontSize: typeof size === 'string' && size.includes('px') ? `calc(${size} * 0.42)` : '20px' }}></i>
+        {initials}
       </div>
     );
   }
@@ -44,16 +47,16 @@ export const ProductImageThumbnail = ({ imagePath, name, size = '48px', classNam
   return (
     <img 
       src={src} 
-      alt="" 
+      alt={name || 'Produit'} 
       onError={() => setHasError(true)}
       className={className}
       style={{ 
         width: size, 
         height: size, 
         objectFit: 'cover', 
-        borderRadius: '10px', 
-        border: '1px solid var(--border-color)', 
-        boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
+        borderRadius: '12px', 
+        border: '2px solid var(--border-color, #e2e8f0)', 
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
         flexShrink: 0
       }}
     />
