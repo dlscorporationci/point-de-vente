@@ -4,8 +4,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\API\V1\AuthController;
+use App\Http\Controllers\API\V1\MediaController;
 
 Route::prefix('v1')->middleware('tenant')->group(function () {
+    // Route publique de service d'images et médias
+    Route::get('/media/{type}/{filename}', [MediaController::class, 'show']);
     // Route de test du tenant
     Route::get('/tenant-test', function () {
         $tenantManager = app(\App\Services\TenantManager::class);

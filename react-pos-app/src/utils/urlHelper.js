@@ -13,6 +13,12 @@ export const getAssetUrl = (filePath) => {
     : '';
 
   let clean = String(filePath).trim();
+  if (clean.startsWith('/api/') || clean.startsWith('/v1/')) {
+    return `${origin}${clean}`;
+  }
+  if (clean.startsWith('api/') || clean.startsWith('v1/')) {
+    return `${origin}/${clean}`;
+  }
   if (clean.startsWith('/storage/')) {
     return `${origin}${clean}`;
   }

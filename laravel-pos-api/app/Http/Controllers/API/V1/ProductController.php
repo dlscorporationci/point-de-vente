@@ -404,6 +404,6 @@ class ProductController extends Controller
             @chmod($publicDir . '/' . basename($path), 0777);
         }
 
-        return '/storage/' . $path;
+        return '/api/v1/media/products/' . basename($path);
     }
 }
