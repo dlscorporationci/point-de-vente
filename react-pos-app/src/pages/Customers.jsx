@@ -213,7 +213,7 @@ export const Customers = () => {
             <h2 className="section-title"><i className="fa-solid fa-users me-2 text-primary"></i> Gestion des Clients</h2>
             <p className="customers-subtitle">Pilotez votre portefeuille client, le crédit compte courant et les points de fidélité.</p>
           </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div className="header-actions">
             <button onClick={() => setShowExportModal(true)} className="btn btn-outline-secondary" style={{ fontWeight: 700 }}>
               <i className="fa-solid fa-file-export me-1"></i> Exporter
             </button>

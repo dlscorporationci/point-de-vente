@@ -930,11 +930,14 @@ p {
   .action-buttons-group, .header-actions {
     width: 100% !important;
     display: flex !important;
+    flex-wrap: wrap !important;
     gap: 8px !important;
+    align-items: center !important;
   }
 
-  .action-buttons-group .btn, .header-actions .btn {
-    flex: 1 !important;
+  .action-buttons-group .btn, .header-actions .btn, .action-buttons-group .btn-group, .header-actions .btn-group {
+    flex: 1 1 auto !important;
+    min-width: max-content !important;
     justify-content: center !important;
   }
 

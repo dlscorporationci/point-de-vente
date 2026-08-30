@@ -345,7 +345,7 @@ export const Suppliers = () => {
             <p className="suppliers-subtitle">Comptes courants & Coordonnées d'achats</p>
           </div>
           
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <div className="header-actions">
             <div className="btn-group me-2" role="group">
               <button 
                 className={`btn btn-sm ${activeTab === 'suppliers' ? 'btn-primary' : 'btn-outline-secondary'}`}

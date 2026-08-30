@@ -276,7 +276,7 @@ export const Purchases = () => {
             <p className="purchases-subtitle">Suivez vos commandes d'achats et réceptions en stock</p>
           </div>
           
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div className="header-actions">
             <button onClick={() => setShowExportModal(true)} className="btn btn-outline-secondary" style={{ fontWeight: 700 }}>
               <i className="fa-solid fa-file-export me-1"></i> Exporter Achats
             </button>
