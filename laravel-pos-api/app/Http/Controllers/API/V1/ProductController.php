@@ -118,13 +118,7 @@ class ProductController extends Controller
         unset($validated['image'], $validated['branch_ids'], $validated['scope'], $validated['initial_stock']);
 
         if ($request->hasFile('image')) {
-            if (!file_exists(public_path('storage'))) {
-                @symlink(storage_path('app/public'), public_path('storage'));
-            }
-            $path = $request->file('image')->store('products', 'public');
-            $validated['image_path'] = '/storage/' . $path;
-            @chmod(storage_path('app/public/products'), 0777);
-            @chmod(storage_path('app/public/' . $path), 0777);
+            $validated['image_path'] = $this->handleImageUpload($request);
         }
 
         $validated['company_id'] = $companyId;
@@ -243,13 +237,7 @@ class ProductController extends Controller
         unset($validated['image']);
 
         if ($request->hasFile('image')) {
-            if (!file_exists(public_path('storage'))) {
-                @symlink(storage_path('app/public'), public_path('storage'));
-            }
-            $path = $request->file('image')->store('products', 'public');
-            $validated['image_path'] = '/storage/' . $path;
-            @chmod(storage_path('app/public/products'), 0777);
-            @chmod(storage_path('app/public/' . $path), 0777);
+            $validated['image_path'] = $this->handleImageUpload($request);
         }
 
         // Détecter les champs modifiés (avant save)
@@ -390,5 +378,38 @@ class ProductController extends Controller
             'message' => "Suppression massive effectuée avec succès. {$affectedCount} produit(s) supprimé(s).",
             'affected_count' => $affectedCount
         ]);
+    }
+
+    /**
+     * Traitement direct et sécurisé de l'upload d'image produit.
+     * Enregistre le fichier physiquement dans public/storage/products et storage/app/public/products.
+     */
+    private function handleImageUpload(Request $request): ?string
+    {
+        if (!$request->hasFile('image')) {
+            return null;
+        }
+
+        $file = $request->file('image');
+        $ext = strtolower($file->getClientOriginalExtension() ?: 'jpg');
+        $filename = time() . '_' . \Illuminate\Support\Str::random(10) . '.' . $ext;
+
+        // 1. Sauvegarde directe dans public_path('storage/products')
+        $publicDir = public_path('storage/products');
+        if (!file_exists($publicDir)) {
+            @mkdir($publicDir, 0777, true);
+        }
+        $file->move($publicDir, $filename);
+        @chmod($publicDir . '/' . $filename, 0777);
+
+        // 2. Copie miroir dans storage_path('app/public/products')
+        $storageDir = storage_path('app/public/products');
+        if (!file_exists($storageDir)) {
+            @mkdir($storageDir, 0777, true);
+        }
+        @copy($publicDir . '/' . $filename, $storageDir . '/' . $filename);
+        @chmod($storageDir . '/' . $filename, 0777);
+
+        return '/storage/products/' . $filename;
     }
 }
