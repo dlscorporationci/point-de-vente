@@ -63,14 +63,31 @@ class ErrorBoundary extends React.Component {
       if (isProduction) {
         return (
           <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-            <div className="card text-center p-4 shadow-lg border-0" style={{ maxWidth: '520px', borderRadius: '16px', background: 'var(--bg-card)', color: 'var(--text-main)' }}>
+            <div className="card text-center p-4 shadow-lg border-0" style={{ maxWidth: '560px', borderRadius: '16px', background: 'var(--bg-card)', color: 'var(--text-main)' }}>
               <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(99, 102, 241, 0.12)', color: 'var(--color-primary)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', marginBottom: '16px' }}>
                 <i className="fa-solid fa-shield-halved"></i>
               </div>
               <h3 className="fw-bold mb-2">Une interruption temporaire s'est produite</h3>
-              <p className="text-muted small mb-4">
+              <p className="text-muted small mb-3">
                 Le système a sécurisé votre session. Vos données restent intactes. Veuillez rafraîchir la page pour reprendre vos activités.
               </p>
+
+              {this.state.error && (
+                <details style={{ textAlign: 'left', background: 'var(--bg-input, #f1f5f9)', padding: '10px 14px', borderRadius: '10px', marginBottom: '16px', fontSize: '12px', border: '1px solid var(--border-color)' }}>
+                  <summary style={{ cursor: 'pointer', fontWeight: 700, color: 'var(--color-error, #ef4444)' }}>
+                    🔍 Détails de l'incident (cliquez pour ouvrir)
+                  </summary>
+                  <div style={{ marginTop: '8px', wordBreak: 'break-word', color: 'var(--text-main)', fontFamily: 'monospace', fontSize: '11px' }}>
+                    <strong>Erreur :</strong> {this.state.error.toString()}
+                    {this.state.error.stack && (
+                      <pre style={{ marginTop: '6px', maxHeight: '140px', overflowY: 'auto', background: '#0f172a', color: '#f8fafc', padding: '8px', borderRadius: '6px' }}>
+                        {this.state.error.stack}
+                      </pre>
+                    )}
+                  </div>
+                </details>
+              )}
+
               <div className="d-flex justify-content-center gap-2">
                 <button 
                   onClick={() => window.location.reload()} 
