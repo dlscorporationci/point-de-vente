@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useApp } from '../context/AppContext';
 import { db } from '../services/db';
 import { CatalogTemplatesModal } from '../components/CatalogTemplatesModal';
+import { MassProductDeleteModal } from '../components/MassProductDeleteModal';
 import { ExportModal } from '../components/ExportModal';
 import { BarcodeScannerModal } from '../components/BarcodeScannerModal';
 import { getAssetUrl } from '../utils/urlHelper';
