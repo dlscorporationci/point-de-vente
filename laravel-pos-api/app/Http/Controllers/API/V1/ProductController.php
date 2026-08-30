@@ -118,10 +118,13 @@ class ProductController extends Controller
         unset($validated['image'], $validated['branch_ids'], $validated['scope'], $validated['initial_stock']);
 
         if ($request->hasFile('image')) {
+            if (!file_exists(public_path('storage'))) {
+                @symlink(storage_path('app/public'), public_path('storage'));
+            }
             $path = $request->file('image')->store('products', 'public');
             $validated['image_path'] = '/storage/' . $path;
-            @chmod(storage_path('app/public/products'), 0775);
-            @chmod(storage_path('app/public/' . $path), 0775);
+            @chmod(storage_path('app/public/products'), 0777);
+            @chmod(storage_path('app/public/' . $path), 0777);
         }
 
         $validated['company_id'] = $companyId;
@@ -240,10 +243,13 @@ class ProductController extends Controller
         unset($validated['image']);
 
         if ($request->hasFile('image')) {
+            if (!file_exists(public_path('storage'))) {
+                @symlink(storage_path('app/public'), public_path('storage'));
+            }
             $path = $request->file('image')->store('products', 'public');
             $validated['image_path'] = '/storage/' . $path;
-            @chmod(storage_path('app/public/products'), 0775);
-            @chmod(storage_path('app/public/' . $path), 0775);
+            @chmod(storage_path('app/public/products'), 0777);
+            @chmod(storage_path('app/public/' . $path), 0777);
         }
 
         // Détecter les champs modifiés (avant save)
