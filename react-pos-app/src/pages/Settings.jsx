@@ -739,11 +739,11 @@ export const Settings = () => {
                     </div>
                     <div className="tva-preview-row">
                       <span>TVA ({enableTax ? taxRate : 0}%)</span>
-                      <span>{enableTax ? Math.round(10000 * taxRate / 100).toLocaleString() : 0} XOF</span>
+                      <span>{new Intl.NumberFormat('fr-FR').format(enableTax ? Math.round(10000 * taxRate / 100) : 0)} XOF</span>
                     </div>
                     <div className="tva-preview-row tva-total">
                       <span>Prix TTC</span>
-                      <span>{(10000 + (enableTax ? Math.round(10000 * taxRate / 100) : 0)).toLocaleString()} XOF</span>
+                      <span>{new Intl.NumberFormat('fr-FR').format(10000 + (enableTax ? Math.round(10000 * taxRate / 100) : 0))} XOF</span>
                     </div>
                   </div>
                 </div>

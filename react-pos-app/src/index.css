@@ -1034,11 +1034,36 @@ p {
     border-radius: 14px !important;
   }
 
+  /* En-têtes d'onglets défilables horizontalement sur mobile */
+  .settings-tabs-header, .settings-tabs, .nav-tabs, .tabs-container {
+    display: flex !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding-bottom: 8px !important;
+    width: 100% !important;
+    gap: 8px !important;
+  }
+
+  .settings-tab-btn, .nav-link, .tab-btn {
+    flex: 0 0 auto !important;
+    white-space: nowrap !important;
+  }
+
+  /* Présélections TVA et Boutons compacts sur mobile */
+  .tva-presets {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    margin-top: 8px !important;
+  }
+
   /* Formulaires et Boutons tactiles */
   .form-control, select, .form-input {
     font-size: 15px !important;
     padding: 12px !important;
     min-height: 44px !important;
+    max-width: 100% !important;
   }
 
   .btn, .btn-sm {
@@ -1049,6 +1074,11 @@ p {
     align-items: center !important;
     justify-content: center !important;
     touch-action: manipulation !important;
+  }
+
+  /* Espace au bas de la page pour éviter que le bouton flottant de thème ne recouvre le bouton de soumission */
+  .settings-layout, .settings-content, form {
+    padding-bottom: 40px !important;
   }
 
   .form-row-grid, .form-row {

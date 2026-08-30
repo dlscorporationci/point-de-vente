@@ -195,6 +195,17 @@ export const ThemeSelector = () => {
           transform: rotate(45deg) scale(1.1);
         }
 
+        @media (max-width: 768px) {
+          .theme-floating-trigger {
+            bottom: 84px !important;
+            right: 14px !important;
+            width: 42px !important;
+            height: 42px !important;
+            font-size: 17px !important;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.25) !important;
+          }
+        }
+
         /* OVERLAY ET DRAWER */
         .theme-drawer-overlay {
           position: fixed;
