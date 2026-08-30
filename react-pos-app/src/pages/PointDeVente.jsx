@@ -425,9 +425,9 @@ export const PointDeVente = () => {
         {error && <div className="error-banner">⚠️ {error}</div>}
         {success && <div className="success-banner">✔️ {success}</div>}
 
-        <div className="pos-grid-columns" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 340px', gap: '16px', alignItems: 'start', width: '100%', boxSizing: 'border-box', overflow: 'hidden' }}>
+        <div className="pos-grid-columns" style={{ width: '100%', boxSizing: 'border-box' }}>
           {/* COLONNE GAUCHE: GRILLE DES PRODUITS TACTILE */}
-          <div className="pos-left-panel" style={{ display: 'flex', flexDirection: 'column', gap: '12px', minWidth: 0, width: '100%', boxSizing: 'border-box', overflow: 'hidden' }}>
+          <div className="pos-left-panel" style={{ display: 'flex', flexDirection: 'column', gap: '12px', minWidth: 0, width: '100%', boxSizing: 'border-box' }}>
             <div className="pos-search-box" style={{ width: '100%', display: 'flex', gap: '8px', alignItems: 'center' }}>
               <input 
                 type="text" 
@@ -547,7 +547,7 @@ export const PointDeVente = () => {
           </div>
 
           {/* COLONNE DROITE: PANIER / TOTAL */}
-          <div className="pos-right-panel" style={{ width: '340px', minWidth: '340px', maxWidth: '340px', boxSizing: 'border-box' }}>
+          <div className="pos-right-panel" style={{ boxSizing: 'border-box' }}>
             <div className="pos-cart-header">
               <h3><i className="fa-solid fa-cart-shopping me-2 text-primary"></i> Panier</h3>
               <button onClick={clearCart} className="btn-clear-cart">Vider</button>

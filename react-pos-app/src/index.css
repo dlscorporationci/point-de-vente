@@ -875,12 +875,32 @@ p {
 
 @media (max-width: 992px) {
   .app-main-navbar {
-    padding: 0 16px !important;
+    padding: 0 10px !important;
     flex-wrap: nowrap !important;
     height: 64px !important;
     min-height: 64px !important;
     max-height: 64px !important;
     overflow: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  .navbar-right-controls {
+    gap: 6px !important;
+  }
+
+  .pos-grid-columns {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 16px !important;
+    width: 100% !important;
+    overflow: visible !important;
+  }
+
+  .pos-left-panel, .pos-right-panel {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: visible !important;
   }
 
   .navbar-links {
@@ -903,7 +923,7 @@ p {
   .catalog-container, .suppliers-container, .customers-container, .purchases-container,
   .stocks-container, .transfers-container, .audit-container, .reports-container,
   .settings-container, .guide-container, .login-page-container {
-    padding: 10px !important;
+    padding: 8px !important;
   }
 
   /* Ajustement global des layouts des pages sous la navbar */
@@ -911,10 +931,11 @@ p {
   .catalog-layout, .suppliers-layout, .customers-layout, .purchases-layout,
   .stocks-layout, .transfers-layout, .audit-layout, .reports-layout,
   .settings-layout, .guide-layout, .login-box, .register-box {
-    margin-top: 0 !important;
-    padding: 16px !important;
+    margin-top: 76px !important;
+    padding: 12px !important;
     width: 100% !important;
     max-width: 100% !important;
+    overflow: visible !important;
   }
 
   /* Transformation automatique de tous les en-têtes de page (Titre + Boutons) */

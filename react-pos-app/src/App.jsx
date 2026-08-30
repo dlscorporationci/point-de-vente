@@ -845,11 +845,13 @@ function MainContent() {
             {/* Raccourci Caisse POS */}
             {!isSuperAdmin && (
               <button 
-                className="btn btn-primary btn-sm d-none d-md-inline-flex align-items-center" 
+                className="btn btn-primary btn-sm d-inline-flex align-items-center" 
                 onClick={() => navigate('pos')}
-                style={{ fontWeight: 700, padding: '5px 12px', fontSize: '12px', borderRadius: '8px', whiteSpace: 'nowrap' }}
+                title="Accéder à la Caisse POS"
+                style={{ fontWeight: 700, padding: '4px 10px', fontSize: '12px', borderRadius: '8px', whiteSpace: 'nowrap', flexShrink: 0 }}
               >
-                <i className="fa-solid fa-cash-register me-1"></i> Caisse POS
+                <i className="fa-solid fa-cash-register me-1"></i>
+                <span className="d-none d-sm-inline">Caisse POS</span>
               </button>
             )}
 
