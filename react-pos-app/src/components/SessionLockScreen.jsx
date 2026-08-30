@@ -194,24 +194,46 @@ export const SessionLockScreen = ({ user, onUnlock, onSwitchAccount }) => {
             <div style={{ marginBottom: '20px' }}>
               <label style={{
                 display: 'block',
-                textAlign: 'left',
+                textAlign: 'center',
                 fontSize: '13px',
                 color: '#cbd5e1',
-                marginBottom: '6px'
+                marginBottom: '12px'
               }}>
-                Saisissez votre code PIN
+                Code PIN de déverrouillage (4 chiffres)
               </label>
+
+              {/* Animation des 4 points indicateurs */}
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginBottom: '20px' }}>
+                {[0, 1, 2, 3].map((index) => {
+                  const isFilled = pin.length > index;
+                  return (
+                    <div
+                      key={index}
+                      style={{
+                        width: '18px',
+                        height: '18px',
+                        borderRadius: '50%',
+                        border: isFilled ? '2px solid #38bdf8' : '2px solid #475569',
+                        background: isFilled ? 'linear-gradient(135deg, #38bdf8, #3b82f6)' : 'transparent',
+                        boxShadow: isFilled ? '0 0 12px rgba(56, 189, 248, 0.7)' : 'none',
+                        transform: isFilled ? 'scale(1.25)' : 'scale(1)',
+                        transition: 'all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                      }}
+                    />
+                  );
+                })}
+              </div>
+
               <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                 <input
                   type={showPin ? 'text' : 'password'}
                   inputMode="numeric"
                   pattern="[0-9]*"
                   autoComplete="current-password"
-                  maxLength={8}
+                  maxLength={4}
                   value={pin}
                   onChange={(e) => {
-                    // Autoriser uniquement les chiffres
-                    const v = e.target.value.replace(/\D/g, '');
+                    const v = e.target.value.replace(/\D/g, '').slice(0, 4);
                     setPin(v);
                   }}
                   placeholder="• • • •"

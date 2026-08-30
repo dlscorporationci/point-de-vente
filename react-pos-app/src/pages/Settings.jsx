@@ -888,7 +888,7 @@ export const Settings = () => {
                           <label className="form-label">Code PIN {editingUser ? '(vide = inchangé)' : '*'} (4 chiffres)</label>
                           <input type="text" className="form-control" maxLength="4" pattern="\d{4}" required={!editingUser}
                             placeholder="Ex: 1234"
-                            value={userForm.pin_code} onChange={e => setUserForm({...userForm, pin_code: e.target.value.replace(/\D/g, '')})} />
+                            value={userForm.pin_code} onChange={e => setUserForm({...userForm, pin_code: e.target.value.replace(/\D/g, '').slice(0, 4)})} />
                         </div>
                         <div className="col-md-4 form-group">
                           <label className="form-label">Statut</label>
