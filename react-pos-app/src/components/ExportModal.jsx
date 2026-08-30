@@ -41,9 +41,11 @@ export const ExportModal = ({ isOpen, onClose, documentType, documentTitle, defa
       });
 
       if (res.data.success && res.data.document) {
-        setSuccessMsg(`✅ Document "${res.data.document.title}" généré et archivé avec succès !`);
+        setSuccessMsg(`✅ Document "${res.data.document.title}" généré avec succès !`);
         
-        // Déclencher le téléchargement du fichier via flux binaire authentifié
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const directUrl = res.data.document.file_path ? getAssetUrl(res.data.document.file_path) : null;
+
         if (res.data.document.id) {
           try {
             const fileRes = await axios.get(`/v1/documents/${res.data.document.id}/download?stream=1`, {
@@ -54,24 +56,35 @@ export const ExportModal = ({ isOpen, onClose, documentType, documentTitle, defa
               : (format === 'csv' ? 'text/csv' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
             const blob = new Blob([fileRes.data], { type: mimeType });
             const blobUrl = window.URL.createObjectURL(blob);
+            
             const link = document.createElement('a');
             link.href = blobUrl;
             link.setAttribute('download', res.data.document.file_name || `document_${Date.now()}.${format}`);
             document.body.appendChild(link);
             link.click();
-            link.remove();
-            window.URL.revokeObjectURL(blobUrl);
+            
+            // Sur mobile, forcer aussi l'ouverture directe si le blob download est bloqué par le navigateur
+            if (isMobile && directUrl) {
+              window.open(directUrl, '_blank');
+            }
+
+            setTimeout(() => {
+              link.remove();
+              window.URL.revokeObjectURL(blobUrl);
+            }, 1000);
           } catch (dlErr) {
             console.warn("Blob download fallback:", dlErr);
-            if (res.data.document.file_path) {
-              window.open(getAssetUrl(res.data.document.file_path), '_blank');
+            if (directUrl) {
+              window.open(directUrl, '_blank');
             }
           }
+        } else if (directUrl) {
+          window.open(directUrl, '_blank');
         }
 
         setTimeout(() => {
           onClose();
-        }, 1800);
+        }, 2500);
       }
     } catch (err) {
       console.error("Export Error:", err);
