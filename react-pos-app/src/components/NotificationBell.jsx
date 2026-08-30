@@ -333,52 +333,65 @@ export const NotificationBell = ({ onNavigate }) => {
         document.body
       )}
 
-      {/* BANNIÈRE RECTANGULAIRE FIXE DE NOTIFICATION OFFICIELLE SUR L'ÉCRAN DE L'UTILISATEUR (EXCLUT SUPERADMIN) */}
+      {/* BANNIÈRE RECTANGULAIRE FLOTTANTE ET NON-BLOQUANTE DE NOTIFICATION SYSTEME */}
       {latestNotice && !isSuperAdmin && ReactDOM.createPortal(
-        <div style={{
-          position: 'fixed',
-          top: '64px',
-          left: 0,
-          right: 0,
-          zIndex: 998,
-          backgroundColor: latestNotice.priority === 'critical' ? '#dc2626' : (latestNotice.priority === 'warning' ? '#d97706' : '#2563eb'),
-          color: '#ffffff',
-          padding: '10px 20px',
-          fontSize: '13px',
-          fontWeight: 600,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
-          display: 'flex',
-          alignItems: 'center',
-          justify: 'space-between',
-          gap: '16px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{ fontSize: '18px' }}>
+        <div 
+          className="notification-toast-banner"
+          style={{
+            position: 'fixed',
+            top: '72px',
+            right: '16px',
+            maxWidth: '440px',
+            width: 'calc(100vw - 32px)',
+            zIndex: 9999,
+            backgroundColor: latestNotice.priority === 'critical' ? '#dc2626' : (latestNotice.priority === 'warning' ? '#d97706' : '#2563eb'),
+            color: '#ffffff',
+            padding: '12px 16px',
+            borderRadius: '14px',
+            fontSize: '13px',
+            fontWeight: 600,
+            boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255, 255, 255, 0.25)',
+            boxSizing: 'border-box'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
+            <span style={{ fontSize: '16px', flexShrink: 0 }}>
               <i className={latestNotice.priority === 'critical' ? "fa-solid fa-bell-exclamation" : "fa-solid fa-bullhorn"}></i>
             </span>
-            <div>
-              <strong>{latestNotice.title} : </strong>
-              <span>{latestNotice.message}</span>
+            <div style={{ minWidth: 0, flex: 1, overflow: 'hidden' }}>
+              <div style={{ fontWeight: 800, fontSize: '12px', letterSpacing: '0.3px', textTransform: 'uppercase', opacity: 0.9 }}>{latestNotice.title}</div>
+              <div style={{ fontSize: '12px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{latestNotice.message}</div>
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
             <button 
               onClick={(e) => {
                 handleMarkAsRead(latestNotice.id, e);
                 setLatestNotice(null);
               }}
+              title="Marquer comme lu"
               style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                backgroundColor: 'rgba(255, 255, 255, 0.25)',
                 color: '#ffffff',
                 border: '1px solid rgba(255, 255, 255, 0.4)',
-                padding: '4px 12px',
-                borderRadius: '6px',
-                fontSize: '12px',
+                padding: '5px 10px',
+                borderRadius: '8px',
+                fontSize: '11px',
                 fontWeight: 'bold',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px'
               }}
             >
-              <i className="fa-solid fa-check me-1"></i> Compris (Marquer lu)
+              <i className="fa-solid fa-check"></i> <span className="d-none d-sm-inline">Compris</span>
             </button>
           </div>
         </div>,

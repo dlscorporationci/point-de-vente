@@ -752,7 +752,7 @@ function MainContent() {
                       {user.company.name}
                     </span>
                     {user.company.slogan && (
-                      <span style={{ fontSize: '0.6rem', color: 'var(--color-primary-light, #a78bfa)', fontWeight: 500, letterSpacing: '0.02em', opacity: 0.85 }}>
+                      <span className="d-none d-md-block" style={{ fontSize: '0.6rem', color: 'var(--color-primary-light, #a78bfa)', fontWeight: 500, letterSpacing: '0.02em', opacity: 0.85 }}>
                         {user.company.slogan}
                       </span>
                     )}
