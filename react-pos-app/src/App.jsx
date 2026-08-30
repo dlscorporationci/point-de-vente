@@ -317,7 +317,9 @@ function MainContent() {
   }, []);
 
   // Partie 7 : Verrouillage automatique de session par inactivité (3 minutes)
-  const [isSessionLocked, setIsSessionLocked] = useState(false);
+  const [isSessionLocked, setIsSessionLocked] = useState(() => {
+    return sessionStorage.getItem('apex_session_locked') === 'true';
+  });
   const { logout } = useApp();
 
   useEffect(() => {
@@ -336,6 +338,7 @@ function MainContent() {
     const startTimer = () => {
       if (idleTimer) clearTimeout(idleTimer);
       idleTimer = setTimeout(() => {
+        sessionStorage.setItem('apex_session_locked', 'true');
         setIsSessionLocked(true);
       }, IDLE_TIMEOUT);
     };
@@ -576,8 +579,12 @@ function MainContent() {
     return (
       <SessionLockScreen
         user={user}
-        onUnlock={() => setIsSessionLocked(false)}
+        onUnlock={() => {
+          sessionStorage.removeItem('apex_session_locked');
+          setIsSessionLocked(false);
+        }}
         onSwitchAccount={() => {
+          sessionStorage.removeItem('apex_session_locked');
           setIsSessionLocked(false);
           logout();
         }}
