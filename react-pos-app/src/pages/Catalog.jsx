@@ -872,19 +872,26 @@ export const Catalog = () => {
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Photo du produit</label>
+                  <label className="form-label" style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <i className="fa-solid fa-image text-primary"></i> Photo du produit
+                  </label>
                   {(newProductImage || editingProduct?.image_path) && (
-                    <div style={{ marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <img
-                        src={newProductImage ? URL.createObjectURL(newProductImage) : getImageUrl(editingProduct.image_path)}
-                        alt="Aperçu du produit"
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                        }}
-                        style={{ width: '64px', height: '64px', objectFit: 'cover', borderRadius: '8px', border: '2px solid var(--color-primary)' }}
-                      />
-                      <small className="text-muted">
-                        {newProductImage ? '📸 Nouvelle photo sélectionnée' : '🖼️ Photo actuelle du produit'}
+                    <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--bg-input)', padding: '10px 14px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                      {newProductImage ? (
+                        <img
+                          src={URL.createObjectURL(newProductImage)}
+                          alt="Nouvelle photo"
+                          style={{ width: '64px', height: '64px', objectFit: 'cover', borderRadius: '10px', border: '2px solid var(--color-primary)' }}
+                        />
+                      ) : (
+                        <ProductImageThumbnail imagePath={editingProduct?.image_path} name={editingProduct?.name} size="64px" />
+                      )}
+                      <small style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-main)' }}>
+                        {newProductImage ? (
+                          <><i className="fa-solid fa-camera text-success me-1"></i> Nouvelle photo sélectionnée</>
+                        ) : (
+                          <><i className="fa-solid fa-circle-info text-primary me-1"></i> Photo actuelle du produit</>
+                        )}
                       </small>
                     </div>
                   )}
