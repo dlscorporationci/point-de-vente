@@ -37,6 +37,7 @@ import { CommunicationCenter } from './pages/CommunicationCenter'
 import { MaintenanceCenter } from './pages/MaintenanceCenter'
 import { MaintenanceScreen } from './components/MaintenanceScreen'
 import { VerifyEmail } from './pages/VerifyEmail'
+import { registerMobileServiceWorker } from './utils/mobilePushNotification'
 
 const getRoleSlug = (r) => {
   if (!r) return '';
@@ -161,6 +162,10 @@ function MainContent() {
       }
     }
   }, [login]);
+
+  useEffect(() => {
+    registerMobileServiceWorker();
+  }, []);
 
   const role = getRoleSlug(user?.role);
   const isAdminOrGerant = role === 'admin' || isSuperAdmin;

@@ -2,6 +2,12 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
+import { 
+  isMobileDevice, 
+  requestMobileNotificationPermission, 
+  getMobileNotificationStatus, 
+  sendMobileNativeNotification 
+} from '../utils/mobilePushNotification';
 
 export const NotificationBell = ({ onNavigate }) => {
   const { token, user } = useApp();
@@ -10,6 +16,7 @@ export const NotificationBell = ({ onNavigate }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState(null); // Modal de détail
+  const [mobileNotifPermission, setMobileNotifPermission] = useState(getMobileNotificationStatus());
   const dropdownRef = useRef(null);
   const audioRef = useRef(null);
 
@@ -28,12 +35,16 @@ export const NotificationBell = ({ onNavigate }) => {
       }
       setUnreadCount(count);
 
-      // Charger la dernière notification non lue pour affichage immédiat en bannière
+      // Charger la dernière notification non lue pour affichage immédiat en bannière et push mobile
       if (count > 0) {
         const notifRes = await axios.get('/v1/notifications?unread_only=true&limit=1');
         const list = notifRes.data.notifications || notifRes.data.data || (Array.isArray(notifRes.data) ? notifRes.data : []);
         if (list.length > 0) {
           setLatestNotice(list[0]);
+          // Déclenchement de la notification native mobile (style WhatsApp) sur téléphone
+          if (count > unreadCount) {
+            sendMobileNativeNotification(list[0].title, list[0].message);
+          }
         } else {
           setLatestNotice(null);
         }
@@ -207,6 +218,41 @@ export const NotificationBell = ({ onNavigate }) => {
               </button>
             )}
           </div>
+
+          {/* BANNIÈRE DE NOTIFICATIONS MOBILES WHATSAPP (AFFICHER SUR MOBILES UNIQUEMENT) */}
+          {isMobileDevice() && (
+            <div style={{
+              padding: '10px 14px',
+              background: mobileNotifPermission === 'granted' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(37, 99, 235, 0.12)',
+              borderBottom: '1px solid var(--border-color)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '10px'
+            }}>
+              <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <i className={mobileNotifPermission === 'granted' ? "fa-brands fa-whatsapp text-success" : "fa-solid fa-mobile-screen-button text-primary"} style={{ fontSize: '14px' }}></i>
+                <span>
+                  {mobileNotifPermission === 'granted' 
+                    ? 'Notifications mobiles actives sur votre téléphone' 
+                    : 'Activer les alertes push sur téléphone'}
+                </span>
+              </div>
+              {mobileNotifPermission !== 'granted' && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const res = await requestMobileNotificationPermission();
+                    setMobileNotifPermission(res);
+                  }}
+                  className="btn btn-sm btn-primary"
+                  style={{ fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '14px', whiteSpace: 'nowrap' }}
+                >
+                  <i className="fa-solid fa-bell me-1"></i> Activer
+                </button>
+              )}
+            </div>
+          )}
 
           <div className="notif-dropdown-body">
             {loading ? (
