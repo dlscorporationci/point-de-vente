@@ -328,12 +328,40 @@ class AuthController extends Controller
         $inputPin = (string) $request->pin_code;
         $isValid = false;
 
+        // 1. Vérification via plain_pin (secours)
         if ($user->plain_pin && (string) $user->plain_pin === $inputPin) {
             $isValid = true;
-        } else if ((string) $user->pin_code === $inputPin) {
+        }
+
+        // 2. Vérification PIN en texte clair (non encore hashé) → rehashage automatique en Bcrypt
+        if (!$isValid && (string) $user->pin_code === $inputPin) {
             $isValid = true;
-        } else if (\Illuminate\Support\Facades\Hash::check($inputPin, $user->pin_code)) {
-            $isValid = true;
+            // Rehashage automatique en Bcrypt pour sécuriser le compte
+            $user->pin_code = \Illuminate\Support\Facades\Hash::make($inputPin);
+            $user->save();
+        }
+
+        // 3. Vérification via Hash::check() Bcrypt — avec gestion des PINs non-Bcrypt
+        if (!$isValid) {
+            try {
+                if (\Illuminate\Support\Facades\Hash::check($inputPin, $user->pin_code)) {
+                    $isValid = true;
+                }
+            } catch (\RuntimeException $e) {
+                // Le PIN n'est pas hashé en Bcrypt — essai de comparaison directe en fallback
+                if ((string) $user->pin_code === $inputPin) {
+                    $isValid = true;
+                    // Rehashage automatique en Bcrypt
+                    $user->pin_code = \Illuminate\Support\Facades\Hash::make($inputPin);
+                    $user->save();
+                } else {
+                    // Mauvais PIN ET format non-Bcrypt → forcer la réinitialisation
+                    return response()->json([
+                        'error'    => 'Votre code PIN doit être réinitialisé. Veuillez contacter votre administrateur.',
+                        'verified' => false,
+                    ], 422);
+                }
+            }
         }
 
         if (!$isValid) {

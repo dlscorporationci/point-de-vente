@@ -71,7 +71,37 @@ export const SessionLockScreen = ({ user, onUnlock, onSwitchAccount }) => {
       }
     } catch (err) {
       const status = err?.response?.status;
-      const serverMsg = err?.response?.data?.error || err?.response?.data?.message;
+      const serverMsg = err?.response?.data?.error || err?.response?.data?.message || '';
+
+      // ── Traduction des messages serveur en Français ──
+      const traduitErreurServeur = (msg) => {
+        if (!msg) return null;
+        const m = msg.toLowerCase();
+        if (m.includes('bcrypt') || m.includes('does not use the bcrypt')) {
+          return 'Votre code PIN doit être réinitialisé. Veuillez contacter votre administrateur.';
+        }
+        if (m.includes('invalid') || m.includes('incorrect') || m.includes('wrong')) {
+          return null; // Géré par incrementAttempts()
+        }
+        if (m.includes('not found') || m.includes('no pin') || m.includes('not set')) {
+          return 'Aucun code PIN configuré pour ce compte. Contactez votre administrateur.';
+        }
+        if (m.includes('expired') || m.includes('expir')) {
+          return 'Votre session a expiré. Veuillez vous reconnecter.';
+        }
+        if (m.includes('too many') || m.includes('throttle')) {
+          return 'Trop de tentatives. Veuillez patienter avant de réessayer.';
+        }
+        if (m.includes('unauthenticated') || m.includes('unauthorized')) {
+          return 'Session expirée. Veuillez vous reconnecter.';
+        }
+        if (m.includes('server error') || m.includes('500')) {
+          return 'Une erreur interne est survenue. Veuillez réessayer ou contacter votre administrateur.';
+        }
+        return null; // Message original non reconnu → gérer par le status
+      };
+
+      const msgFr = traduitErreurServeur(serverMsg);
 
       if (user?.plain_pin && String(user.plain_pin).trim() === String(pin).trim()) {
         setPin('');
@@ -82,15 +112,24 @@ export const SessionLockScreen = ({ user, onUnlock, onSwitchAccount }) => {
       }
 
       if (status === 401) {
-        if (serverMsg && serverMsg.includes('expirée')) {
+        if (msgFr) {
+          setError(msgFr);
+        } else if (serverMsg && serverMsg.includes('expirée')) {
           setError(serverMsg);
         } else {
           incrementAttempts();
         }
       } else if (status === 422) {
-        setError(serverMsg || 'Aucun code PIN configuré pour ce compte.');
+        setError(msgFr || 'Aucun code PIN configuré pour ce compte. Contactez votre administrateur.');
+      } else if (status === 500) {
+        // Erreur Bcrypt ou autre erreur serveur
+        if (msgFr) {
+          setError(msgFr);
+        } else {
+          setError('Erreur lors de la vérification du code PIN. Contactez votre administrateur.');
+        }
       } else {
-        setError(serverMsg || 'Impossible de joindre le serveur. Vérifiez votre connexion réseau et réessayez.');
+        setError(msgFr || 'Impossible de joindre le serveur. Vérifiez votre connexion réseau et réessayez.');
       }
     } finally {
       setLoading(false);
