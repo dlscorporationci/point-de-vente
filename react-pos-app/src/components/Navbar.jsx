@@ -167,53 +167,101 @@ export const Navbar = ({ onNavigate }) => {
           </div>
 
           {/* ── CTAs DESKTOP ── */}
-          <div className="landing-nav-ctas" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
-            <button
-              onClick={() => onNavigate ? onNavigate('auth') : scrollTo('#auth')}
-              className="landing-nav-outline-btn"
-              style={{
-                background: 'none',
-                border: '1.5px solid var(--color-primary)',
-                color: 'var(--color-primary)',
-                fontWeight: 600,
-                fontSize: '13px',
-                padding: '8px 18px',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              Se connecter
-            </button>
-            <button
-              onClick={() => onNavigate ? onNavigate('register') : scrollTo('#register')}
-              style={{
-                background: 'linear-gradient(135deg, #2563eb, #10b981)',
-                border: 'none',
-                color: '#fff',
-                fontWeight: 700,
-                fontSize: '13px',
-                padding: '9px 20px',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                boxShadow: '0 4px 14px rgba(37,99,235,0.28)',
-                transition: 'all 0.2s',
-                whiteSpace: 'nowrap',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.opacity = '0.88';
-                e.currentTarget.style.transform = 'translateY(-1px)';
-                e.currentTarget.style.boxShadow = '0 6px 20px rgba(37,99,235,0.38)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.opacity = '1';
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 14px rgba(37,99,235,0.28)';
-              }}
-            >
-              Démarrer gratuitement
-            </button>
+          <div className="landing-nav-ctas" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {user ? (
+              <>
+                <button
+                  onClick={() => onNavigate ? onNavigate(user.is_superadmin || user.role === 'super-admin' || user.role?.slug === 'super-admin' ? 'backoffice' : 'dashboard') : null}
+                  style={{
+                    background: 'linear-gradient(135deg, #2563eb, #10b981)',
+                    border: 'none',
+                    color: '#fff',
+                    fontWeight: 700,
+                    fontSize: '13px',
+                    padding: '9px 18px',
+                    borderRadius: '10px',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 14px rgba(37,99,235,0.28)',
+                    transition: 'all 0.2s',
+                    whiteSpace: 'nowrap',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <i className="fa-solid fa-gauge"></i> Mon Dashboard
+                </button>
+                <button
+                  onClick={() => { logout(); if (onNavigate) onNavigate('home'); }}
+                  style={{
+                    background: 'rgba(239, 68, 68, 0.1)',
+                    border: '1.5px solid rgba(239, 68, 68, 0.3)',
+                    color: '#ef4444',
+                    fontWeight: 700,
+                    fontSize: '13px',
+                    padding: '8px 14px',
+                    borderRadius: '10px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    whiteSpace: 'nowrap',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <i className="fa-solid fa-right-from-bracket"></i> Se déconnecter
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  className="landing-nav-outline-btn"
+                  onClick={() => onNavigate ? onNavigate('auth') : scrollTo('#auth')}
+                  style={{
+                    background: 'none',
+                    border: '1.5px solid var(--color-primary)',
+                    color: 'var(--color-primary)',
+                    fontWeight: 600,
+                    fontSize: '13px',
+                    padding: '8px 18px',
+                    borderRadius: '10px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Se connecter
+                </button>
+                <button
+                  onClick={() => onNavigate ? onNavigate('register') : scrollTo('#register')}
+                  style={{
+                    background: 'linear-gradient(135deg, #2563eb, #10b981)',
+                    border: 'none',
+                    color: '#fff',
+                    fontWeight: 700,
+                    fontSize: '13px',
+                    padding: '9px 20px',
+                    borderRadius: '10px',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 14px rgba(37,99,235,0.28)',
+                    transition: 'all 0.2s',
+                    whiteSpace: 'nowrap',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.opacity = '0.88';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.boxShadow = '0 6px 20px rgba(37,99,235,0.38)';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.opacity = '1';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 4px 14px rgba(37,99,235,0.28)';
+                  }}
+                >
+                  Démarrer gratuitement
+                </button>
+              </>
+            )}
           </div>
 
           {/* ── BURGER MOBILE ── */}
@@ -302,38 +350,76 @@ export const Navbar = ({ onNavigate }) => {
               flexDirection: 'column',
               gap: '10px',
             }}>
-              <button
-                onClick={() => { setMenuOpen(false); onNavigate && onNavigate('auth'); }}
-                style={{
-                  background: 'none',
-                  border: '1.5px solid var(--color-primary)',
-                  color: 'var(--color-primary)',
-                  fontWeight: 600,
-                  fontSize: '14px',
-                  padding: '12px 18px',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                }}
-              >
-                Se connecter
-              </button>
-              <button
-                onClick={() => { setMenuOpen(false); onNavigate && onNavigate('register'); }}
-                style={{
-                  background: 'linear-gradient(135deg, #2563eb, #10b981)',
-                  border: 'none',
-                  color: '#fff',
-                  fontWeight: 700,
-                  fontSize: '14px',
-                  padding: '13px 18px',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  boxShadow: '0 4px 14px rgba(37,99,235,0.25)',
-                }}
-              >
-                Démarrer gratuitement →
-              </button>
+              {user ? (
+                <>
+                  <button
+                    onClick={() => { setMenuOpen(false); onNavigate && onNavigate(user.is_superadmin || user.role === 'super-admin' || user.role?.slug === 'super-admin' ? 'backoffice' : 'dashboard'); }}
+                    style={{
+                      background: 'linear-gradient(135deg, #2563eb, #10b981)',
+                      border: 'none',
+                      color: '#fff',
+                      fontWeight: 700,
+                      fontSize: '14px',
+                      padding: '13px 18px',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      boxShadow: '0 4px 14px rgba(37,99,235,0.25)',
+                    }}
+                  >
+                    📊 Accéder au Tableau de bord →
+                  </button>
+                  <button
+                    onClick={() => { setMenuOpen(false); logout(); onNavigate && onNavigate('home'); }}
+                    style={{
+                      background: 'rgba(239, 68, 68, 0.12)',
+                      border: '1.5px solid rgba(239, 68, 68, 0.3)',
+                      color: '#ef4444',
+                      fontWeight: 700,
+                      fontSize: '14px',
+                      padding: '12px 18px',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    🚪 Se déconnecter
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => { setMenuOpen(false); onNavigate && onNavigate('auth'); }}
+                    style={{
+                      background: 'none',
+                      border: '1.5px solid var(--color-primary)',
+                      color: 'var(--color-primary)',
+                      fontWeight: 600,
+                      fontSize: '14px',
+                      padding: '12px 18px',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    Se connecter
+                  </button>
+                  <button
+                    onClick={() => { setMenuOpen(false); onNavigate && onNavigate('register'); }}
+                    style={{
+                      background: 'linear-gradient(135deg, #2563eb, #10b981)',
+                      border: 'none',
+                      color: '#fff',
+                      fontWeight: 700,
+                      fontSize: '14px',
+                      padding: '13px 18px',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      boxShadow: '0 4px 14px rgba(37,99,235,0.25)',
+                    }}
+                  >
+                    Démarrer gratuitement →
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
