@@ -3,7 +3,7 @@ import logo from '../assets/logo.jpg';
 import { useApp } from '../context/AppContext';
 
 export const Navbar = ({ onNavigate }) => {
-  const { theme } = useApp();
+  const { theme, user, logout } = useApp();
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [activeSection, setActiveSection] = useState('hero');
