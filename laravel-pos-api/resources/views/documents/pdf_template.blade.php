@@ -55,6 +55,18 @@
         @if ($subtitle)
             <div className="doc-subtitle">{{ $subtitle }}</div>
         @endif
+        @if (!empty($filters['start_date']) || !empty($filters['end_date']))
+            <div style="font-size: 10px; color: #1e40af; margin-top: 4px; font-weight: bold;">
+                📅 Période filtrée : 
+                @if (!empty($filters['start_date']) && !empty($filters['end_date']))
+                    Du {{ \Carbon\Carbon::parse($filters['start_date'])->format('d/m/Y') }} au {{ \Carbon\Carbon::parse($filters['end_date'])->format('d/m/Y') }}
+                @elseif (!empty($filters['start_date']))
+                    À partir du {{ \Carbon\Carbon::parse($filters['start_date'])->format('d/m/Y') }}
+                @else
+                    Jusqu'au {{ \Carbon\Carbon::parse($filters['end_date'])->format('d/m/Y') }}
+                @endif
+            </div>
+        @endif
     </div>
 
     <!-- TABLEAU PRINCIPAL DE DONNÉES -->

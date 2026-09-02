@@ -502,7 +502,18 @@ class DocumentService
                 break;
 
             case 'cash_sessions':
-                $sessions = CashSession::where('company_id', $company->id)->with(['user', 'branch'])->orderBy('id', 'desc')->get();
+                $query = CashSession::where('company_id', $company->id)->with(['user', 'branch']);
+                if ($branch) {
+                    $query->where('branch_id', $branch->id);
+                }
+                if (!empty($filters['start_date'])) {
+                    $query->whereDate('opened_at', '>=', $filters['start_date']);
+                }
+                if (!empty($filters['end_date'])) {
+                    $query->whereDate('opened_at', '<=', $filters['end_date']);
+                }
+
+                $sessions = $query->orderBy('id', 'desc')->get();
                 $totalDiscrepancy = 0;
                 foreach ($sessions as $cs) {
                     $disc = floatval($cs->discrepancy || 0);
@@ -526,7 +537,15 @@ class DocumentService
                 break;
 
             case 'audit_log':
-                $logs = AuditLog::where('company_id', $company->id)->with('user')->orderBy('id', 'desc')->limit(500)->get();
+                $query = AuditLog::where('company_id', $company->id)->with('user');
+                if (!empty($filters['start_date'])) {
+                    $query->whereDate('created_at', '>=', $filters['start_date']);
+                }
+                if (!empty($filters['end_date'])) {
+                    $query->whereDate('created_at', '<=', $filters['end_date']);
+                }
+
+                $logs = $query->orderBy('id', 'desc')->limit(500)->get();
                 foreach ($logs as $log) {
                     $rows[] = [
                         'created_at'  => $log->created_at ? \Carbon\Carbon::parse($log->created_at)->format('d/m/Y H:i:s') : '',
@@ -541,7 +560,18 @@ class DocumentService
                 break;
 
             case 'purchases_list':
-                $purchases = Purchase::where('company_id', $company->id)->with('supplier')->orderBy('id', 'desc')->get();
+                $query = Purchase::where('company_id', $company->id)->with('supplier');
+                if ($branch) {
+                    $query->where('branch_id', $branch->id);
+                }
+                if (!empty($filters['start_date'])) {
+                    $query->whereDate('created_at', '>=', $filters['start_date']);
+                }
+                if (!empty($filters['end_date'])) {
+                    $query->whereDate('created_at', '<=', $filters['end_date']);
+                }
+
+                $purchases = $query->orderBy('id', 'desc')->get();
                 $sumPurchases = 0;
                 foreach ($purchases as $pur) {
                     $amt = floatval($pur->total_amount || 0);
@@ -567,6 +597,13 @@ class DocumentService
                         $q->where('from_branch_id', $branch->id)->orWhere('to_branch_id', $branch->id);
                     });
                 }
+                if (!empty($filters['start_date'])) {
+                    $query->whereDate('created_at', '>=', $filters['start_date']);
+                }
+                if (!empty($filters['end_date'])) {
+                    $query->whereDate('created_at', '<=', $filters['end_date']);
+                }
+
                 $transfers = $query->orderBy('id', 'desc')->get();
                 foreach ($transfers as $tr) {
                     $rows[] = [
@@ -630,7 +667,14 @@ class DocumentService
                 break;
 
             case 'subscriptions_list':
-                $subs = \App\Models\CompanySubscription::withoutGlobalScopes()->with(['company', 'plan'])->get();
+                $query = \App\Models\CompanySubscription::withoutGlobalScopes()->with(['company', 'plan']);
+                if (!empty($filters['start_date'])) {
+                    $query->whereDate('start_date', '>=', $filters['start_date']);
+                }
+                if (!empty($filters['end_date'])) {
+                    $query->whereDate('end_date', '<=', $filters['end_date']);
+                }
+                $subs = $query->get();
                 $sumAmt = 0;
                 if ($subs->count() > 0) {
                     foreach ($subs as $s) {
@@ -697,7 +741,14 @@ class DocumentService
                 break;
 
             case 'payments_list':
-                $payments = \App\Models\SubscriptionPayment::withoutGlobalScopes()->with(['company'])->get();
+                $query = \App\Models\SubscriptionPayment::withoutGlobalScopes()->with(['company']);
+                if (!empty($filters['start_date'])) {
+                    $query->whereDate('payment_date', '>=', $filters['start_date']);
+                }
+                if (!empty($filters['end_date'])) {
+                    $query->whereDate('payment_date', '<=', $filters['end_date']);
+                }
+                $payments = $query->get();
                 $sumPaid = 0;
                 foreach ($payments as $p) {
                     $amt = floatval($p->amount || 0);
@@ -718,7 +769,14 @@ class DocumentService
                 break;
 
             case 'invoices_list':
-                $invoices = \App\Models\SubscriptionInvoice::withoutGlobalScopes()->with(['company'])->get();
+                $query = \App\Models\SubscriptionInvoice::withoutGlobalScopes()->with(['company']);
+                if (!empty($filters['start_date'])) {
+                    $query->whereDate('issue_date', '>=', $filters['start_date']);
+                }
+                if (!empty($filters['end_date'])) {
+                    $query->whereDate('issue_date', '<=', $filters['end_date']);
+                }
+                $invoices = $query->get();
                 $sumInv = 0;
                 foreach ($invoices as $inv) {
                     $amt = floatval($inv->total_amount || 0);

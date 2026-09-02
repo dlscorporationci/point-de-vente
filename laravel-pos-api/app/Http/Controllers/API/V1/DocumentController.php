@@ -65,10 +65,18 @@ class DocumentController extends Controller
      */
     public function export(Request $request)
     {
+        $today = now()->toDateString();
+
         $request->validate([
-            'document_type' => 'required|string',
-            'format'        => 'required|in:pdf,xlsx,csv',
-            'filters'       => 'nullable|array',
+            'document_type'      => 'required|string',
+            'format'             => 'required|in:pdf,xlsx,csv',
+            'filters'            => 'nullable|array',
+            'filters.start_date' => "nullable|date|date_format:Y-m-d|before_or_equal:{$today}",
+            'filters.end_date'   => "nullable|date|date_format:Y-m-d|before_or_equal:{$today}" . ($request->input('filters.start_date') ? "|after_or_equal:filters.start_date" : ""),
+        ], [
+            'filters.start_date.before_or_equal' => 'La date de début ne peut pas être située dans le futur.',
+            'filters.end_date.before_or_equal'   => 'La date de fin ne peut pas être située dans le futur.',
+            'filters.end_date.after_or_equal'    => 'La date de fin doit être postérieure ou égale à la date de début.',
         ]);
 
         try {

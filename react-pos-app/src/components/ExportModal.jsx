@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
 import { getAssetUrl } from '../utils/urlHelper';
@@ -12,6 +12,18 @@ export const ExportModal = ({ isOpen, onClose, documentType, documentTitle, defa
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
 
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  // Synchroniser les filtres par défaut à l'ouverture de la modale
+  useEffect(() => {
+    if (isOpen) {
+      setStartDate(defaultFilters.start_date || '');
+      setEndDate(defaultFilters.end_date || '');
+      setError(null);
+      setSuccessMsg(null);
+    }
+  }, [isOpen, defaultFilters.start_date, defaultFilters.end_date]);
+
   if (!isOpen) return null;
 
   const handleExport = async (e) => {
@@ -19,6 +31,25 @@ export const ExportModal = ({ isOpen, onClose, documentType, documentTitle, defa
     setLoading(true);
     setError(null);
     setSuccessMsg(null);
+
+    // ── Validation stricte des dates ──
+    if (startDate && startDate > todayStr) {
+      setError("⚠️ La date de début ne peut pas être située dans le futur.");
+      setLoading(false);
+      return;
+    }
+
+    if (endDate && endDate > todayStr) {
+      setError("⚠️ La date de fin ne peut pas être située dans le futur.");
+      setLoading(false);
+      return;
+    }
+
+    if (startDate && endDate && startDate > endDate) {
+      setError("⚠️ La date de début doit être antérieure ou égale à la date de fin.");
+      setLoading(false);
+      return;
+    }
 
     try {
       if (!isOnline) {
@@ -166,6 +197,7 @@ export const ExportModal = ({ isOpen, onClose, documentType, documentTitle, defa
                 type="date"
                 className="form-input"
                 value={startDate}
+                max={todayStr}
                 onChange={(e) => setStartDate(e.target.value)}
               />
             </div>
@@ -175,6 +207,7 @@ export const ExportModal = ({ isOpen, onClose, documentType, documentTitle, defa
                 type="date"
                 className="form-input"
                 value={endDate}
+                max={todayStr}
                 onChange={(e) => setEndDate(e.target.value)}
               />
             </div>

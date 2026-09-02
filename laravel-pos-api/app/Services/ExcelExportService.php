@@ -49,9 +49,17 @@ class ExcelExportService
         $sheetData->setTitle('DONNÉES DÉTAILLÉES');
 
         // En-tête du Rapport
+        $filters = $data['filters'] ?? [];
+        $periodInfo = "";
+        if (!empty($filters['start_date']) || !empty($filters['end_date'])) {
+            $sDate = !empty($filters['start_date']) ? \Carbon\Carbon::parse($filters['start_date'])->format('d/m/Y') : 'Origine';
+            $eDate = !empty($filters['end_date']) ? \Carbon\Carbon::parse($filters['end_date'])->format('d/m/Y') : date('d/m/Y');
+            $periodInfo = " | Période : du {$sDate} au {$eDate}";
+        }
+
         $sheetData->setCellValue('A1', mb_strtoupper($title, 'UTF-8'));
         $sheetData->getStyle('A1')->getFont()->setBold(true)->setSize(14)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('1E3A8A'));
-        $sheetData->setCellValue('A2', "Entreprise : {$companyName} | Boutique : {$branchName} | Date : {$generatedAt} | Nombre d'enregistrements : " . count($rows));
+        $sheetData->setCellValue('A2', "Entreprise : {$companyName} | Boutique : {$branchName}{$periodInfo} | Date : {$generatedAt} | Nombre d'enregistrements : " . count($rows));
         $sheetData->getStyle('A2')->getFont()->setItalic(true)->setSize(10)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('64748B'));
 
         // Titres des colonnes (Ligne 4)
