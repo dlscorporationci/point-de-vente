@@ -260,7 +260,7 @@ export const Suppliers = () => {
     setFormError(null);
     setFormSuccess(null);
 
-    const cleanName = name ? name.trim() : (formData.name ? formData.name.trim() : '');
+    const cleanName = name ? name.trim() : '';
     if (cleanName.length < 2) {
       setFormError("⚠️ Le nom du fournisseur doit comporter au moins 2 caractères.");
       return;
@@ -274,11 +274,10 @@ export const Suppliers = () => {
     try {
       const payload = {
         name: cleanName,
-        contact_name: formData.contact_name?.trim() || null,
-        phone: formData.phone?.trim() || null,
-        email: formData.email?.trim() || null,
-        address: formData.address?.trim() || null,
-        debt_balance: parseFloat(formData.debt_balance || 0)
+        phone: phone ? phone.trim() : null,
+        email: email ? email.trim() : null,
+        address: address ? address.trim() : null,
+        debt_balance: parseFloat(debtBalance || '0')
       };
 
       if (editingSupplier) {
@@ -286,7 +285,7 @@ export const Suppliers = () => {
         setFormSuccess(`Fournisseur "${res.data.supplier?.name || cleanName}" mis à jour avec succès !`);
       } else {
         const res = await axios.post('/v1/suppliers', payload);
-        setFormSuccess(`Fournisseur "${res.data.supplier.name}" enregistré avec succès !`);
+        setFormSuccess(`Fournisseur "${res.data.supplier?.name || cleanName}" enregistré avec succès !`);
       }
       
       loadData();
