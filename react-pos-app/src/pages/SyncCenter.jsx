@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { db } from '../services/db';
 import { syncService } from '../services/SyncService';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 
 export const SyncCenter = () => {
   const { isOnline, isSyncing, companyId, branchId } = useApp();
   const [queueItems, setQueueItems] = useState([]);
   const [lastSyncCursor, setLastSyncCursor] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [confirmIgnore, setConfirmIgnore] = useState(null); // uuid string
 
   const loadSyncData = async () => {
     setLoading(true);
@@ -43,11 +45,15 @@ export const SyncCenter = () => {
     await loadSyncData();
   };
 
-  const handleIgnoreItem = async (uuid) => {
-    if (window.confirm('Voulez-vous marquer cette opération comme ignorée ? Elle sera conservée dans l\'historique d\'audit de synchronisation.')) {
-      await db.sync_queue.update(uuid, { status: 'ignored' });
-      await loadSyncData();
-    }
+  const handleIgnoreItem = (uuid) => {
+    setConfirmIgnore(uuid);
+  };
+
+  const doIgnoreItem = async () => {
+    if (!confirmIgnore) return;
+    await db.sync_queue.update(confirmIgnore, { status: 'ignored' });
+    setConfirmIgnore(null);
+    await loadSyncData();
   };
 
   const stats = {
@@ -227,6 +233,15 @@ export const SyncCenter = () => {
           </div>
         )}
       </div>
+      <ConfirmDialog
+        isOpen={!!confirmIgnore}
+        title="Ignorer cette opération ?"
+        message="Cette opération sera marquée comme ignorée. Elle sera conservée dans l'historique d'audit de synchronisation."
+        confirmLabel="Ignorer l'opération"
+        type="warning"
+        onConfirm={doIgnoreItem}
+        onCancel={() => setConfirmIgnore(null)}
+      />
     </div>
   );
 };

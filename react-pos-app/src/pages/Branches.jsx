@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
+import { SlidePanel } from '../components/SlidePanel';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 
 export const Branches = () => {
   const { token, user } = useApp();
@@ -16,6 +18,7 @@ export const Branches = () => {
   const [editingBranch, setEditingBranch] = useState(null);
   const [branchForm, setBranchForm]       = useState({ name: '', address: '', phone: '' });
   const [saving, setSaving]               = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(null); // { id, name }
 
   const loadBranches = useCallback(async () => {
     if (!token) return;
@@ -70,14 +73,16 @@ export const Branches = () => {
     }
   };
 
-  const handleDelete = async (branch) => {
-    if (!window.confirm(`Supprimer la boutique "${branch.name}" ? Cette action est irréversible.`)) return;
+  const handleDelete = async () => {
+    if (!confirmDelete) return;
     try {
-      await axios.delete(`/v1/branches/${branch.id}`);
-      setSuccess('✅ Boutique supprimée.');
+      await axios.delete(`/v1/branches/${confirmDelete.id}`);
+      setSuccess('Boutique supprimée avec succès.');
+      setConfirmDelete(null);
       loadBranches();
     } catch (err) {
       setError(err.response?.data?.error || 'Erreur de suppression.');
+      setConfirmDelete(null);
     }
   };
 
@@ -145,45 +150,7 @@ export const Branches = () => {
         )}
         {success && <div className="success-banner"><i className="fa-solid fa-circle-check me-1"></i> {success}</div>}
 
-        {/* ── FORMULAIRE ── */}
-        {showForm && (
-          <div className="inline-form-card" style={{ marginBottom: '20px' }}>
-            <h4 style={{ marginBottom: '16px', fontWeight: 700 }}>
-              {editingBranch ? '✏️ Modifier la boutique' : '➕ Nouvelle boutique'}
-            </h4>
-            <form onSubmit={handleSave}>
-              <div className="row">
-                <div className="col-md-6 form-group">
-                  <label className="form-label">Nom de la boutique *</label>
-                  <input type="text" className="form-control" required
-                    placeholder="Ex: Boutique Centre-ville"
-                    value={branchForm.name}
-                    onChange={e => setBranchForm({ ...branchForm, name: e.target.value })} />
-                </div>
-                <div className="col-md-6 form-group">
-                  <label className="form-label">Téléphone</label>
-                  <input type="text" className="form-control"
-                    placeholder="Ex: +225 07 00 00 00"
-                    value={branchForm.phone}
-                    onChange={e => setBranchForm({ ...branchForm, phone: e.target.value })} />
-                </div>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Adresse</label>
-                <input type="text" className="form-control"
-                  placeholder="Ex: Rue des Palmiers, Plateau"
-                  value={branchForm.address}
-                  onChange={e => setBranchForm({ ...branchForm, address: e.target.value })} />
-              </div>
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '12px' }}>
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowForm(false)}>Annuler</button>
-                <button type="submit" className="btn btn-primary btn-sm" disabled={saving}>
-                  {saving ? 'Enregistrement...' : 'Enregistrer'}
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
+        {/* ── FORMULAIRE SLIDEPANEL ── */}
 
         {/* ── LISTE DES BOUTIQUES ── */}
         {loading ? (
@@ -250,7 +217,7 @@ export const Branches = () => {
                           onClick={() => handleToggleStatus(b)} title="Ouvrir/Fermer la boutique">
                           <i className={`fa-solid ${(b.status === 'open' || b.status === 'active') ? 'fa-pause' : 'fa-play'}`}></i>
                         </button>
-                        <button className="btn btn-xs btn-danger" onClick={() => handleDelete(b)} title="Supprimer">
+                        <button className="btn btn-xs btn-danger" onClick={() => setConfirmDelete({ id: b.id, name: b.name })} title="Supprimer">
                           <i className="fa-solid fa-trash"></i>
                         </button>
                       </div>
@@ -262,6 +229,67 @@ export const Branches = () => {
           </div>
         )}
       </div>
+
+      {/* ConfirmDialog Suppression Boutique */}
+      <ConfirmDialog
+        isOpen={!!confirmDelete}
+        title="Supprimer la boutique ?"
+        message={confirmDelete ? `Vous êtes sur le point de supprimer définitivement la boutique "${confirmDelete.name}". Cette action supprimera toutes ses données associées.` : ''}
+        confirmLabel="Supprimer la boutique"
+        type="danger"
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmDelete(null)}
+      />
+
+      {/* SlidePanel Boutique */}
+      <SlidePanel
+        isOpen={showForm}
+        onClose={() => setShowForm(false)}
+        title={editingBranch ? 'Modifier la boutique' : 'Nouvelle boutique'}
+        icon={editingBranch ? 'fa-solid fa-pen-to-square' : 'fa-solid fa-store'}
+        iconColor={editingBranch ? '#f59e0b' : 'var(--color-primary)'}
+        size="sm"
+        footer={
+          <>
+            <button type="button" className="btn btn-cancel" onClick={() => setShowForm(false)}>
+              <i className="fa-solid fa-xmark me-1"></i> Annuler
+            </button>
+            <button type="submit" form="branch-form" className="btn btn-primary" disabled={saving}>
+              {saving
+                ? <><i className="fa-solid fa-circle-notch fa-spin me-1"></i> Enregistrement...</>
+                : <><i className="fa-solid fa-floppy-disk me-1"></i> Enregistrer</>
+              }
+            </button>
+          </>
+        }
+      >
+        {error && <div className="error-banner mb-3"><i className="fa-solid fa-circle-exclamation me-1"></i> {error}</div>}
+        {success && <div className="success-banner mb-3"><i className="fa-solid fa-circle-check me-1"></i> {success}</div>}
+
+        <form id="branch-form" onSubmit={handleSave}>
+          <div className="form-group">
+            <label className="form-label">Nom de la boutique *</label>
+            <input type="text" className="form-control" required
+              placeholder="Ex: Boutique Centre-ville"
+              value={branchForm.name}
+              onChange={e => setBranchForm({ ...branchForm, name: e.target.value })} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Téléphone</label>
+            <input type="text" className="form-control"
+              placeholder="Ex: +225 07 00 00 00"
+              value={branchForm.phone}
+              onChange={e => setBranchForm({ ...branchForm, phone: e.target.value })} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Adresse</label>
+            <input type="text" className="form-control"
+              placeholder="Ex: Rue des Palmiers, Plateau"
+              value={branchForm.address}
+              onChange={e => setBranchForm({ ...branchForm, address: e.target.value })} />
+          </div>
+        </form>
+      </SlidePanel>
     </div>
   );
 };

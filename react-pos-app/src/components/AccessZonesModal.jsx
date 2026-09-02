@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { ConfirmDialog } from './ConfirmDialog';
 
 export const AccessZonesModal = ({ isOpen, onClose }) => {
   const [zones, setZones] = useState([]);
@@ -7,6 +8,7 @@ export const AccessZonesModal = ({ isOpen, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingZone, setEditingZone] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null); // { id, name }
 
   const [zoneName, setZoneName] = useState('');
   const [description, setDescription] = useState('');
@@ -159,16 +161,17 @@ export const AccessZonesModal = ({ isOpen, onClose }) => {
     }
   };
 
-  const handleDelete = async (z) => {
-    if (!window.confirm(`Supprimer la zone d'accès "${z.name}" ?`)) return;
+  const handleDelete = async () => {
+    if (!confirmDelete) return;
     setError(null);
     try {
-      await axios.delete(`/v1/access-zones/${z.id}`);
-      // Notifier l'app que les zones ont changé → force le refresh user
+      await axios.delete(`/v1/access-zones/${confirmDelete.id}`);
       window.dispatchEvent(new Event('access-zone-updated'));
+      setConfirmDelete(null);
       loadData();
     } catch (err) {
       setError(err.response?.data?.error || 'Impossible de supprimer cette zone.');
+      setConfirmDelete(null);
     }
   };
 
@@ -227,7 +230,7 @@ export const AccessZonesModal = ({ isOpen, onClose }) => {
                             <button onClick={() => openForm(z)} className="btn btn-secondary btn-sm me-1">
                               <i className="fa-solid fa-pen"></i>
                             </button>
-                            <button onClick={() => handleDelete(z)} className="btn btn-outline-danger btn-sm">
+                            <button onClick={() => setConfirmDelete({ id: z.id, name: z.name })} className="btn btn-outline-danger btn-sm">
                               <i className="fa-solid fa-trash"></i>
                             </button>
                           </td>
@@ -368,6 +371,15 @@ export const AccessZonesModal = ({ isOpen, onClose }) => {
         )}
 
       </div>
+      <ConfirmDialog
+        isOpen={!!confirmDelete}
+        title="Supprimer la zone d'accès ?"
+        message={confirmDelete ? `Vous êtes sur le point de supprimer définitivement la zone "${confirmDelete.name}". Le personnel lié perdra cet accès.` : ''}
+        confirmLabel="Supprimer la zone"
+        type="danger"
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   );
 };

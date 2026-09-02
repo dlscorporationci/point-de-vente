@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import GlobalDateRangeFilter from '../components/GlobalDateRangeFilter';
 import { CountUp } from '../components/CountUp';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 
 export const CompanyInspection = ({ companyId, onBack, onExportPdf }) => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -17,6 +18,7 @@ export const CompanyInspection = ({ companyId, onBack, onExportPdf }) => {
   const [totalPages, setTotalPages] = useState(1);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [confirmDeleteEntity, setConfirmDeleteEntity] = useState(null); // { type, item, name }
 
   // Load Overview Data
   const loadOverview = async () => {
@@ -74,11 +76,9 @@ export const CompanyInspection = ({ companyId, onBack, onExportPdf }) => {
     }
   };
 
-  const handleDeleteEntity = async (type, item) => {
-    const itemName = item.name || item.sale_number || item.transfer_number || item.id;
-    if (!window.confirm(`⚠️ ATTENTION SuperAdmin : Êtes-vous sûr de vouloir supprimer définitivement cet élément "${itemName}" ?`)) {
-      return;
-    }
+  const handleDeleteEntity = async () => {
+    if (!confirmDeleteEntity) return;
+    const { type, item } = confirmDeleteEntity;
     try {
       let endpoint = '';
       if (type === 'customers') endpoint = `/v1/admin/customers/${item.id}`;
@@ -88,10 +88,12 @@ export const CompanyInspection = ({ companyId, onBack, onExportPdf }) => {
 
       if (endpoint) {
         await axios.delete(endpoint);
+        setConfirmDeleteEntity(null);
         loadSubTabList(activeTab, page, search, filterStatus);
       }
     } catch (err) {
-      alert(err.response?.data?.error || err.response?.data?.message || "Erreur lors de la suppression par le SuperAdmin.");
+      setError(err.response?.data?.error || err.response?.data?.message || "Erreur lors de la suppression par le SuperAdmin.");
+      setConfirmDeleteEntity(null);
     }
   };
 
@@ -586,7 +588,7 @@ export const CompanyInspection = ({ companyId, onBack, onExportPdf }) => {
                               <td style={{ textAlign: 'right', fontWeight: 800, color: '#ef4444' }}>{(item.debt || item.balance || 0).toLocaleString('fr-FR')} FCFA</td>
                               <td className="text-muted small">{new Date(item.created_at).toLocaleDateString('fr-FR')}</td>
                               <td style={{ textAlign: 'right' }}>
-                                <button onClick={() => handleDeleteEntity('customers', item)} className="btn btn-xs btn-outline-danger" title="Supprimer ce client">
+                                <button onClick={() => setConfirmDeleteEntity({ type: 'customers', item, name: item.name || item.id })} className="btn btn-xs btn-outline-danger" title="Supprimer ce client">
                                   <i className="fa-solid fa-trash"></i> Supprimer
                                 </button>
                               </td>
@@ -609,7 +611,7 @@ export const CompanyInspection = ({ companyId, onBack, onExportPdf }) => {
                               <td style={{ textAlign: 'right', fontWeight: 900, color: '#10b981' }}>{item.selling_price?.toLocaleString('fr-FR')} FCFA</td>
                               <td style={{ textAlign: 'center', fontWeight: 800, color: '#f59e0b' }}>{item.alert_quantity || 5}</td>
                               <td style={{ textAlign: 'right' }}>
-                                <button onClick={() => handleDeleteEntity('products', item)} className="btn btn-xs btn-outline-danger" title="Supprimer ce produit">
+                                <button onClick={() => setConfirmDeleteEntity({ type: 'products', item, name: item.name || item.id })} className="btn btn-xs btn-outline-danger" title="Supprimer ce produit">
                                   <i className="fa-solid fa-trash"></i> Supprimer
                                 </button>
                               </td>
@@ -657,7 +659,7 @@ export const CompanyInspection = ({ companyId, onBack, onExportPdf }) => {
                               <td>{item.branch?.name || 'Toutes'}</td>
                               <td className="text-muted small">{item.last_login_at ? new Date(item.last_login_at).toLocaleString('fr-FR') : 'Jamais'}</td>
                               <td style={{ textAlign: 'right' }}>
-                                <button onClick={() => handleDeleteEntity('users', item)} className="btn btn-xs btn-outline-danger" title="Supprimer cet utilisateur">
+                                <button onClick={() => setConfirmDeleteEntity({ type: 'users', item, name: item.name || item.id })} className="btn btn-xs btn-outline-danger" title="Supprimer cet utilisateur">
                                   <i className="fa-solid fa-trash"></i> Supprimer
                                 </button>
                               </td>
@@ -696,6 +698,15 @@ export const CompanyInspection = ({ companyId, onBack, onExportPdf }) => {
           )}
         </>
       )}
+      <ConfirmDialog
+        isOpen={!!confirmDeleteEntity}
+        title="ATTENTION SuperAdmin : Supprimer cet élément ?"
+        message={confirmDeleteEntity ? `Êtes-vous sûr de vouloir supprimer définitivement cet élément "${confirmDeleteEntity.name}" ?` : ''}
+        confirmLabel="Supprimer définitivement"
+        type="danger"
+        onConfirm={handleDeleteEntity}
+        onCancel={() => setConfirmDeleteEntity(null)}
+      />
     </div>
   );
 };

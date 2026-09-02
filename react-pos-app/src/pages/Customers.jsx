@@ -3,6 +3,8 @@ import axios from 'axios';
 import { useApp } from '../context/AppContext';
 import { db } from '../services/db';
 import { ExportModal } from '../components/ExportModal';
+import { SlidePanel } from '../components/SlidePanel';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 
 const getCustomerInitials = (name) => {
   if (!name) return 'CL';
@@ -39,8 +41,10 @@ export const Customers = () => {
   const [lastPage, setLastPage] = useState(1);
   const [search, setSearch] = useState('');
 
-  // Modale d'ajout/édition
+  // Panneau glissant d'ajout/édition
   const [showModal, setShowModal] = useState(false);
+  // Dialog de confirmation de suppression
+  const [confirmDelete, setConfirmDelete] = useState(null); // { id, name }
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -189,16 +193,18 @@ export const Customers = () => {
     }
   };
 
-  const handleDeleteCustomer = async (id) => {
-    if (!window.confirm('Voulez-vous vraiment supprimer ce client ?')) return;
+  const handleDeleteCustomer = async () => {
+    if (!confirmDelete) return;
     setError(null);
     setSuccess(null);
     try {
-      await axios.delete(`/v1/customers/${id}`);
+      await axios.delete(`/v1/customers/${confirmDelete.id}`);
       setSuccess('Client supprimé avec succès.');
+      setConfirmDelete(null);
       loadCustomers();
     } catch (err) {
       setError(err.response?.data?.error || 'Erreur lors de la suppression.');
+      setConfirmDelete(null);
     }
   };
 
@@ -402,7 +408,7 @@ export const Customers = () => {
                             <i className="fa-solid fa-pen-to-square"></i>
                           </button>
                           <button 
-                            onClick={() => handleDeleteCustomer(cust.id)} 
+                            onClick={() => setConfirmDelete({ id: cust.id, name: cust.name })} 
                             className="btn btn-sm btn-outline-danger" 
                             title="Supprimer le client"
                             style={{ width: '32px', height: '32px', padding: 0, borderRadius: '8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
@@ -441,12 +447,41 @@ export const Customers = () => {
         )}
       </div>
 
-      {/* MODALE D'AJOUT / MODIFICATION */}
-      {showModal && (
-        <div className="modal-overlay">
-          <div className="modal-card card">
-            <h3>{editingCustomer ? 'Modifier le Client' : 'Nouveau Client'}</h3>
-            <form onSubmit={handleFormSubmit}>
+      {/* ConfirmDialog Suppression Client */}
+      <ConfirmDialog
+        isOpen={!!confirmDelete}
+        title="Supprimer le client ?"
+        message={confirmDelete ? `Vous êtes sur le point de supprimer définitivement le client "${confirmDelete.name}". Cette action est irréversible.` : ''}
+        confirmLabel="Supprimer le client"
+        type="danger"
+        onConfirm={handleDeleteCustomer}
+        onCancel={() => setConfirmDelete(null)}
+      />
+
+      {/* SlidePanel d'AJOUT / MODIFICATION */}
+      <SlidePanel
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title={editingCustomer ? 'Modifier le client' : 'Nouveau client'}
+        icon={editingCustomer ? 'fa-solid fa-user-pen' : 'fa-solid fa-user-plus'}
+        iconColor={editingCustomer ? '#f59e0b' : 'var(--color-primary)'}
+        size="md"
+        footer={
+          <>
+            <button type="button" onClick={() => setShowModal(false)} className="btn btn-cancel">
+              <i className="fa-solid fa-xmark me-1"></i> Annuler
+            </button>
+            <button type="submit" form="customer-form" className="btn btn-primary">
+              <i className="fa-solid fa-floppy-disk me-1"></i> Enregistrer
+            </button>
+          </>
+        }
+      >
+        {/* Erreur / Succès dans le panneau */}
+        {error && <div className="error-banner mb-3"><i className="fa-solid fa-circle-exclamation me-1"></i> {error}</div>}
+        {success && <div className="success-banner mb-3"><i className="fa-solid fa-circle-check me-1"></i> {success}</div>}
+
+        <form id="customer-form" onSubmit={handleFormSubmit}>
               <div className="form-group">
                 <label className="form-label">Nom Complet *</label>
                 <input 
@@ -562,14 +597,8 @@ export const Customers = () => {
                 />
               </div>
 
-              <div className="modal-actions">
-                <button type="button" onClick={() => setShowModal(false)} className="btn btn-cancel">Annuler</button>
-                <button type="submit" className="btn btn-primary">Enregistrer</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+        </form>
+      </SlidePanel>
 
       {/* MODALE DE DÉTAILS / HISTORIQUE */}
       {selectedCustomer && (

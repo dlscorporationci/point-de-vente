@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { PasswordInput } from '../components/PasswordInput';
 import { BusinessRulesPanel } from '../components/BusinessRulesPanel';
 import { CustomRolesModal } from '../components/CustomRolesModal';
@@ -76,6 +77,7 @@ export const Settings = () => {
   const [branches, setBranches]             = useState([]);
   const [branchesLoading, setBranchesLoading] = useState(false);
   const [showBranchForm, setShowBranchForm] = useState(false);
+  const [confirmDeleteBranch, setConfirmDeleteBranch] = useState(null); // { id, name }
   const [editingBranch, setEditingBranch]   = useState(null);
   const [branchForm, setBranchForm]         = useState({ name: '', address: '', phone: '' });
   const [branchSaving, setBranchSaving]     = useState(false);
@@ -390,14 +392,16 @@ export const Settings = () => {
     }
   };
 
-  const handleDeleteBranch = async (branch) => {
-    if (!window.confirm(`Supprimer la boutique "${branch.name}" ? Cette action est irréversible.`)) return;
+  const handleDeleteBranch = async () => {
+    if (!confirmDeleteBranch) return;
     try {
-      await axios.delete(`/v1/branches/${branch.id}`);
-      setSuccess("✅ Boutique supprimée.");
+      await axios.delete(`/v1/branches/${confirmDeleteBranch.id}`);
+      setSuccess('Boutique supprimée avec succès.');
+      setConfirmDeleteBranch(null);
       loadBranches();
     } catch (err) {
-      setError(err.response?.data?.error || "Erreur de suppression.");
+      setError(err.response?.data?.error || 'Erreur de suppression.');
+      setConfirmDeleteBranch(null);
     }
   };
 
@@ -836,7 +840,7 @@ export const Settings = () => {
                                   onClick={() => handleToggleBranchStatus(b)} title="Activer/Désactiver">
                                   <i className={`fa-solid ${(b.status ?? 'active') === 'active' ? 'fa-pause' : 'fa-play'}`}></i>
                                 </button>
-                                <button className="btn btn-xs btn-danger" onClick={() => handleDeleteBranch(b)} title="Supprimer">
+                                <button className="btn btn-xs btn-danger" onClick={() => setConfirmDeleteBranch({ id: b.id, name: b.name })} title="Supprimer">
                                   <i className="fa-solid fa-trash"></i>
                                 </button>
                               </div>
@@ -1596,6 +1600,15 @@ export const Settings = () => {
         /* Vide */
         .empty-state { text-align: center; padding: 48px 24px; color: var(--text-muted); font-size: 14px; }
       `}</style>
+      <ConfirmDialog
+        isOpen={!!confirmDeleteBranch}
+        title="Supprimer la boutique ?"
+        message={confirmDeleteBranch ? `Vous êtes sur le point de supprimer définitivement la boutique "${confirmDeleteBranch.name}". Cette action est irréversible.` : ''}
+        confirmLabel="Supprimer la boutique"
+        type="danger"
+        onConfirm={handleDeleteBranch}
+        onCancel={() => setConfirmDeleteBranch(null)}
+      />
     </div>
   );
 };

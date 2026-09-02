@@ -7,6 +7,8 @@ import { MassProductDeleteModal } from '../components/MassProductDeleteModal';
 import { ExportModal } from '../components/ExportModal';
 import { BarcodeScannerModal } from '../components/BarcodeScannerModal';
 import { getAssetUrl } from '../utils/urlHelper';
+import { SlidePanel } from '../components/SlidePanel';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 
 export const getImageUrl = (imagePath) => {
   return getAssetUrl(imagePath);
@@ -86,6 +88,7 @@ export const Catalog = () => {
   const [showMassDeleteModal, setShowMassDeleteModal] = useState(false);
   const [quickCreateFromProduct, setQuickCreateFromProduct] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null); // null = création, objet = édition
+  const [confirmDeleteProduct, setConfirmDeleteProduct] = useState(null); // { id, name }
   
   // États de création de produit
   const [newProductName, setNewProductName] = useState('');
@@ -407,16 +410,16 @@ export const Catalog = () => {
     }
   };
 
-  const handleDeleteProduct = async (id) => {
-    if (!window.confirm('Voulez-vous vraiment supprimer ce produit ?')) return;
-    setError(null);
-    setSuccess(null);
+  const handleDeleteProduct = async () => {
+    if (!confirmDeleteProduct) return;
     try {
-      await axios.delete(`/v1/products/${id}`);
-      setSuccess('Produit supprimé du catalogue.');
+      await axios.delete(`/v1/products/${confirmDeleteProduct.id}`);
+      setSuccess('Produit supprimé avec succès.');
+      setConfirmDeleteProduct(null);
       loadData();
     } catch (err) {
-      setError('Impossible de supprimer le produit. Permissions requises.');
+      setError(err.response?.data?.error || 'Erreur lors de la suppression du produit.');
+      setConfirmDeleteProduct(null);
     }
   };
 
@@ -567,79 +570,100 @@ export const Catalog = () => {
         {error && <div className="error-banner"><i className="fa-solid fa-circle-exclamation me-1"></i> {error}</div>}
         {success && <div className="success-banner"><i className="fa-solid fa-circle-check me-1"></i> {success}</div>}
 
-        {/* Formulaire Modal 1 : Nouvelle Catégorie */}
-        {showCategoryForm && (
-          <div className="modal-overlay">
-            <div className="modal-card card">
-              <h3><i className="fa-solid fa-folder-open me-2 text-secondary"></i> Créer une nouvelle catégorie</h3>
-              <form onSubmit={handleCreateCategory}>
-                <div className="form-group">
-                  <label className="form-label">Nom de la catégorie</label>
-                  <input 
-                    type="text" 
-                    className="form-control" 
-                    value={newCategoryName}
-                    onChange={(e) => setNewCategoryName(e.target.value)}
-                    required
-                    placeholder="Ex: Électricité, Plomberie..."
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Photo d'illustration de la catégorie</label>
-                  {newCategoryImage && (
-                    <div style={{ marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <img
-                        src={URL.createObjectURL(newCategoryImage)}
-                        alt="Aperçu catégorie"
-                        style={{ width: '56px', height: '56px', objectFit: 'cover', borderRadius: '8px', border: '2px solid var(--color-primary)' }}
-                      />
-                      <small className="text-muted">Image de catégorie sélectionnée</small>
-                    </div>
-                  )}
-                  <input 
-                    type="file" 
-                    className="form-control" 
-                    accept="image/*"
-                    onChange={(e) => setNewCategoryImage(e.target.files[0])}
-                  />
-                </div>
-
-                {/* Liste des catégories existantes avec images */}
-                <div style={{ marginTop: '20px', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
-                  <label className="form-label mb-2" style={{ fontWeight: 700 }}>Catégories existantes ({categories.length})</label>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', maxHeight: '150px', overflowY: 'auto' }}>
-                    {categories.map(c => (
-                      <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', background: 'var(--bg-input)', borderRadius: '20px', fontSize: '13px', border: '1px solid var(--border-color)' }}>
-                        {c.image_path ? (
-                          <img src={getImageUrl(c.image_path)} alt={c.name} style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover' }} />
-                        ) : (
-                          <i className="fa-solid fa-folder text-primary" style={{ fontSize: '14px' }}></i>
-                        )}
-                        <span>{c.name}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="modal-actions">
-                  <button type="button" onClick={() => setShowCategoryForm(false)} className="btn btn-cancel">Annuler</button>
-                  <button type="submit" className="btn btn-primary">Enregistrer la catégorie</button>
-                </div>
-              </form>
+        {/* Formulaire SlidePanel 1 : Nouvelle Catégorie */}
+        <SlidePanel
+          isOpen={showCategoryForm}
+          onClose={() => setShowCategoryForm(false)}
+          title="Nouvelle catégorie"
+          icon="fa-solid fa-tag"
+          iconColor="#10b981"
+          size="sm"
+          footer={
+            <>
+              <button type="button" onClick={() => setShowCategoryForm(false)} className="btn btn-cancel">
+                <i className="fa-solid fa-xmark me-1"></i> Annuler
+              </button>
+              <button type="submit" form="category-form" className="btn btn-primary">
+                <i className="fa-solid fa-floppy-disk me-1"></i> Enregistrer
+              </button>
+            </>
+          }
+        >
+          {error && <div className="error-banner mb-3"><i className="fa-solid fa-circle-exclamation me-1"></i> {error}</div>}
+          <form id="category-form" onSubmit={handleCreateCategory}>
+            <div className="form-group">
+              <label className="form-label">Nom de la catégorie</label>
+              <input 
+                type="text" 
+                className="form-control" 
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                required
+                placeholder="Ex: Électricité, Plomberie..."
+              />
             </div>
-          </div>
-        )}
+            <div className="form-group">
+              <label className="form-label">Photo d'illustration de la catégorie</label>
+              {newCategoryImage && (
+                <div style={{ marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <img
+                    src={URL.createObjectURL(newCategoryImage)}
+                    alt="Aperçu catégorie"
+                    style={{ width: '56px', height: '56px', objectFit: 'cover', borderRadius: '8px', border: '2px solid var(--color-primary)' }}
+                  />
+                  <small className="text-muted">Image de catégorie sélectionnée</small>
+                </div>
+              )}
+              <input 
+                type="file" 
+                className="form-control" 
+                accept="image/*"
+                onChange={(e) => setNewCategoryImage(e.target.files[0])}
+              />
+            </div>
 
-        {/* Formulaire Modal 2 : Nouveau Produit / Modifier Produit */}
-        {showProductForm && (
-          <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-            <div className="modal-card card modal-large" style={{ width: '100%', maxWidth: '750px', maxHeight: '88vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '24px', position: 'relative' }}>
-              <h3 style={{ flexShrink: 0, marginBottom: '16px' }}>
-                {editingProduct
-                  ? <><i className="fa-solid fa-pen me-2 text-warning"></i> Modifier le produit</>  
-                  : <><i className="fa-solid fa-box me-2 text-primary"></i> Ajouter un produit au catalogue</>}
-              </h3>
-              <form onSubmit={editingProduct ? handleUpdateProduct : handleCreateProduct} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-                <div style={{ flex: 1, overflowY: 'auto', paddingRight: '6px', marginBottom: '12px' }}>
+            {/* Liste des catégories existantes avec images */}
+            <div style={{ marginTop: '20px', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
+              <label className="form-label mb-2" style={{ fontWeight: 700 }}>Catégories existantes ({categories.length})</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', maxHeight: '150px', overflowY: 'auto' }}>
+                {categories.map(c => (
+                  <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', background: 'var(--bg-input)', borderRadius: '20px', fontSize: '13px', border: '1px solid var(--border-color)' }}>
+                    {c.image_path ? (
+                      <img src={getImageUrl(c.image_path)} alt={c.name} style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover' }} />
+                    ) : (
+                      <i className="fa-solid fa-folder text-primary" style={{ fontSize: '14px' }}></i>
+                    )}
+                    <span>{c.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </form>
+        </SlidePanel>
+
+        {/* Formulaire SlidePanel 2 : Nouveau Produit / Modifier Produit */}
+        <SlidePanel
+          isOpen={showProductForm}
+          onClose={() => { setShowProductForm(false); setEditingProduct(null); }}
+          title={editingProduct ? 'Modifier le produit' : 'Ajouter un produit'}
+          icon={editingProduct ? 'fa-solid fa-pen-to-square' : 'fa-solid fa-box'}
+          iconColor={editingProduct ? '#f59e0b' : 'var(--color-primary)'}
+          size="lg"
+          footer={
+            <>
+              <button type="button" onClick={() => { setShowProductForm(false); setEditingProduct(null); }} className="btn btn-cancel">
+                <i className="fa-solid fa-xmark me-1"></i> Annuler
+              </button>
+              <button type="submit" form="product-form" className="btn btn-primary">
+                <i className="fa-solid fa-floppy-disk me-1"></i> {editingProduct ? 'Mettre à jour' : 'Enregistrer'}
+              </button>
+            </>
+          }
+        >
+          {error && <div className="error-banner mb-3"><i className="fa-solid fa-circle-exclamation me-1"></i> {error}</div>}
+          {success && <div className="success-banner mb-3"><i className="fa-solid fa-circle-check me-1"></i> {success}</div>}
+          <form id="product-form" onSubmit={editingProduct ? handleUpdateProduct : handleCreateProduct}>
+            <div>
                   <div className="form-row-grid">
                   <div className="form-group">
                     <label className="form-label">Nom de l'article *</label>
@@ -906,18 +930,9 @@ export const Catalog = () => {
                     onChange={(e) => setNewProductImage(e.target.files[0])}
                   />
                 </div>
-              </div>
-
-              <div className="modal-actions" style={{ flexShrink: 0, paddingTop: '14px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: 0, background: 'var(--card-bg, #ffffff)' }}>
-                <button type="button" onClick={() => { setShowProductForm(false); setEditingProduct(null); }} className="btn btn-cancel">Annuler</button>
-                <button type="submit" className="btn btn-primary" style={{ fontWeight: 700, padding: '10px 20px' }}>
-                  {editingProduct ? 'Enregistrer les modifications' : 'Enregistrer le produit'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            </div>
+          </form>
+        </SlidePanel>
 
         {/* Modal Scanner de Code-Barres par Caméra */}
         <BarcodeScannerModal
@@ -1013,7 +1028,7 @@ export const Catalog = () => {
                         )}
                         {(user?.permissions?.includes('products.delete') || user?.role === 'admin' || user?.role?.slug === 'admin') ? (
                           <button 
-                            onClick={() => handleDeleteProduct(product.id)}
+                            onClick={() => setConfirmDeleteProduct({ id: product.id, name: product.name })}
                             className="btn-delete"
                             title="Supprimer"
                           >
@@ -1051,6 +1066,16 @@ export const Catalog = () => {
         onClose={() => setShowExportModal(false)}
         documentType="products_list"
         documentTitle="Catalogue des Produits"
+      />
+
+      <ConfirmDialog
+        isOpen={!!confirmDeleteProduct}
+        title="Supprimer le produit ?"
+        message={confirmDeleteProduct ? `Vous êtes sur le point de supprimer définitivement le produit "${confirmDeleteProduct.name}". Cette action est irréversible.` : ''}
+        confirmLabel="Supprimer le produit"
+        type="danger"
+        onConfirm={handleDeleteProduct}
+        onCancel={() => setConfirmDeleteProduct(null)}
       />
 
       <style>{`

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { ConfirmDialog } from './ConfirmDialog';
 
 export const CustomRolesModal = ({ isOpen, onClose, onSuccess }) => {
   const [roles, setRoles] = useState([]);
@@ -7,6 +8,7 @@ export const CustomRolesModal = ({ isOpen, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingRole, setEditingRole] = useState(null);
+  const [confirmDeleteRole, setConfirmDeleteRole] = useState(null); // { id, name }
 
   const [roleName, setRoleName] = useState('');
   const [selectedPermissions, setSelectedPermissions] = useState([]);
@@ -112,14 +114,16 @@ export const CustomRolesModal = ({ isOpen, onClose, onSuccess }) => {
     }
   };
 
-  const handleDelete = async (role) => {
-    if (!window.confirm(`Supprimer le rôle "${role.name}" ?`)) return;
+  const handleDelete = async () => {
+    if (!confirmDeleteRole) return;
     setError(null);
     try {
-      await axios.delete(`/v1/custom-roles/${role.id}`);
+      await axios.delete(`/v1/custom-roles/${confirmDeleteRole.id}`);
+      setConfirmDeleteRole(null);
       loadData();
     } catch (err) {
       setError(err.response?.data?.error || 'Impossible de supprimer ce rôle.');
+      setConfirmDeleteRole(null);
     }
   };
 
@@ -179,7 +183,7 @@ export const CustomRolesModal = ({ isOpen, onClose, onSuccess }) => {
                               <i className="fa-solid fa-pen me-1"></i> {isSystem ? 'Voir' : 'Modifier'}
                             </button>
                             {!isSystem && (
-                              <button onClick={() => handleDelete(r)} className="btn btn-outline-danger btn-sm">
+                              <button onClick={() => setConfirmDeleteRole({ id: r.id, name: r.name })} className="btn btn-outline-danger btn-sm">
                                 <i className="fa-solid fa-trash"></i>
                               </button>
                             )}
@@ -300,6 +304,15 @@ export const CustomRolesModal = ({ isOpen, onClose, onSuccess }) => {
         )}
 
       </div>
+      <ConfirmDialog
+        isOpen={!!confirmDeleteRole}
+        title="Supprimer le rôle ?"
+        message={confirmDeleteRole ? `Vous êtes sur le point de supprimer définitivement le rôle "${confirmDeleteRole.name}". Les utilisateurs ayant ce rôle seront affectés.` : ''}
+        confirmLabel="Supprimer le rôle"
+        type="danger"
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmDeleteRole(null)}
+      />
     </div>
   );
 };

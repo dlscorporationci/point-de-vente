@@ -3,6 +3,8 @@ import axios from 'axios';
 import { useApp } from '../context/AppContext';
 import { db } from '../services/db';
 import { ExportModal } from '../components/ExportModal';
+import { SlidePanel } from '../components/SlidePanel';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 
 const getSupplierInitials = (name) => {
   if (!name) return 'FR';
@@ -39,6 +41,9 @@ export const Suppliers = () => {
   // États d'ouverture et d'édition de formulaires
   const [showForm, setShowForm] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState(null);
+  // ConfirmDialogs
+  const [confirmDeleteSupplier, setConfirmDeleteSupplier] = useState(null); // { id, name }
+  const [confirmImportPack, setConfirmImportPack] = useState(null); // pack obj
   
   // États du formulaire fournisseur
   const [name, setName] = useState('');
@@ -130,8 +135,14 @@ export const Suppliers = () => {
     }
   ];
 
-  const handleImportPack = async (pack) => {
-    if (!window.confirm(`Voulez-vous importer les ${pack.suppliers.length} fournisseurs du "${pack.title}" dans votre répertoire ?`)) return;
+  const handleImportPack = (pack) => {
+    setConfirmImportPack(pack);
+  };
+
+  const doImportPack = async () => {
+    const pack = confirmImportPack;
+    if (!pack) return;
+    setConfirmImportPack(null);
     setLoading(true);
     setError(null);
     try {
@@ -150,11 +161,10 @@ export const Suppliers = () => {
           /* Ignorer les doublons */
         }
       }
-      setSuccess(`✅ ${importedCount} fournisseur(s) du "${pack.title}" importé(s) avec succès dans votre répertoire !`);
+      setSuccess(`${importedCount} fournisseur(s) importé(s) avec succès depuis "${pack.title}" !`);
       loadData();
-      setActiveTab('suppliers');
-    } catch {
-      setError("Erreur lors de l'importation du pack de fournisseurs.");
+    } catch (err) {
+      setError('Erreur lors de l\'importation du pack de fournisseurs.');
     } finally {
       setLoading(false);
     }
@@ -298,16 +308,18 @@ export const Suppliers = () => {
     }
   };
 
-  const handleDeleteSupplier = async (id) => {
-    if (!window.confirm('Voulez-vous vraiment supprimer ce fournisseur ?')) return;
+  const handleDeleteSupplier = async () => {
+    if (!confirmDeleteSupplier) return;
     setError(null);
     setSuccess(null);
     try {
-      await axios.delete(`/v1/suppliers/${id}`);
+      await axios.delete(`/v1/suppliers/${confirmDeleteSupplier.id}`);
       setSuccess('Fournisseur supprimé avec succès.');
+      setConfirmDeleteSupplier(null);
       loadData();
     } catch (err) {
       setError('Impossible de supprimer le fournisseur. Permissions requises.');
+      setConfirmDeleteSupplier(null);
     }
   };
 
@@ -420,12 +432,50 @@ export const Suppliers = () => {
           </div>
         </div>
 
-        {/* Modal de création et édition */}
-        {showForm && (
-          <div className="modal-overlay">
-            <div className="modal-card card modal-large">
-              <h3><i className="fa-solid fa-handshake me-2"></i> {editingSupplier ? '✏️ Modifier le partenaire' : '➕ Enregistrer un nouveau fournisseur'}</h3>
-              <form onSubmit={handleSaveSupplier}>
+      {/* ConfirmDialogs */}
+      <ConfirmDialog
+        isOpen={!!confirmDeleteSupplier}
+        title="Supprimer le fournisseur ?"
+        message={confirmDeleteSupplier ? `Vous êtes sur le point de supprimer définitivement le fournisseur "${confirmDeleteSupplier.name}". Cette action est irréversible.` : ''}
+        confirmLabel="Supprimer le fournisseur"
+        type="danger"
+        onConfirm={handleDeleteSupplier}
+        onCancel={() => setConfirmDeleteSupplier(null)}
+      />
+      <ConfirmDialog
+        isOpen={!!confirmImportPack}
+        title="Importer le pack de fournisseurs ?"
+        message={confirmImportPack ? `Voulez-vous importer les ${confirmImportPack.suppliers.length} fournisseurs du pack "${confirmImportPack.title}" dans votre répertoire ?` : ''}
+        confirmLabel="Importer"
+        confirmIcon="fa-solid fa-file-import"
+        type="info"
+        onConfirm={doImportPack}
+        onCancel={() => setConfirmImportPack(null)}
+      />
+
+      {/* SlidePanel Fournisseur */}
+      <SlidePanel
+        isOpen={showForm}
+        onClose={() => setShowForm(false)}
+        title={editingSupplier ? 'Modifier le fournisseur' : 'Nouveau fournisseur'}
+        icon={editingSupplier ? 'fa-solid fa-pen-to-square' : 'fa-solid fa-handshake'}
+        iconColor={editingSupplier ? '#f59e0b' : '#10b981'}
+        size="md"
+        footer={
+          <>
+            <button type="button" onClick={() => setShowForm(false)} className="btn btn-cancel">
+              <i className="fa-solid fa-xmark me-1"></i> Annuler
+            </button>
+            <button type="submit" form="supplier-form" className="btn btn-primary">
+              <i className="fa-solid fa-floppy-disk me-1"></i> {editingSupplier ? 'Mettre à jour' : 'Enregistrer'}
+            </button>
+          </>
+        }
+      >
+        {error && <div className="error-banner mb-3"><i className="fa-solid fa-circle-exclamation me-1"></i> {error}</div>}
+        {success && <div className="success-banner mb-3"><i className="fa-solid fa-circle-check me-1"></i> {success}</div>}
+
+        <form id="supplier-form" onSubmit={handleSaveSupplier}>
                 <div className="form-row-grid">
                   <div className="form-group">
                     <label className="form-label">Nom du Fournisseur *</label>
@@ -494,15 +544,8 @@ export const Suppliers = () => {
                     placeholder="Ex: Rue 10, Zone Industrielle, Dakar"
                   />
                 </div>
-
-                <div className="modal-actions">
-                  <button type="button" onClick={() => setShowForm(false)} className="btn btn-cancel">Annuler</button>
-                  <button type="submit" className="btn btn-primary">{editingSupplier ? 'Mettre à jour le fournisseur' : 'Enregistrer le fournisseur'}</button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
+        </form>
+      </SlidePanel>
 
         {/* Modal de création de Pack de Fournisseurs (Partie 12) */}
         {showPackModal && (
@@ -695,7 +738,7 @@ export const Suppliers = () => {
                           )}
                           {(user?.permissions?.includes('suppliers.delete') || user?.role === 'admin' || user?.role?.slug === 'admin') && (
                             <button 
-                              onClick={() => handleDeleteSupplier(sup.id)}
+                              onClick={() => setConfirmDeleteSupplier({ id: sup.id, name: sup.name })}
                               className="btn btn-sm btn-outline-danger"
                               title="Supprimer ce fournisseur"
                               style={{ width: '32px', height: '32px', padding: 0, borderRadius: '8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}

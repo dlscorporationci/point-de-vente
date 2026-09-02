@@ -7,12 +7,18 @@ import { AuditLogs } from './AuditLogs';
 import { ExportModal } from '../components/ExportModal';
 import { GlobalDateRangeFilter } from '../components/GlobalDateRangeFilter';
 import { CompanyInspection } from './CompanyInspection';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 
 export const BackOffice = () => {
   const { token, user, logout } = useApp();
   const [activeSubTab, setActiveSubTab] = useState('dashboard');
   const [metrics, setMetrics] = useState(null);
   const [recentActivities, setRecentActivities] = useState([]);
+
+  // ConfirmDialog states
+  const [confirmDeletePlan, setConfirmDeletePlan] = useState(null); // { id, name }
+  const [confirmDeleteCompany, setConfirmDeleteCompany] = useState(null); // { id, name, code }
+  const [confirmDeleteUser, setConfirmDeleteUser] = useState(null); // { id, name, email }
   
   // ── FORMULES & OFFRES D'ABONNEMENT (PLANS) ──
   const [plans, setPlans] = useState([]);
@@ -485,16 +491,18 @@ export const BackOffice = () => {
     }
   };
 
-  const handleDeletePlan = async (plan) => {
-    if (!window.confirm(`Supprimer la formule "${plan.name}" ?Cette action est irréversible.`)) return;
+  const handleDeletePlan = async () => {
+    if (!confirmDeletePlan) return;
     setError(null);
     setSuccess(null);
     try {
-      await axios.delete(`/v1/admin/plans/${plan.id}`);
-      setSuccess(`Formule "${plan.name}" supprimée.`);
+      await axios.delete(`/v1/admin/plans/${confirmDeletePlan.id}`);
+      setSuccess(`Formule "${confirmDeletePlan.name}" supprimée.`);
+      setConfirmDeletePlan(null);
       loadPlans();
     } catch (err) {
       setError("Impossible de supprimer cette formule d'abonnement.");
+      setConfirmDeletePlan(null);
     }
   };
 
@@ -600,33 +608,33 @@ export const BackOffice = () => {
     }
   };
 
-  const handleDeleteCompany = async (company) => {
-    if (!window.confirm(`⚠️ ATTENTION : Êtes-vous ABSOLUMENT SÛR de vouloir SUPPRIMER définitivement l'entreprise "${company.name}" (Code: ${company.code}) ?\n\nCette action détruira IRRÉVOCABLEMENT toutes ses boutiques, ses utilisateurs, ses ventes et ses stocks !`)) {
-      return;
-    }
+  const handleDeleteCompany = async () => {
+    if (!confirmDeleteCompany) return;
     setError(null);
     setSuccess(null);
     try {
-      const res = await axios.delete(`/v1/admin/companies/${company.id}`);
-      setSuccess(res.data?.message || `L'entreprise "${company.name}" a été supprimée.`);
+      const res = await axios.delete(`/v1/admin/companies/${confirmDeleteCompany.id}`);
+      setSuccess(res.data?.message || `L'entreprise "${confirmDeleteCompany.name}" a été supprimée.`);
+      setConfirmDeleteCompany(null);
       loadCompanies();
     } catch (err) {
       setError(err.response?.data?.error || "Impossible de supprimer l'entreprise.");
+      setConfirmDeleteCompany(null);
     }
   };
 
-  const handleDeleteUser = async (u) => {
-    if (!window.confirm(`Êtes-vous sûr de vouloir supprimer définitivement l'utilisateur "${u.name}" (${u.email}) ?`)) {
-      return;
-    }
+  const handleDeleteUser = async () => {
+    if (!confirmDeleteUser) return;
     setError(null);
     setSuccess(null);
     try {
-      const res = await axios.delete(`/v1/admin/users/${u.id}`);
-      setSuccess(res.data?.message || `L'utilisateur "${u.name}" a été supprimé.`);
+      const res = await axios.delete(`/v1/admin/users/${confirmDeleteUser.id}`);
+      setSuccess(res.data?.message || `L'utilisateur "${confirmDeleteUser.name}" a été supprimé.`);
+      setConfirmDeleteUser(null);
       loadUsers();
     } catch (err) {
       setError(err.response?.data?.error || "Impossible de supprimer l'utilisateur.");
+      setConfirmDeleteUser(null);
     }
   };
 
@@ -1027,7 +1035,7 @@ export const BackOffice = () => {
                              <button onClick={() => toggleCompanyStatus(c)} className={`btn btn-sm me-2 ${c.status === 'active' ? 'btn-outline-danger' : 'btn-outline-success'}`} style={{ padding: '8px 14px' }}>
                                {c.status === 'active' ? 'Suspendre' : 'Activer'}
                              </button>
-                             <button onClick={() => handleDeleteCompany(c)} className="btn btn-sm btn-danger" style={{ padding: '8px 14px', fontWeight: 700 }} title="Supprimer définitivement cette entreprise">
+                             <button onClick={() => setConfirmDeleteCompany({ id: c.id, name: c.name, code: c.code })} className="btn btn-sm btn-danger" style={{ padding: '8px 14px', fontWeight: 700 }} title="Supprimer définitivement cette entreprise">
                                <i className="fa-solid fa-trash me-1"></i> Supprimer
                              </button>
                           </td>
@@ -1283,7 +1291,7 @@ export const BackOffice = () => {
                         <i className="fa-solid fa-pen me-1"></i> Modifier
                       </button>
                       <button 
-                        onClick={() => handleDeletePlan(p)} 
+                        onClick={() => setConfirmDeletePlan({ id: p.id, name: p.name })} 
                         className="btn btn-outline-danger btn-sm"
                         style={{ fontWeight: 700 }}
                       >
@@ -1647,7 +1655,7 @@ export const BackOffice = () => {
                               <button onClick={() => toggleUserStatus(u)} className={`btn btn-sm me-2 ${u.status === 'active' ? 'btn-outline-warning' : 'btn-outline-success'}`}>
                                 {u.status === 'active' ? 'Bloquer' : 'Débloquer'}
                               </button>
-                              <button onClick={() => handleDeleteUser(u)} className="btn btn-sm btn-danger" style={{ fontWeight: 700 }} title="Supprimer cet utilisateur">
+                              <button onClick={() => setConfirmDeleteUser({ id: u.id, name: u.name, email: u.email })} className="btn btn-sm btn-danger" style={{ fontWeight: 700 }} title="Supprimer cet utilisateur">
                                 <i className="fa-solid fa-trash me-1"></i> Supprimer
                               </button>
                             </>
@@ -2285,6 +2293,35 @@ export const BackOffice = () => {
         onClose={() => setShowExportModal(false)}
         documentType={exportType}
         documentTitle={exportTitle}
+      />
+
+      {/* ConfirmDialogs */}
+      <ConfirmDialog
+        isOpen={!!confirmDeletePlan}
+        title="Supprimer la formule ?"
+        message={confirmDeletePlan ? `Vous êtes sur le point de supprimer définitivement la formule "${confirmDeletePlan.name}". Cette action est irréversible.` : ''}
+        confirmLabel="Supprimer la formule"
+        type="danger"
+        onConfirm={handleDeletePlan}
+        onCancel={() => setConfirmDeletePlan(null)}
+      />
+      <ConfirmDialog
+        isOpen={!!confirmDeleteCompany}
+        title="ATTENTION : Supprimer l'entreprise ?"
+        message={confirmDeleteCompany ? `Êtes-vous absolument sûr de vouloir supprimer définitivement l'entreprise "${confirmDeleteCompany.name}" (Code: ${confirmDeleteCompany.code}) ? Cette action détruira irrévocablement toutes ses boutiques, utilisateurs, ventes et stocks !` : ''}
+        confirmLabel="Supprimer définitivement l'entreprise"
+        type="danger"
+        onConfirm={handleDeleteCompany}
+        onCancel={() => setConfirmDeleteCompany(null)}
+      />
+      <ConfirmDialog
+        isOpen={!!confirmDeleteUser}
+        title="Supprimer l'utilisateur ?"
+        message={confirmDeleteUser ? `Voulez-vous supprimer définitivement l'utilisateur "${confirmDeleteUser.name}" (${confirmDeleteUser.email}) ?` : ''}
+        confirmLabel="Supprimer l'utilisateur"
+        type="danger"
+        onConfirm={handleDeleteUser}
+        onCancel={() => setConfirmDeleteUser(null)}
       />
     </div>
   );

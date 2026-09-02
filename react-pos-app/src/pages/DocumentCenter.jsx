@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useApp } from '../context/AppContext';
 import { ExportModal } from '../components/ExportModal';
 import { getAssetUrl } from '../utils/urlHelper';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 
 export const DocumentCenter = () => {
   const { user } = useApp();
@@ -15,6 +16,7 @@ export const DocumentCenter = () => {
   const [error, setError] = useState(null);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [selectedDocType, setSelectedDocType] = useState('sales_report');
+  const [confirmDeleteDoc, setConfirmDeleteDoc] = useState(null); // { id }
 
   const fetchDocuments = useCallback(async () => {
     setLoading(true);
@@ -43,13 +45,15 @@ export const DocumentCenter = () => {
     fetchDocuments();
   }, [fetchDocuments]);
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Voulez-vous vraiment supprimer ce document archivé ?")) return;
+  const handleDelete = async () => {
+    if (!confirmDeleteDoc) return;
     try {
-      await axios.delete(`/v1/documents/${id}`);
+      await axios.delete(`/v1/documents/${confirmDeleteDoc.id}`);
+      setConfirmDeleteDoc(null);
       fetchDocuments();
     } catch (err) {
-      alert(err.response?.data?.error || "Erreur lors de la suppression.");
+      setError(err.response?.data?.error || 'Erreur lors de la suppression.');
+      setConfirmDeleteDoc(null);
     }
   };
 
@@ -336,7 +340,7 @@ export const DocumentCenter = () => {
                         </button>
                         <button
                           className="action-btn-circle danger"
-                          onClick={() => handleDelete(doc.id)}
+                          onClick={() => setConfirmDeleteDoc({ id: doc.id })}
                           title="Supprimer l'archive"
                         >
                           <i className="fa-solid fa-trash-can"></i>
@@ -357,6 +361,15 @@ export const DocumentCenter = () => {
         onClose={() => setIsExportModalOpen(false)}
         documentType={selectedDocType}
         documentTitle={contracts[selectedDocType]?.title || 'Exportation de document'}
+      />
+      <ConfirmDialog
+        isOpen={!!confirmDeleteDoc}
+        title="Supprimer le document ?"
+        message="Vous êtes sur le point de supprimer définitivement ce document archivé. Cette action est irréversible."
+        confirmLabel="Supprimer le document"
+        type="danger"
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmDeleteDoc(null)}
       />
     </div>
   );
