@@ -116,15 +116,16 @@ export const ExportModal = ({ isOpen, onClose, documentType, documentTitle, defa
       }
     } catch (err) {
       console.error("Export Error:", err);
-      const rawError = String(err.response?.data?.error || err.response?.data?.message || "");
-      const isTechError = rawError.includes('SQLSTATE') || rawError.includes('Exception') || rawError.includes('Connection:') || rawError.includes('truncated') || rawError.includes('Data too long') || import.meta.env.PROD;
-
-      if (isTechError && import.meta.env.PROD) {
-        setError("Impossible de générer le document pour le moment. Veuillez réessayer ou ajuster vos critères de filtre.");
-      } else if (rawError && !rawError.includes('SQLSTATE') && !rawError.includes('Data too long')) {
-        setError(rawError);
+      if (err.response?.status === 422 && err.response?.data?.errors) {
+        const valErrors = Object.values(err.response.data.errors).flat().join(' ');
+        setError(valErrors || err.response?.data?.message || "Erreur de validation des critères de date.");
       } else {
-        setError("Impossible de générer le document pour le moment. Veuillez réessayer ou ajuster vos critères de filtre.");
+        const rawError = String(err.response?.data?.error || err.response?.data?.message || "");
+        if (rawError && !rawError.includes('SQLSTATE') && !rawError.includes('Exception') && !rawError.includes('Data too long')) {
+          setError(rawError);
+        } else {
+          setError("Impossible de générer le document pour le moment. Veuillez vérifier la période sélectionnée.");
+        }
       }
     } finally {
       setLoading(false);
