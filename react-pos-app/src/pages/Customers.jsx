@@ -36,6 +36,10 @@ export const Customers = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
+  // Notifications formulaires (plein écran)
+  const [formError, setFormError] = useState(null);
+  const [formSuccess, setFormSuccess] = useState(null);
+
   // Pagination & recherche
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
@@ -470,9 +474,9 @@ export const Customers = () => {
           </>
         }
       >
-        {/* Erreur / Succès dans le panneau */}
-        {error && <div className="error-banner mb-3"><i className="fa-solid fa-circle-exclamation me-1"></i> {error}</div>}
-        {success && <div className="success-banner mb-3"><i className="fa-solid fa-circle-check me-1"></i> {success}</div>}
+        {/* Erreur / Succès dans la page de formulaire plein écran */}
+        {formError && <div className="error-banner mb-3"><i className="fa-solid fa-circle-exclamation me-1"></i> {formError}</div>}
+        {formSuccess && <div className="success-banner mb-3"><i className="fa-solid fa-circle-check me-1"></i> {formSuccess}</div>}
 
         <form id="customer-form" onSubmit={handleFormSubmit}>
               <div className="form-group">

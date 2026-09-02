@@ -57,6 +57,10 @@ export const Suppliers = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
+  // Notifications formulaires (plein écran)
+  const [formError, setFormError] = useState(null);
+  const [formSuccess, setFormSuccess] = useState(null);
+
   // Packs et Types de Fournisseurs
   const [activeTab, setActiveTab] = useState('suppliers'); // 'suppliers' | 'packs'
   const [showPackModal, setShowPackModal] = useState(false);
