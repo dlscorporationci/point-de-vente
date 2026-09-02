@@ -193,6 +193,7 @@ export const Catalog = () => {
 
   // États de création de catégorie
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryDescription, setNewCategoryDescription] = useState('');
   const [newProductImage, setNewProductImage] = useState(null);
   const [newCategoryImage, setNewCategoryImage] = useState(null);
 
@@ -280,6 +281,7 @@ export const Catalog = () => {
         // Envoi Multipart si image présente
         const formData = new FormData();
         formData.append('name', newCategoryName);
+        if (newCategoryDescription) formData.append('description', newCategoryDescription);
         formData.append('image', newCategoryImage);
 
         res = await axios.post('/v1/categories', formData, {
@@ -288,13 +290,15 @@ export const Catalog = () => {
       } else {
         // Envoi JSON standard sinon
         res = await axios.post('/v1/categories', {
-          name: newCategoryName
+          name: newCategoryName,
+          description: newCategoryDescription || undefined
         });
       }
 
       setSuccess(`Catégorie "${res.data.category.name}" créée avec succès !`);
       const createdCatId = res.data.category.id;
       setNewCategoryName('');
+      setNewCategoryDescription('');
       setNewCategoryImage(null);
       setShowCategoryForm(false);
       
