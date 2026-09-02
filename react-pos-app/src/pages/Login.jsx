@@ -568,7 +568,14 @@ export const Login = ({ setActiveTab }) => {
             {/* D. Mode Réinitialisation (Lien ou Jeton Sécurisé) */}
             {loginMode === 'reset' && (
               <form onSubmit={handleResetSubmit} className="standard-form text-left">
-                <div className="form-group mb-2">
+                <p className="section-instruction mb-3">
+                  {resetCode
+                    ? "Veuillez définir votre nouveau mot de passe sécurisé."
+                    : "Collez votre jeton ou cliquez directement sur le lien reçu dans l'e-mail."
+                  }
+                </p>
+
+                <div className="form-group mb-3">
                   <label className="form-label" style={{ fontWeight: 700 }}>Adresse E-mail *</label>
                   <input 
                     type="email" 
@@ -577,21 +584,49 @@ export const Login = ({ setActiveTab }) => {
                     onChange={(e) => setForgotEmail(e.target.value)}
                     required
                     placeholder="nom@entreprise.com"
+                    readOnly={!!forgotEmail}
+                    style={forgotEmail ? { background: 'var(--bg-input, rgba(255,255,255,0.05))', opacity: 0.9 } : {}}
                   />
                 </div>
-                <div className="form-group mb-2">
-                  <label className="form-label" style={{ fontWeight: 700 }}>Jeton de réinitialisation *</label>
-                  <input 
-                    type="text"
-                    className="form-control"
-                    value={resetCode ?? ''}
-                    onChange={(e) => setResetCode(e.target.value)}
-                    required
-                    placeholder="Collez le jeton ou cliquez sur le lien reçu"
-                    style={{ fontSize: '13px', fontFamily: 'monospace' }}
-                  />
-                </div>
-                <div className="form-group mb-2">
+
+                {/* Badge ou Champ de Jeton */}
+                {resetCode ? (
+                  <div className="form-group mb-3" style={{
+                    background: 'rgba(16, 185, 129, 0.1)',
+                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    borderRadius: '10px',
+                    padding: '10px 14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px'
+                  }}>
+                    <i className="fa-solid fa-circle-check text-success" style={{ fontSize: '18px' }}></i>
+                    <div>
+                      <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-main)' }}>
+                        Jeton de sécurité validé
+                      </div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                        Extrait automatiquement depuis votre lien d'e-mail
+                      </div>
+                    </div>
+                    <input type="hidden" value={resetCode} />
+                  </div>
+                ) : (
+                  <div className="form-group mb-3">
+                    <label className="form-label" style={{ fontWeight: 700 }}>Jeton de réinitialisation *</label>
+                    <input 
+                      type="text"
+                      className="form-control"
+                      value={resetCode ?? ''}
+                      onChange={(e) => setResetCode(e.target.value)}
+                      required
+                      placeholder="Collez le jeton ou cliquez sur le lien reçu"
+                      style={{ fontSize: '13px', fontFamily: 'monospace' }}
+                    />
+                  </div>
+                )}
+
+                <div className="form-group mb-3">
                   <label className="form-label" style={{ fontWeight: 700 }}>Nouveau mot de passe *</label>
                   <PasswordInput 
                     value={newPassword}
