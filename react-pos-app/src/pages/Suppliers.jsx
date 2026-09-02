@@ -253,57 +253,51 @@ export const Suppliers = () => {
 
   const handleSaveSupplier = async (e) => {
     e.preventDefault();
-    setError(null);
-    setSuccess(null);
+    setFormError(null);
+    setFormSuccess(null);
 
-    const cleanName = name ? name.trim() : '';
+    const cleanName = name ? name.trim() : (formData.name ? formData.name.trim() : '');
     if (cleanName.length < 2) {
-      setError("⚠️ Le nom du fournisseur doit comporter au moins 2 caractères.");
+      setFormError("⚠️ Le nom du fournisseur doit comporter au moins 2 caractères.");
       return;
     }
 
     if (!/^(?=.*[a-zA-ZÀ-ÿ])[a-zA-ZÀ-ÿ0-9\s'._-]{2,100}$/u.test(cleanName)) {
-      setError("⚠️ Le nom du fournisseur doit contenir au moins une lettre (ex: SIFCA, CFAO) et ne peut pas être composé uniquement de chiffres (ex: 0000).");
-      return;
-    }
-
-    if (phone && !/^[0-9+\s-]{8,20}$/.test(phone)) {
-      setError("⚠️ Le numéro de téléphone doit comporter entre 8 et 20 chiffres.");
-      return;
-    }
-
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setError("⚠️ Veuillez entrer une adresse e-mail valide.");
+      setFormError("⚠️ Le nom du fournisseur doit contenir au moins une lettre (ex: SIFCA, CFAO) et ne peut pas être composé uniquement de chiffres (ex: 0000).");
       return;
     }
 
     try {
       const payload = {
         name: cleanName,
-        email: email || null,
-        phone: phone || null,
-        address: address || null,
-        debt_balance: parseFloat(debtBalance || '0')
+        contact_name: formData.contact_name?.trim() || null,
+        phone: formData.phone?.trim() || null,
+        email: formData.email?.trim() || null,
+        address: formData.address?.trim() || null,
+        debt_balance: parseFloat(formData.debt_balance || 0)
       };
 
       if (editingSupplier) {
         const res = await axios.put(`/v1/suppliers/${editingSupplier.id}`, payload);
-        setSuccess(`Fournisseur "${res.data.supplier?.name || cleanName}" mis à jour avec succès !`);
+        setFormSuccess(`Fournisseur "${res.data.supplier?.name || cleanName}" mis à jour avec succès !`);
       } else {
         const res = await axios.post('/v1/suppliers', payload);
-        setSuccess(`Fournisseur "${res.data.supplier.name}" enregistré avec succès !`);
+        setFormSuccess(`Fournisseur "${res.data.supplier.name}" enregistré avec succès !`);
       }
       
-      setShowForm(false);
-      setEditingSupplier(null);
       loadData();
+      setTimeout(() => {
+        setFormSuccess(null);
+        setShowForm(false);
+        setEditingSupplier(null);
+      }, 1500);
     } catch (err) {
       const apiErrs = err.response?.data?.errors;
       if (apiErrs) {
         const msgs = Object.values(apiErrs).flat();
-        setError(msgs.join(' '));
+        setFormError(msgs.join(' '));
       } else {
-        setError(err.response?.data?.error || err.response?.data?.message || 'Erreur lors de la sauvegarde du fournisseur.');
+        setFormError(err.response?.data?.error || err.response?.data?.message || 'Erreur lors de la sauvegarde du fournisseur.');
       }
     }
   };
@@ -456,14 +450,14 @@ export const Suppliers = () => {
       {/* Interface / Page Plein Écran Fournisseur */}
       <SlidePanel
         isOpen={showForm}
-        onClose={() => setShowForm(false)}
+        onClose={() => { setShowForm(false); setFormError(null); setFormSuccess(null); }}
         title={editingSupplier ? 'Modifier le fournisseur' : 'Enregistrer un nouveau fournisseur'}
         subtitle={editingSupplier ? "Modifiez le nom, le contact et la dette du fournisseur" : "Renseignez les coordonnées et le solde du nouveau partenaire d'approvisionnement"}
         icon={editingSupplier ? 'fa-solid fa-pen-to-square' : 'fa-solid fa-handshake'}
         iconColor={editingSupplier ? '#f59e0b' : '#10b981'}
         footer={
           <>
-            <button type="button" onClick={() => setShowForm(false)} className="btn btn-cancel">
+            <button type="button" onClick={() => { setShowForm(false); setFormError(null); setFormSuccess(null); }} className="btn btn-cancel">
               <i className="fa-solid fa-xmark me-1"></i> Annuler
             </button>
             <button type="submit" form="supplier-form" className="btn btn-primary">
@@ -472,8 +466,8 @@ export const Suppliers = () => {
           </>
         }
       >
-        {error && <div className="error-banner mb-3"><i className="fa-solid fa-circle-exclamation me-1"></i> {error}</div>}
-        {success && <div className="success-banner mb-3"><i className="fa-solid fa-circle-check me-1"></i> {success}</div>}
+        {formError && <div className="error-banner mb-3"><i className="fa-solid fa-circle-exclamation me-1"></i> {formError}</div>}
+        {formSuccess && <div className="success-banner mb-3"><i className="fa-solid fa-circle-check me-1"></i> {formSuccess}</div>}
 
         <form id="supplier-form" onSubmit={handleSaveSupplier}>
                 <div className="form-row-grid">

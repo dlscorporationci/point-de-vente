@@ -140,27 +140,17 @@ export const Customers = () => {
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
-    setError(null);
-    setSuccess(null);
+    setFormError(null);
+    setFormSuccess(null);
 
     const cleanName = formData.name ? formData.name.trim() : '';
     if (cleanName.length < 2) {
-      setError("⚠️ Le nom complet du client doit comporter au moins 2 caractères.");
+      setFormError("⚠️ Le nom complet du client doit comporter au moins 2 caractères.");
       return;
     }
 
     if (!/^(?=.*[a-zA-ZÀ-ÿ])[a-zA-ZÀ-ÿ0-9\s'._-]{2,100}$/u.test(cleanName)) {
-      setError("⚠️ Le nom doit contenir au moins une lettre (ex: Koffi Manassé) et ne peut pas être composé uniquement de chiffres (ex: 0000).");
-      return;
-    }
-
-    if (formData.phone && !/^[0-9+\s-]{8,20}$/.test(formData.phone)) {
-      setError("⚠️ Le numéro de téléphone doit comporter entre 8 et 20 chiffres (ex: +225 0700000000).");
-      return;
-    }
-
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      setError("⚠️ Veuillez entrer une adresse e-mail valide (ex: client@exemple.com).");
+      setFormError("⚠️ Le nom doit contenir au moins une lettre (ex: Koffi Manassé) et ne peut pas être composé uniquement de chiffres (ex: 0000).");
       return;
     }
 
@@ -175,20 +165,23 @@ export const Customers = () => {
 
       if (editingCustomer) {
         await axios.put(`/v1/customers/${editingCustomer.id}`, payload);
-        setSuccess('Client mis à jour avec succès.');
+        setFormSuccess('Client mis à jour avec succès.');
       } else {
         await axios.post('/v1/customers', payload);
-        setSuccess('Client créé avec succès.');
+        setFormSuccess('Client créé avec succès.');
       }
-      setShowModal(false);
       loadCustomers();
+      setTimeout(() => {
+        setFormSuccess(null);
+        setShowModal(false);
+      }, 1500);
     } catch (err) {
       const apiErrs = err.response?.data?.errors;
       if (apiErrs) {
         const msgs = Object.values(apiErrs).flat();
-        setError(msgs.join(' '));
+        setFormError(msgs.join(' '));
       } else {
-        setError(err.response?.data?.error || err.response?.data?.message || 'Erreur lors de l\'enregistrement du client.');
+        setFormError(err.response?.data?.error || err.response?.data?.message || 'Erreur lors de l\'enregistrement du client.');
       }
     }
   };

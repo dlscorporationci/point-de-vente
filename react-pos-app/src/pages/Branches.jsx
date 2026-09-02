@@ -44,21 +44,29 @@ export const Branches = () => {
     setError(null); setSuccess(null);
   };
 
+  const [formError, setFormError]     = useState(null);
+  const [formSuccess, setFormSuccess] = useState(null);
+
   const handleSave = async (e) => {
     e.preventDefault();
-    setSaving(true); setError(null);
+    setFormError(null);
+    setFormSuccess(null);
+    setSaving(true);
     try {
       if (editingBranch) {
         await axios.put(`/v1/branches/${editingBranch.id}`, branchForm);
-        setSuccess('✅ Boutique mise à jour avec succès.');
+        setFormSuccess('Boutique mise à jour avec succès.');
       } else {
         await axios.post('/v1/branches', branchForm);
-        setSuccess('✅ Boutique créée avec succès.');
+        setFormSuccess('Boutique créée avec succès.');
       }
-      setShowForm(false);
       loadBranches();
+      setTimeout(() => {
+        setFormSuccess(null);
+        setShowForm(false);
+      }, 1500);
     } catch (err) {
-      setError(err.response?.data?.error || err.response?.data?.message || 'Erreur lors de la sauvegarde de la boutique.');
+      setFormError(err.response?.data?.error || err.response?.data?.message || 'Erreur lors de la sauvegarde de la boutique.');
     } finally {
       setSaving(false);
     }
@@ -244,14 +252,14 @@ export const Branches = () => {
       {/* Interface / Page Plein Écran Boutique */}
       <SlidePanel
         isOpen={showForm}
-        onClose={() => setShowForm(false)}
+        onClose={() => { setShowForm(false); setFormError(null); setFormSuccess(null); }}
         title={editingBranch ? 'Modifier la boutique' : 'Ajouter une nouvelle boutique'}
         subtitle={editingBranch ? "Modifiez le nom, l'adresse et le contact de la boutique" : "Créez une nouvelle boutique pour étendre votre réseau de points de vente"}
         icon={editingBranch ? 'fa-solid fa-pen-to-square' : 'fa-solid fa-store'}
         iconColor={editingBranch ? '#f59e0b' : 'var(--color-primary)'}
         footer={
           <>
-            <button type="button" className="btn btn-cancel" onClick={() => setShowForm(false)}>
+            <button type="button" className="btn btn-cancel" onClick={() => { setShowForm(false); setFormError(null); setFormSuccess(null); }}>
               <i className="fa-solid fa-xmark me-1"></i> Annuler
             </button>
             <button type="submit" form="branch-form" className="btn btn-primary" disabled={saving}>
@@ -263,8 +271,8 @@ export const Branches = () => {
           </>
         }
       >
-        {error && <div className="error-banner mb-3"><i className="fa-solid fa-circle-exclamation me-1"></i> {error}</div>}
-        {success && <div className="success-banner mb-3"><i className="fa-solid fa-circle-check me-1"></i> {success}</div>}
+        {formError && <div className="error-banner mb-3"><i className="fa-solid fa-circle-exclamation me-1"></i> {formError}</div>}
+        {formSuccess && <div className="success-banner mb-3"><i className="fa-solid fa-circle-check me-1"></i> {formSuccess}</div>}
 
         <form id="branch-form" onSubmit={handleSave}>
           <div className="form-group">

@@ -202,6 +202,10 @@ export const Catalog = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
+  // Notifications spécifiques aux formulaires d'ajout/modification (plein écran)
+  const [formError, setFormError] = useState(null);
+  const [formSuccess, setFormSuccess] = useState(null);
+
   // Charger les données initiales
   const loadData = async () => {
     if (!token) return;
@@ -273,8 +277,8 @@ export const Catalog = () => {
 
   const handleCreateCategory = async (e) => {
     e.preventDefault();
-    setError(null);
-    setSuccess(null);
+    setFormError(null);
+    setFormSuccess(null);
     try {
       let res;
       if (newCategoryImage) {
@@ -295,23 +299,25 @@ export const Catalog = () => {
         });
       }
 
-      setSuccess(`Catégorie "${res.data.category.name}" créée avec succès !`);
+      setFormSuccess(`Catégorie "${res.data.category.name}" créée avec succès !`);
       const createdCatId = res.data.category.id;
       setNewCategoryName('');
       setNewCategoryDescription('');
       setNewCategoryImage(null);
-      setShowCategoryForm(false);
       
       // Auto-sélectionner la nouvelle catégorie
       setNewProductCategoryId(String(createdCatId));
 
-      // Si l'utilisateur venait de la création de produit, y retourner directement
-      if (quickCreateFromProduct) {
-        setShowProductForm(true);
-        setQuickCreateFromProduct(false);
-      }
-
       loadData();
+
+      setTimeout(() => {
+        setFormSuccess(null);
+        setShowCategoryForm(false);
+        if (quickCreateFromProduct) {
+          setShowProductForm(true);
+          setQuickCreateFromProduct(false);
+        }
+      }, 1500);
     } catch (err) {
       const apiErrors = err.response?.data?.errors;
       let errorMsg = 'Erreur lors de la création de la catégorie.';
@@ -323,23 +329,23 @@ export const Catalog = () => {
       } else if (err.response?.data?.message) {
         errorMsg = err.response.data.message;
       }
-      setError(errorMsg);
+      setFormError(errorMsg);
     }
   };
 
   const handleCreateProduct = async (e) => {
     e.preventDefault();
-    setError(null);
-    setSuccess(null);
+    setFormError(null);
+    setFormSuccess(null);
 
     const priceNum = parseFloat(newProductPrice);
     if (isNaN(priceNum) || priceNum <= 0) {
-      setError("⚠️ Le prix de vente unitaire doit être strictly supérieur à 0 XOF.");
+      setFormError("⚠️ Le prix de vente unitaire doit être strictement supérieur à 0 XOF.");
       return;
     }
 
     if (newProductBarcode && !/^[0-9]{8,18}$/.test(newProductBarcode)) {
-      setError("⚠️ Le code-barres doit comporter uniquement des chiffres (8 à 18 chiffres, ex: 3700021300051).");
+      setFormError("⚠️ Le code-barres doit comporter uniquement des chiffres (8 à 18 chiffres, ex: 3700021300051).");
       return;
     }
 
@@ -382,7 +388,7 @@ export const Catalog = () => {
           initial_stock: initialStock ? parseFloat(initialStock) : 0
         });
       }
-      setSuccess(`Produit "${res.data.product.name}" ajouté avec succès !`);
+      setFormSuccess(`Produit "${res.data.product.name}" ajouté avec succès !`);
       
       // Réinitialiser le formulaire
       setNewProductName('');
@@ -396,9 +402,13 @@ export const Catalog = () => {
       setProductScope('current');
       setSelectedBranchIds([]);
       setNewProductImage(null);
-      setShowProductForm(false);
-      
+
       loadData();
+
+      setTimeout(() => {
+        setFormSuccess(null);
+        setShowProductForm(false);
+      }, 1500);
     } catch (err) {
       const apiErrors = err.response?.data?.errors;
       let errorMsg = 'Erreur lors de la création du produit.';
@@ -410,7 +420,7 @@ export const Catalog = () => {
       } else if (err.response?.data?.message) {
         errorMsg = err.response.data.message;
       }
-      setError(errorMsg);
+      setFormError(errorMsg);
     }
   };
 
@@ -440,22 +450,24 @@ export const Catalog = () => {
     setNewProductImage(null);
     setShowProductForm(true);
     setShowCategoryForm(false);
-    setError(null); setSuccess(null);
+    setFormError(null);
+    setFormSuccess(null);
   };
 
   // Mettre à jour un produit existant
   const handleUpdateProduct = async (e) => {
     e.preventDefault();
-    setError(null); setSuccess(null);
+    setFormError(null);
+    setFormSuccess(null);
 
     const priceNum = parseFloat(newProductPrice);
     if (isNaN(priceNum) || priceNum <= 0) {
-      setError("⚠️ Le prix de vente unitaire doit être strictement supérieur à 0 XOF.");
+      setFormError("⚠️ Le prix de vente unitaire doit être strictement supérieur à 0 XOF.");
       return;
     }
 
     if (newProductBarcode && !/^[0-9]{8,18}$/.test(newProductBarcode)) {
-      setError("⚠️ Le code-barres doit comporter uniquement des chiffres (8 à 18 chiffres, ex: 3700021300051).");
+      setFormError("⚠️ Le code-barres doit comporter uniquement des chiffres (8 à 18 chiffres, ex: 3700021300051).");
       return;
     }
 
@@ -486,21 +498,27 @@ export const Catalog = () => {
           alert_quantity: newProductAlertQty ? parseInt(newProductAlertQty) : 10
         });
       }
-      setSuccess(`Produit "${res.data.product?.name || newProductName}" mis à jour avec succès !`);
-      setShowProductForm(false);
-      setEditingProduct(null);
+      setFormSuccess(`Produit "${res.data.product?.name || newProductName}" mis à jour avec succès !`);
+      
       // Réinitialiser le formulaire
       setNewProductName(''); setNewProductSku(''); setNewProductBarcode('');
       setNewProductPrice(''); setNewProductCategoryId(''); setNewProductDescription('');
       setNewProductAlertQty('10'); setNewProductImage(null);
+
       loadData();
+
+      setTimeout(() => {
+        setFormSuccess(null);
+        setShowProductForm(false);
+        setEditingProduct(null);
+      }, 1500);
     } catch (err) {
       const apiErrors = err.response?.data?.errors;
       let errorMsg = 'Erreur lors de la mise à jour du produit.';
       if (apiErrors) { errorMsg = Object.values(apiErrors).flat().join(' '); }
       else if (err.response?.data?.error) { errorMsg = err.response.data.error; }
       else if (err.response?.data?.message) { errorMsg = err.response.data.message; }
-      setError(errorMsg);
+      setFormError(errorMsg);
     }
   };
 
@@ -571,21 +589,17 @@ export const Catalog = () => {
           )}
         </div>
 
-        {error && <div className="error-banner"><i className="fa-solid fa-circle-exclamation me-1"></i> {error}</div>}
-        {success && <div className="success-banner"><i className="fa-solid fa-circle-check me-1"></i> {success}</div>}
-
         {/* Formulaire SlidePanel 1 : Nouvelle Catégorie */}
         <SlidePanel
           isOpen={showCategoryForm}
-          onClose={() => setShowCategoryForm(false)}
+          onClose={() => { setShowCategoryForm(false); setFormError(null); setFormSuccess(null); }}
           title="Nouvelle catégorie"
           subtitle="Définissez une catégorie d'articles pour structurer votre catalogue"
           icon="fa-solid fa-tag"
           iconColor="#10b981"
-          size="sm"
           footer={
             <>
-              <button type="button" onClick={() => setShowCategoryForm(false)} className="btn btn-cancel">
+              <button type="button" onClick={() => { setShowCategoryForm(false); setFormError(null); setFormSuccess(null); }} className="btn btn-cancel">
                 <i className="fa-solid fa-xmark me-1"></i> Annuler
               </button>
               <button type="submit" form="category-form" className="btn btn-primary">
@@ -594,7 +608,8 @@ export const Catalog = () => {
             </>
           }
         >
-          {error && <div className="error-banner mb-3"><i className="fa-solid fa-circle-exclamation me-1"></i> {error}</div>}
+          {formError && <div className="error-banner mb-3"><i className="fa-solid fa-circle-exclamation me-1"></i> {formError}</div>}
+          {formSuccess && <div className="success-banner mb-3"><i className="fa-solid fa-circle-check me-1"></i> {formSuccess}</div>}
           <form id="category-form" onSubmit={handleCreateCategory}>
             <div className="form-group">
               <label className="form-label">Nom de la catégorie *</label>
@@ -659,24 +674,25 @@ export const Catalog = () => {
         {/* Formulaire SlidePanel 2 : Nouveau Produit / Modifier Produit */}
         <SlidePanel
           isOpen={showProductForm}
-          onClose={() => { setShowProductForm(false); setEditingProduct(null); }}
-          title={editingProduct ? 'Modifier le produit' : 'Ajouter un produit'}
+          onClose={() => { setShowProductForm(false); setEditingProduct(null); setFormError(null); setFormSuccess(null); }}
+          title={editingProduct ? 'Modifier le produit' : 'Ajouter un nouveau produit'}
+          subtitle={editingProduct ? "Modifiez le nom, la catégorie, la référence SKU et les tarifs du produit" : "Renseignez les détails du nouvel article pour l'ajouter au catalogue de vente"}
           icon={editingProduct ? 'fa-solid fa-pen-to-square' : 'fa-solid fa-box'}
           iconColor={editingProduct ? '#f59e0b' : 'var(--color-primary)'}
           size="lg"
           footer={
             <>
-              <button type="button" onClick={() => { setShowProductForm(false); setEditingProduct(null); }} className="btn btn-cancel">
+              <button type="button" onClick={() => { setShowProductForm(false); setEditingProduct(null); setFormError(null); setFormSuccess(null); }} className="btn btn-cancel">
                 <i className="fa-solid fa-xmark me-1"></i> Annuler
               </button>
               <button type="submit" form="product-form" className="btn btn-primary">
-                <i className="fa-solid fa-floppy-disk me-1"></i> {editingProduct ? 'Mettre à jour' : 'Enregistrer'}
+                <i className="fa-solid fa-floppy-disk me-1"></i> {editingProduct ? 'Mettre à jour le produit' : 'Enregistrer le produit'}
               </button>
             </>
           }
         >
-          {error && <div className="error-banner mb-3"><i className="fa-solid fa-circle-exclamation me-1"></i> {error}</div>}
-          {success && <div className="success-banner mb-3"><i className="fa-solid fa-circle-check me-1"></i> {success}</div>}
+          {formError && <div className="error-banner mb-3"><i className="fa-solid fa-circle-exclamation me-1"></i> {formError}</div>}
+          {formSuccess && <div className="success-banner mb-3"><i className="fa-solid fa-circle-check me-1"></i> {formSuccess}</div>}
           <form id="product-form" onSubmit={editingProduct ? handleUpdateProduct : handleCreateProduct}>
             <div>
                   <div className="form-row-grid">
