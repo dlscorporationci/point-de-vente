@@ -575,6 +575,7 @@ export const Catalog = () => {
           isOpen={showCategoryForm}
           onClose={() => setShowCategoryForm(false)}
           title="Nouvelle catégorie"
+          subtitle="Définissez une catégorie d'articles pour structurer votre catalogue"
           icon="fa-solid fa-tag"
           iconColor="#10b981"
           size="sm"
@@ -584,7 +585,7 @@ export const Catalog = () => {
                 <i className="fa-solid fa-xmark me-1"></i> Annuler
               </button>
               <button type="submit" form="category-form" className="btn btn-primary">
-                <i className="fa-solid fa-floppy-disk me-1"></i> Enregistrer
+                <i className="fa-solid fa-floppy-disk me-1"></i> Enregistrer la catégorie
               </button>
             </>
           }
@@ -592,14 +593,24 @@ export const Catalog = () => {
           {error && <div className="error-banner mb-3"><i className="fa-solid fa-circle-exclamation me-1"></i> {error}</div>}
           <form id="category-form" onSubmit={handleCreateCategory}>
             <div className="form-group">
-              <label className="form-label">Nom de la catégorie</label>
+              <label className="form-label">Nom de la catégorie *</label>
               <input 
                 type="text" 
                 className="form-control" 
                 value={newCategoryName}
                 onChange={(e) => setNewCategoryName(e.target.value)}
                 required
-                placeholder="Ex: Électricité, Plomberie..."
+                placeholder="Ex: Boissons, Électronique, Alimentation..."
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Description (Optionnel)</label>
+              <textarea 
+                className="form-control" 
+                rows="3" 
+                value={newCategoryDescription} 
+                onChange={(e) => setNewCategoryDescription(e.target.value)}
+                placeholder="Ex: Rayon des boissons fraiches et jus naturels"
               />
             </div>
             <div className="form-group">

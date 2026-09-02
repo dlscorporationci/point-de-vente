@@ -453,21 +453,21 @@ export const Suppliers = () => {
         onCancel={() => setConfirmImportPack(null)}
       />
 
-      {/* SlidePanel Fournisseur */}
+      {/* Interface / Page Plein Écran Fournisseur */}
       <SlidePanel
         isOpen={showForm}
         onClose={() => setShowForm(false)}
-        title={editingSupplier ? 'Modifier le fournisseur' : 'Nouveau fournisseur'}
+        title={editingSupplier ? 'Modifier le fournisseur' : 'Enregistrer un nouveau fournisseur'}
+        subtitle={editingSupplier ? "Modifiez le nom, le contact et la dette du fournisseur" : "Renseignez les coordonnées et le solde du nouveau partenaire d'approvisionnement"}
         icon={editingSupplier ? 'fa-solid fa-pen-to-square' : 'fa-solid fa-handshake'}
         iconColor={editingSupplier ? '#f59e0b' : '#10b981'}
-        size="md"
         footer={
           <>
             <button type="button" onClick={() => setShowForm(false)} className="btn btn-cancel">
               <i className="fa-solid fa-xmark me-1"></i> Annuler
             </button>
             <button type="submit" form="supplier-form" className="btn btn-primary">
-              <i className="fa-solid fa-floppy-disk me-1"></i> {editingSupplier ? 'Mettre à jour' : 'Enregistrer'}
+              <i className="fa-solid fa-floppy-disk me-1"></i> {editingSupplier ? 'Mettre à jour le fournisseur' : 'Enregistrer le fournisseur'}
             </button>
           </>
         }

@@ -1,22 +1,34 @@
 import React, { useEffect, useRef } from 'react';
 
 /**
- * SlidePanel — Panneau glissant latéral (remplace les modals pour les formulaires d'ajout/modification)
- * 
+ * SlidePanel — Interface / Page de Formulaire Plein Écran
+ * Remplace les popups et panneaux modaux par une véritable interface plein écran (100% de l'écran).
+ *
  * Props:
- *   isOpen   {boolean}   — Contrôle l'affichage du panneau
- *   onClose  {function}  — Ferme le panneau
- *   title    {string}    — Titre affiché dans l'en-tête du panneau
- *   icon     {string}    — Classe Font Awesome de l'icône (ex: "fa-solid fa-box")
- *   iconColor{string}    — Couleur CSS de l'icône
- *   children {node}      — Contenu du panneau (formulaire, erreurs, etc.)
- *   size     {string}    — 'sm' | 'md' | 'lg' (largeur du panneau, défaut: 'md')
- *   footer   {node}      — Contenu fixe en bas du panneau (boutons d'action)
+ *   isOpen    {boolean}   — Contrôle l'affichage de l'interface plein écran
+ *   onClose   {function}  — Ferme l'interface et retourne à la liste
+ *   title     {string}    — Titre de l'interface (ex: "Nouveau produit")
+ *   subtitle  {string}    — Sous-titre explicatif
+ *   icon      {string}    — Classe Font Awesome de l'icône (ex: "fa-solid fa-box")
+ *   iconColor {string}    — Couleur de l'icône
+ *   children  {node}      — Contenu du formulaire
+ *   footer    {node}      — Boutons d'action fixes (Annuler / Enregistrer)
+ *   maxWidth  {string}    — Largeur max du conteneur de formulaire (défaut: "1100px")
  */
-export const SlidePanel = ({ isOpen, onClose, title, icon, iconColor = 'var(--color-primary)', children, size = 'md', footer }) => {
+export const SlidePanel = ({
+  isOpen,
+  onClose,
+  title,
+  subtitle,
+  icon,
+  iconColor = 'var(--color-primary, #6366f1)',
+  children,
+  footer,
+  maxWidth = '1100px'
+}) => {
   const panelRef = useRef(null);
 
-  // Fermeture avec la touche Echap
+  // Fermeture avec la touche Échap
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape' && isOpen) onClose();
@@ -25,7 +37,7 @@ export const SlidePanel = ({ isOpen, onClose, title, icon, iconColor = 'var(--co
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  // Bloquer le scroll de la page quand le panneau est ouvert
+  // Masquer le scroll du fond
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -35,188 +47,189 @@ export const SlidePanel = ({ isOpen, onClose, title, icon, iconColor = 'var(--co
     return () => { document.body.style.overflow = ''; };
   }, [isOpen]);
 
-  const widths = { sm: '480px', md: '600px', lg: '760px' };
-  const panelWidth = widths[size] || widths.md;
+  if (!isOpen) return null;
 
   return (
-    <>
-      {/* ── Overlay (fond assombri) ── */}
-      <div
-        onClick={onClose}
+    <div
+      ref={panelRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      className="fullpage-form-overlay"
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100vw',
+        height: '100vh',
+        zIndex: 99999,
+        background: 'var(--bg-main, #0f172a)',
+        color: 'var(--text-main, #f8fafc)',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        animation: 'fullpageFadeIn 0.22s ease-out'
+      }}
+    >
+      {/* ── BARRE D'EN-TÊTE PLEIN ÉCRAN ── */}
+      <header
         style={{
-          position: 'fixed',
-          inset: 0,
-          zIndex: 10000,
-          background: 'rgba(0, 0, 0, 0.55)',
-          backdropFilter: 'blur(4px)',
-          opacity: isOpen ? 1 : 0,
-          pointerEvents: isOpen ? 'auto' : 'none',
-          transition: 'opacity 0.28s cubic-bezier(0.4, 0, 0.2, 1)',
-        }}
-        aria-hidden="true"
-      />
-
-      {/* ── Panneau glissant ── */}
-      <div
-        ref={panelRef}
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        style={{
-          position: 'fixed',
-          top: 0,
-          right: 0,
-          bottom: 0,
-          zIndex: 10001,
-          width: '100%',
-          maxWidth: panelWidth,
           background: 'var(--bg-card, #1e293b)',
-          boxShadow: '-8px 0 40px rgba(0,0,0,0.35)',
-          display: 'flex',
-          flexDirection: 'column',
-          transform: isOpen ? 'translateX(0)' : 'translateX(100%)',
-          transition: 'transform 0.32s cubic-bezier(0.4, 0, 0.2, 1)',
-          borderLeft: '1px solid var(--border-color, rgba(255,255,255,0.08))',
-          overflowX: 'hidden',
-        }}
-      >
-        {/* ── En-tête ── */}
-        <div style={{
+          borderBottom: '1px solid var(--border-color, rgba(255,255,255,0.08))',
+          padding: '16px 28px',
           display: 'flex',
           alignItems: 'center',
-          gap: '12px',
-          padding: '18px 24px',
-          borderBottom: '1px solid var(--border-color, rgba(255,255,255,0.08))',
+          justifyContent: 'space-between',
+          gap: '16px',
           flexShrink: 0,
-          background: 'var(--bg-sidebar, rgba(15,23,42,0.6))',
-        }}>
-          {/* Bouton retour */}
+          boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
+        }}
+      >
+        {/* Bouton Retour & Titre */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1, minWidth: 0 }}>
           <button
             type="button"
             onClick={onClose}
-            title="Retour à la liste"
+            className="btn btn-outline-secondary"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '6px',
-              background: 'var(--bg-input, rgba(255,255,255,0.06))',
-              border: '1.5px solid var(--border-color, rgba(255,255,255,0.1))',
-              color: 'var(--text-main)',
-              borderRadius: '10px',
-              padding: '7px 14px',
-              cursor: 'pointer',
-              fontWeight: 600,
+              gap: '8px',
+              fontWeight: 700,
               fontSize: '13px',
+              padding: '8px 16px',
+              borderRadius: '10px',
+              background: 'var(--bg-input, rgba(255,255,255,0.05))',
+              border: '1px solid var(--border-color, rgba(255,255,255,0.12))',
+              color: 'var(--text-main)',
+              cursor: 'pointer',
               transition: 'all 0.18s',
-              flexShrink: 0,
+              flexShrink: 0
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover, rgba(255,255,255,0.1))'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-input, rgba(255,255,255,0.06))'; }}
           >
-            <i className="fa-solid fa-arrow-left" style={{ fontSize: '12px' }}></i>
-            Retour
+            <i className="fa-solid fa-arrow-left"></i>
+            <span>Retour à la liste</span>
           </button>
 
-          {/* Titre + Icône */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
+          <div style={{ width: '1px', height: '28px', background: 'var(--border-color, rgba(255,255,255,0.1))' }}></div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', overflow: 'hidden' }}>
             {icon && (
               <div style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '10px',
+                width: '40px',
+                height: '40px',
+                borderRadius: '12px',
                 background: `${iconColor}22`,
                 border: `1.5px solid ${iconColor}44`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                flexShrink: 0,
+                flexShrink: 0
               }}>
-                <i className={icon} style={{ color: iconColor, fontSize: '15px' }}></i>
+                <i className={icon} style={{ color: iconColor, fontSize: '18px' }}></i>
               </div>
             )}
-            <h2 style={{
-              margin: 0,
-              fontSize: '16px',
-              fontWeight: 700,
-              color: 'var(--text-main)',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}>
-              {title}
-            </h2>
+            <div style={{ minWidth: 0 }}>
+              <h2 style={{
+                margin: 0,
+                fontSize: '18px',
+                fontWeight: 800,
+                color: 'var(--text-main)',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}>
+                {title}
+              </h2>
+              <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: 'var(--text-muted, #94a3b8)' }}>
+                {subtitle || "Formulaire d'enregistrement et de modification"}
+              </p>
+            </div>
           </div>
-
-          {/* Bouton fermeture ✕ */}
-          <button
-            type="button"
-            onClick={onClose}
-            title="Fermer"
-            style={{
-              width: '34px',
-              height: '34px',
-              borderRadius: '10px',
-              background: 'rgba(239, 68, 68, 0.1)',
-              border: '1.5px solid rgba(239, 68, 68, 0.25)',
-              color: '#ef4444',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              flexShrink: 0,
-              transition: 'all 0.18s',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.2)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; }}
-          >
-            <i className="fa-solid fa-xmark" style={{ fontSize: '14px' }}></i>
-          </button>
         </div>
 
-        {/* ── Contenu défilable ── */}
-        <div style={{
+        {/* Bouton de fermeture d'urgence */}
+        <button
+          type="button"
+          onClick={onClose}
+          title="Fermer (Échap)"
+          style={{
+            width: '36px',
+            height: '36px',
+            borderRadius: '10px',
+            background: 'rgba(239, 68, 68, 0.1)',
+            border: '1px solid rgba(239, 68, 68, 0.25)',
+            color: '#ef4444',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            flexShrink: 0,
+            transition: 'all 0.18s'
+          }}
+        >
+          <i className="fa-solid fa-xmark" style={{ fontSize: '16px' }}></i>
+        </button>
+      </header>
+
+      {/* ── CORPS DU FORMULAIRE PLEIN ÉCRAN ── */}
+      <main
+        style={{
           flex: 1,
           overflowY: 'auto',
-          overflowX: 'hidden',
-          padding: '24px',
-        }}>
+          padding: '32px 24px',
+          background: 'var(--bg-main, #0f172a)'
+        }}
+      >
+        <div
+          style={{
+            maxWidth: maxWidth,
+            margin: '0 auto',
+            background: 'var(--bg-card, #1e293b)',
+            borderRadius: '16px',
+            border: '1px solid var(--border-color, rgba(255,255,255,0.08))',
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.2)',
+            padding: '32px'
+          }}
+        >
           {children}
         </div>
+      </main>
 
-        {/* ── Pied de page fixe (boutons d'action) ── */}
-        {footer && (
-          <div style={{
-            padding: '16px 24px',
+      {/* ── PIED DE PAGE FIXE AVEC BOUTONS ── */}
+      {footer && (
+        <footer
+          style={{
+            background: 'var(--bg-card, #1e293b)',
             borderTop: '1px solid var(--border-color, rgba(255,255,255,0.08))',
+            padding: '16px 28px',
             flexShrink: 0,
-            background: 'var(--bg-sidebar, rgba(15,23,42,0.6))',
-            display: 'flex',
-            gap: '10px',
-            justifyContent: 'flex-end',
-          }}>
+            boxShadow: '0 -4px 20px rgba(0,0,0,0.15)'
+          }}
+        >
+          <div
+            style={{
+              maxWidth: maxWidth,
+              margin: '0 auto',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'flex-end',
+              gap: '12px'
+            }}
+          >
             {footer}
           </div>
-        )}
-      </div>
+        </footer>
+      )}
 
-      {/* ── CSS Responsive Mobile : panneau depuis le bas ── */}
       <style>{`
-        @media (max-width: 640px) {
-          [aria-label="${title}"] {
-            top: auto !important;
-            right: 0 !important;
-            bottom: 0 !important;
-            left: 0 !important;
-            max-width: 100% !important;
-            width: 100% !important;
-            border-left: none !important;
-            border-top: 1px solid var(--border-color, rgba(255,255,255,0.08)) !important;
-            border-radius: 20px 20px 0 0 !important;
-            max-height: 95dvh !important;
-            transform: ${isOpen ? 'translateY(0)' : 'translateY(100%)'} !important;
-          }
+        @keyframes fullpageFadeIn {
+          from { opacity: 0; transform: scale(0.99); }
+          to { opacity: 1; transform: scale(1); }
         }
       `}</style>
-    </>
+    </div>
   );
 };

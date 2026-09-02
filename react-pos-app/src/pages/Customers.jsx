@@ -458,21 +458,21 @@ export const Customers = () => {
         onCancel={() => setConfirmDelete(null)}
       />
 
-      {/* SlidePanel d'AJOUT / MODIFICATION */}
+      {/* Interface / Page Plein Écran d'AJOUT / MODIFICATION */}
       <SlidePanel
         isOpen={showModal}
         onClose={() => setShowModal(false)}
-        title={editingCustomer ? 'Modifier le client' : 'Nouveau client'}
+        title={editingCustomer ? 'Modifier la fiche client' : 'Nouveau client'}
+        subtitle={editingCustomer ? "Modifiez le nom, les coordonnées et le plafond de crédit du client" : "Enregistrez les coordonnées d'un nouveau client et définissez son solde ou sa limite de crédit"}
         icon={editingCustomer ? 'fa-solid fa-user-pen' : 'fa-solid fa-user-plus'}
         iconColor={editingCustomer ? '#f59e0b' : 'var(--color-primary)'}
-        size="md"
         footer={
           <>
             <button type="button" onClick={() => setShowModal(false)} className="btn btn-cancel">
               <i className="fa-solid fa-xmark me-1"></i> Annuler
             </button>
             <button type="submit" form="customer-form" className="btn btn-primary">
-              <i className="fa-solid fa-floppy-disk me-1"></i> Enregistrer
+              <i className="fa-solid fa-floppy-disk me-1"></i> {editingCustomer ? 'Mettre à jour le client' : 'Enregistrer le client'}
             </button>
           </>
         }

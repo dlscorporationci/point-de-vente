@@ -241,14 +241,14 @@ export const Branches = () => {
         onCancel={() => setConfirmDelete(null)}
       />
 
-      {/* SlidePanel Boutique */}
+      {/* Interface / Page Plein Écran Boutique */}
       <SlidePanel
         isOpen={showForm}
         onClose={() => setShowForm(false)}
-        title={editingBranch ? 'Modifier la boutique' : 'Nouvelle boutique'}
+        title={editingBranch ? 'Modifier la boutique' : 'Ajouter une nouvelle boutique'}
+        subtitle={editingBranch ? "Modifiez le nom, l'adresse et le contact de la boutique" : "Créez une nouvelle boutique pour étendre votre réseau de points de vente"}
         icon={editingBranch ? 'fa-solid fa-pen-to-square' : 'fa-solid fa-store'}
         iconColor={editingBranch ? '#f59e0b' : 'var(--color-primary)'}
-        size="sm"
         footer={
           <>
             <button type="button" className="btn btn-cancel" onClick={() => setShowForm(false)}>
@@ -257,7 +257,7 @@ export const Branches = () => {
             <button type="submit" form="branch-form" className="btn btn-primary" disabled={saving}>
               {saving
                 ? <><i className="fa-solid fa-circle-notch fa-spin me-1"></i> Enregistrement...</>
-                : <><i className="fa-solid fa-floppy-disk me-1"></i> Enregistrer</>
+                : <><i className="fa-solid fa-floppy-disk me-1"></i> Enregistrer la boutique</>
               }
             </button>
           </>
