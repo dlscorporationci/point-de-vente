@@ -10,12 +10,12 @@ use Carbon\Carbon;
 
 class SendSubscriptionExpirations extends Command
 {
-    protected $signature = 'apexpos:send-expiration-reminders';
+    protected $signature = 'dlspos:send-expiration-reminders';
     protected $description = 'Vérifier et envoyer les rappels d’expiration d’abonnement (J-7, J-3, J-1 et expiré) de manière idempotente.';
 
     public function handle(EmailService $emailService): int
     {
-        $this->info('Vérification des expirations d’abonnements ApexPOS...');
+        $this->info('Vérification des expirations d’abonnements DLS POS...');
 
         $activeCompanies = Company::where('status', 'active')->get();
         $sentCount = 0;
@@ -65,7 +65,7 @@ class SendSubscriptionExpirations extends Command
                     userId: null,
                     type: 'subscription',
                     title: "⚠️ Expiration dans {$diffInDays} jour(s)",
-                    message: "Votre abonnement ApexPOS expire le {$expiresAt->format('d/m/Y')}. Renouvelez-le dès maintenant.",
+                    message: "Votre abonnement DLS POS expire le {$expiresAt->format('d/m/Y')}. Renouvelez-le dès maintenant.",
                     priority: $diffInDays === 1 ? 'critical' : 'warning',
                     targetRoute: '/settings'
                 );

@@ -1,11 +1,11 @@
-@extends('emails.layouts.apexpos')
+@extends('emails.layouts.dlspos')
 
 @section('content')
 <h1>Alerte de Sécurité Système 🛡️</h1>
 
 <p>Bonjour <strong>{{ $user['name'] ?? 'Utilisateur' }}</strong>,</p>
 
-<p>Un événement de sécurité important a été détecté sur votre compte ApexPOS ou votre entreprise.</p>
+<p>Un événement de sécurité important a été détecté sur votre compte DLS POS ou votre entreprise.</p>
 
 <div class="info-card" style="border-left-color: #ef4444; background-color: #fef2f2;">
     <table>

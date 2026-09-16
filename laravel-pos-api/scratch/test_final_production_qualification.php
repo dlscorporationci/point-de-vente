@@ -6,7 +6,7 @@ $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
 $kernel->bootstrap();
 
 echo "==========================================================" . PHP_EOL;
-echo "🏆 CAMPAGNE DE TESTS FINALE DE QUALIFICATION ENTERPRISE (APEXPOS)" . PHP_EOL;
+echo "🏆 CAMPAGNE DE TESTS FINALE DE QUALIFICATION ENTERPRISE (DLS POS)" . PHP_EOL;
 echo "==========================================================" . PHP_EOL;
 
 $company = \App\Models\Company::first();
@@ -59,7 +59,7 @@ $errorLog = \App\Models\SystemErrorLog::create([
     'error_message' => 'Test d\'erreur système capturée avec succès.',
     'stack_trace' => 'Trace exemple à la ligne 45',
     'ip_address' => '127.0.0.1',
-    'user_agent' => 'ApexPOS Qualification Engine',
+    'user_agent' => 'DLS POS Qualification Engine',
     'device' => 'Desktop',
 ]);
 echo "✅ Journal d'erreur technique créé ID {$errorLog->id} (Module: {$errorLog->module})" . PHP_EOL;

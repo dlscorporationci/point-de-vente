@@ -1,11 +1,11 @@
-@extends('emails.layouts.apexpos')
+@extends('emails.layouts.dlspos')
 
 @section('content')
-<h1>Test de Connexion SMTP ApexPOS 🧪</h1>
+<h1>Test de Connexion SMTP DLS POS 🧪</h1>
 
 <p>Bonjour,</p>
 
-<p>Ceci est un e-mail de test envoyé depuis la console d'administration SaaS d'ApexPOS Enterprise.</p>
+<p>Ceci est un e-mail de test envoyé depuis la console d'administration SaaS d'DLS POS Enterprise.</p>
 
 <div class="info-card" style="border-left-color: #22c55e;">
     <table>

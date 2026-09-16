@@ -1,9 +1,9 @@
-# APEXPOS ENTERPRISE — GOOGLE OAUTH 2.0 / OPENID CONNECT DOCUMENTATION
+# DLS POS ENTERPRISE — GOOGLE OAUTH 2.0 / OPENID CONNECT DOCUMENTATION
 
 ## 1. Vue d'ensemble
 
-ApexPOS Enterprise intègre l'authentification **Google OAuth 2.0 / OpenID Connect** comme méthode d'identification complémentaire.
-Cette méthode permet aux utilisateurs ApexPOS autorisés d'accéder à l'application via leur compte Google tout en préservant **strictement** le modèle de sécurité ApexPOS :
+DLS POS Enterprise intègre l'authentification **Google OAuth 2.0 / OpenID Connect** comme méthode d'identification complémentaire.
+Cette méthode permet aux utilisateurs DLS POS autorisés d'accéder à l'application via leur compte Google tout en préservant **strictement** le modèle de sécurité DLS POS :
 
 - Sanctum Tokens pour la gestion de session API
 - Multi-Tenant (`company_id`) & Isolation de boutique (`branch_id`)
@@ -66,7 +66,7 @@ Callback Redirect (GET/POST /api/v1/auth/google/callback?code=...&state=...)
       ├── Validation cryptographique (Issuer, Audience, Email Verified)
       ├── Extraction du Google Subject ID (`sub`)
       │
-      ├── Recherche Utilisateur ApexPOS :
+      ├── Recherche Utilisateur DLS POS :
       │     1. Recherche par `google_id` == `sub`
       │     2. Recherche par `email` == `google_email` (Compte existant)
       │
@@ -76,7 +76,7 @@ Callback Redirect (GET/POST /api/v1/auth/google/callback?code=...&state=...)
       │
       ├── Liaison du compte Google (google_id, google_email, google_avatar)
       ├── Résolution Tenant (`company_id`) & Rôle/Permissions RBAC
-      ├── Génération du Token Sanctum ApexPOS (`createToken('pos-google-token')`)
+      ├── Génération du Token Sanctum DLS POS (`createToken('pos-google-token')`)
       └── Audit Log (`google_login_success`)
 ```
 
@@ -85,6 +85,6 @@ Callback Redirect (GET/POST /api/v1/auth/google/callback?code=...&state=...)
 ## 5. Règles de Sécurité Inviolables
 
 1. **Aucun Auto-Provisioning** : Un utilisateur Google non invité ou non pré-enregistré ne peut pas créer d'entreprise ou s'attribuer un rôle.
-2. **Champ d'Autorité Tenant/RBAC** : Les rôles et permissions sont déterminés exclusivement par le serveur ApexPOS, jamais par Google.
+2. **Champ d'Autorité Tenant/RBAC** : Les rôles et permissions sont déterminés exclusivement par le serveur DLS POS, jamais par Google.
 3. **Sub Identifier comme Clé Primaire Google** : L'association permanente se fait sur le `sub` (Google Subject ID), insensible aux changements d'adresse e-mail.
 4. **Masquage des Secrets** : Le `GOOGLE_CLIENT_SECRET` ne quitte jamais le serveur Laravel.

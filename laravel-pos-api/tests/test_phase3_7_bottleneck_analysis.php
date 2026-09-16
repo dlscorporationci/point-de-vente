@@ -3,7 +3,7 @@
 /**
  * Phase 3.7 — Production Readiness, Performance & Bottleneck Analysis
  *
- * Analyse empirique approfondie des goulots d'étranglement de performance sur ApexPOS Enterprise.
+ * Analyse empirique approfondie des goulots d'étranglement de performance sur DLS POS Enterprise.
  * 
  * Domaines analysés :
  * 1. Profiling Temps Laravel (Boot, Middleware, Controllers, DB Queries)

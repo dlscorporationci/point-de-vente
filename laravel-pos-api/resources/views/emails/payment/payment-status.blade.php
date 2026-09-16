@@ -1,4 +1,4 @@
-@extends('emails.layouts.apexpos')
+@extends('emails.layouts.dlspos')
 
 @section('content')
 @if(($payment['status'] ?? 'paid') === 'paid')

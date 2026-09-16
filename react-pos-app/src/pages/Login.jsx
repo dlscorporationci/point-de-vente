@@ -315,7 +315,7 @@ export const Login = ({ setActiveTab }) => {
         <div className="brand-header">
           <img src={logo} alt="Logo" className="login-logo-img" />
           <div className="brand-logo" style={{ marginTop: '12px' }}>
-            <span className="logo-text-apex">DLS</span>
+            <span className="logo-text-dls">DLS</span>
             <span className="logo-text-pos"> POS</span>
           </div>
           <p className="brand-subtitle">Système Professionnel de Gestion POS Multi-Entreprises</p>
@@ -541,7 +541,7 @@ export const Login = ({ setActiveTab }) => {
             {loginMode === 'forgot' && (
               <form onSubmit={handleForgotSubmit} className="standard-form text-left">
                 <p className="section-instruction mb-3">
-                  Saisissez l'adresse e-mail associée à votre compte ApexPOS. Vous recevrez un e-mail contenant un lien sécurisé de réinitialisation.
+                  Saisissez l'adresse e-mail associée à votre compte DLS POS. Vous recevrez un e-mail contenant un lien sécurisé de réinitialisation.
                 </p>
                 <div className="form-group mb-3">
                   <label className="form-label" style={{ fontWeight: 700 }}>Adresse E-mail *</label>

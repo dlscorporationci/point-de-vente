@@ -64,7 +64,7 @@ else
 fi
 
 echo "========================================================="
-echo "   ApexPOS Enterprise — Disaster Recovery Restore"
+echo "   DLS POS Enterprise — Disaster Recovery Restore"
 echo "========================================================="
 echo "▶ Backup Source : $(basename "${BACKUP_FILE}")"
 echo "▶ Target DB     : ${TARGET_DB} (Isolated Test Restore DB)"

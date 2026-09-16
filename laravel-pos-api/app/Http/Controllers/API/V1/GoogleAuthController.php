@@ -160,7 +160,7 @@ class GoogleAuthController extends Controller
             return $this->returnError($request, 'GOOGLE_INVALID_ISSUER', 'L\'émetteur du jeton Google est invalide.', 403);
         }
 
-        // 4. Recherche de l'utilisateur ApexPOS correspondant
+        // 4. Recherche de l'utilisateur DLS POS correspondant
         $user = User::withoutGlobalScopes()->where('google_id', $sub)->first();
 
         if (!$user) {
@@ -226,10 +226,10 @@ class GoogleAuthController extends Controller
         // Vérification de l'état du compte utilisateur
         if ($user->status !== 'active') {
             $this->logAuthFailure($user, 'google_login_suspended', $request, $email);
-            return $this->returnError($request, 'USER_SUSPENDED', 'Votre compte ApexPOS est inactif ou suspendu. Veuillez contacter votre administrateur.', 403);
+            return $this->returnError($request, 'USER_SUSPENDED', 'Votre compte DLS POS est inactif ou suspendu. Veuillez contacter votre administrateur.', 403);
         }
 
-        // 5. Liaison du compte Google au compte ApexPOS existant
+        // 5. Liaison du compte Google au compte DLS POS existant
         $user->update([
             'google_id'          => $sub,
             'google_email'       => $email,
@@ -252,7 +252,7 @@ class GoogleAuthController extends Controller
 
         $user->load(['role.permissions', 'branch']);
 
-        // 7. Génération du Token Sanctum ApexPOS
+        // 7. Génération du Token Sanctum DLS POS
         $token = $user->createToken('pos-google-token')->plainTextToken;
 
         $this->logAuthSuccess($user, 'google_login_success', $request);

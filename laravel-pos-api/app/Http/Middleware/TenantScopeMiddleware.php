@@ -114,14 +114,14 @@ class TenantScopeMiddleware
         // 3. Vérification du statut de l'entreprise
         if ($company->status !== 'active') {
             return response()->json([
-                'error' => 'Votre compte entreprise a été suspendu ou archivé. Veuillez contacter le support ApexPOS.'
+                'error' => 'Votre compte entreprise a été suspendu ou archivé. Veuillez contacter le support DLS POS.'
             ], 403);
         }
 
         // 3b. Vérification automatique de la date d'expiration de l'abonnement (sauf pour l'authentification et le super-admin)
         if (!$isPublicAuth && !$isSuperAdmin && $company->subscription_expires_at && \Carbon\Carbon::now()->greaterThan($company->subscription_expires_at)) {
             return response()->json([
-                'error' => 'Votre abonnement ApexPOS (' . strtoupper($company->subscription_plan ?: 'PRO') . ') a expiré le ' . $company->subscription_expires_at->format('d/m/Y') . '. Veuillez contacter le support pour procéder au renouvellement.'
+                'error' => 'Votre abonnement DLS POS (' . strtoupper($company->subscription_plan ?: 'PRO') . ') a expiré le ' . $company->subscription_expires_at->format('d/m/Y') . '. Veuillez contacter le support pour procéder au renouvellement.'
             ], 402);
         }
 

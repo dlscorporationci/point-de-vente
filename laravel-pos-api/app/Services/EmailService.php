@@ -7,7 +7,7 @@ use App\Models\Company;
 use App\Models\EmailLog;
 use App\Jobs\SendEmailJob;
 use Illuminate\Support\Facades\Mail;
-use App\Mail\ApexPosGenericMail;
+use App\Mail\DlsPosGenericMail;
 use Exception;
 
 class EmailService
@@ -33,7 +33,7 @@ class EmailService
 
         return $this->dispatchEmail(
             recipient: $user->email,
-            subject: 'Bienvenue sur ApexPOS ! 🎉',
+            subject: 'Bienvenue sur DLS POS ! 🎉',
             viewName: 'emails.auth.welcome',
             viewData: [
                 'user'     => [
@@ -60,7 +60,7 @@ class EmailService
 
         return $this->dispatchEmail(
             recipient: $user->email,
-            subject: '✉️ Vérification de votre adresse e-mail ApexPOS',
+            subject: '✉️ Vérification de votre adresse e-mail DLS POS',
             viewName: 'emails.auth.verify-email',
             viewData: [
                 'user'            => ['name' => $user->name, 'email' => $user->email],
@@ -279,7 +279,7 @@ class EmailService
 
         if ($sync) {
             try {
-                $mailable = new ApexPosGenericMail($subject, $viewName, $viewData);
+                $mailable = new DlsPosGenericMail($subject, $viewName, $viewData);
                 Mail::to($recipientEmail)->send($mailable);
 
                 $log = EmailLog::create([
@@ -345,7 +345,7 @@ class EmailService
 
         // Envoi direct synchrone pour garantir la livraison immédiate sur le VPS
         try {
-            $mailable = new ApexPosGenericMail($subject, $viewName, $viewData);
+            $mailable = new DlsPosGenericMail($subject, $viewName, $viewData);
             Mail::to($recipient)->send($mailable);
 
             $log->update([

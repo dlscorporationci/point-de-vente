@@ -1,11 +1,11 @@
-@extends('emails.layouts.apexpos')
+@extends('emails.layouts.dlspos')
 
 @section('content')
-<h1>Alerte : Votre abonnement ApexPOS a expiré 🔴</h1>
+<h1>Alerte : Votre abonnement DLS POS a expiré 🔴</h1>
 
 <p>Bonjour <strong>{{ $user['name'] ?? 'Administrateur' }}</strong>,</p>
 
-<p>L'abonnement ApexPOS de l'entreprise <strong>{{ $company['name'] }}</strong> est arrivé à terme le <strong>{{ $expiredAt }}</strong> et n'a pas été renouvelé.</p>
+<p>L'abonnement DLS POS de l'entreprise <strong>{{ $company['name'] }}</strong> est arrivé à terme le <strong>{{ $expiredAt }}</strong> et n'a pas été renouvelé.</p>
 
 <div class="info-card" style="border-left-color: #ef4444; background-color: #fef2f2;">
     <table>

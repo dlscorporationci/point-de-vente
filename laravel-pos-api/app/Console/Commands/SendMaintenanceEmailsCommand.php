@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Log;
 
 class SendMaintenanceEmailsCommand extends Command
 {
-    protected $signature = 'apexpos:send-maintenance-emails {--type=global} {--company_id=} {--enabled=1} {--message=}';
+    protected $signature = 'dlspos:send-maintenance-emails {--type=global} {--company_id=} {--enabled=1} {--message=}';
     protected $description = 'Envoyer les e-mails de notification de maintenance système en tâche de fond CLI';
 
     public function handle(EmailService $emailService): int

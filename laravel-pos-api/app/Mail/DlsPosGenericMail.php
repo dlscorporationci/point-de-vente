@@ -9,7 +9,7 @@ use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Mail\Mailables\Address;
 
-class ApexPosGenericMail extends Mailable
+class DlsPosGenericMail extends Mailable
 {
     use Queueable, SerializesModels;
 

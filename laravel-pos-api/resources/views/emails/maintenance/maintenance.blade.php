@@ -1,4 +1,4 @@
-@extends('emails.layouts.apexpos')
+@extends('emails.layouts.dlspos')
 
 @section('content')
 <h1>Notification de Maintenance Système 🛠️</h1>

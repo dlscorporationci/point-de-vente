@@ -143,7 +143,7 @@ export function VerifyEmail({ onNavigate }) {
         border: '1px solid #334155',
         textAlign: 'center'
       }}>
-        <img src={logo} alt="ApexPOS Logo" style={{ height: '54px', borderRadius: '10px', marginBottom: '20px' }} />
+        <img src={logo} alt="DLS POS Logo" style={{ height: '54px', borderRadius: '10px', marginBottom: '20px' }} />
         
         <h2 style={{ fontSize: '22px', fontWeight: 'bold', color: '#f8fafc', margin: '0 0 12px' }}>
           Vérification d'adresse e-mail
@@ -220,7 +220,7 @@ export function VerifyEmail({ onNavigate }) {
                 fontSize: '15px'
               }}
             >
-              Accéder à l'application ApexPOS
+              Accéder à l'application DLS POS
             </button>
           ) : (
             <button

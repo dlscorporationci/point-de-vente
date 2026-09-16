@@ -321,7 +321,7 @@ class SuperAdminController extends Controller
             'encryption'      => config('mail.mailers.smtp.encryption', 'ssl'),
             'username'        => config('mail.mailers.smtp.username', 'infos@dlscorporation.ci'),
             'from_address'    => config('mail.from.address', 'infos@dlscorporation.ci'),
-            'from_name'       => config('mail.from.name', 'ApexPOS'),
+            'from_name'       => config('mail.from.name', 'DLS POS'),
             'password_set'    => !empty(config('mail.mailers.smtp.password')),
             'masked_password' => '••••••••••••',
         ]);
@@ -422,7 +422,7 @@ class SuperAdminController extends Controller
         $log = \App\Models\EmailLog::findOrFail($id);
 
         try {
-            $mailable = new \App\Mail\ApexPosGenericMail($log->subject, 'emails.test-email', $log->metadata ?: []);
+            $mailable = new \App\Mail\DlsPosGenericMail($log->subject, 'emails.test-email', $log->metadata ?: []);
             \Illuminate\Support\Facades\Mail::to($log->recipient)->send($mailable);
 
             $log->update([
@@ -864,7 +864,7 @@ class SuperAdminController extends Controller
 
             $tables = \Illuminate\Support\Facades\DB::select('SHOW TABLES');
 
-            $sqlContent = "-- ApexPOS Database Dump --\n";
+            $sqlContent = "-- DLS POS Database Dump --\n";
             $sqlContent .= "-- Generated at: " . date('Y-m-d H:i:s') . " --\n\n";
             $sqlContent .= "SET FOREIGN_KEY_CHECKS=0;\n\n";
 
@@ -992,7 +992,7 @@ class SuperAdminController extends Controller
     }
 
     /**
-     * Statistiques globales agrégées du SuperAdmin (Plateforme SaaS ApexPOS).
+     * Statistiques globales agrégées du SuperAdmin (Plateforme SaaS DLS POS).
      */
     public function globalStats(Request $request)
     {

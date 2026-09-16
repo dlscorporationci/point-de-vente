@@ -20,7 +20,7 @@ class ExcelExportService
     {
         $spreadsheet = new Spreadsheet();
         
-        $companyName  = $company ? $company->name : 'ApexPOS Enterprise';
+        $companyName  = $company ? $company->name : 'DLS POS Enterprise';
         $companyCode  = $company ? $company->code : '';
         $branchName   = $branch ? $branch->name : 'Toutes les boutiques';
         $userName     = $user ? $user->name : 'Système';
@@ -30,7 +30,7 @@ class ExcelExportService
 
         $spreadsheet = new Spreadsheet();
         
-        $companyName  = $company ? $company->name : 'ApexPOS Enterprise';
+        $companyName  = $company ? $company->name : 'DLS POS Enterprise';
         $companyCode  = $company ? $company->code : '';
         $branchName   = $branch ? $branch->name : 'Toutes les boutiques';
         $userName     = $user ? $user->name : 'Système';
@@ -122,7 +122,7 @@ class ExcelExportService
         $sheetInfo = $spreadsheet->createSheet();
         $sheetInfo->setTitle('INFORMATIONS & AUDIT');
 
-        $sheetInfo->setCellValue('A1', 'INFORMATIONS DE CERTIFICATION ET D’AUDIT APEXPOS');
+        $sheetInfo->setCellValue('A1', 'INFORMATIONS DE CERTIFICATION ET D’AUDIT DLS POS');
         $sheetInfo->getStyle('A1')->getFont()->setBold(true)->setSize(13)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('1E3A8A'));
 
         $infoData = [

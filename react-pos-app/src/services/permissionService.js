@@ -1,5 +1,5 @@
 /**
- * Service d'Autorisation Frontend pour ApexPOS Enterprise
+ * Service d'Autorisation Frontend pour DLS POS Enterprise
  * Centralise les contrôles RBAC (Rôles & Permissions) et ABAC (Zones d'Accès & Périmètres)
  */
 

@@ -1266,7 +1266,7 @@ p {
 }
 
 /* ==========================================================================
-   POSITIONNEMENT & NAVIGATION RESPONSIVE DU SYSTÈME APEXPOS (SANS CHEVAUCHEMENT)
+   POSITIONNEMENT & NAVIGATION RESPONSIVE DU SYSTÈME DLS POS (SANS CHEVAUCHEMENT)
    ========================================================================== */
 
 :root {
@@ -2281,7 +2281,7 @@ p {
   box-shadow: none;
 }
 
-/* Page de Connexion ApexPOS & Bouton Google OAuth */
+/* Page de Connexion DLS POS & Bouton Google OAuth */
 .login-page-container {
   min-height: calc(100vh - 80px);
   display: flex;

@@ -34,7 +34,7 @@
                 <div style="color: #64748b; margin-top: 2px;">Boutique : <strong>{{ $branchName }}</strong></div>
             </td>
             <td style="width: 40%; text-align: right;">
-                <div style="font-size: 14px; font-weight: bold; color: #3b82f6;">APEXPOS ENTERPRISE</div>
+                <div style="font-size: 14px; font-weight: bold; color: #3b82f6;">DLS POS ENTERPRISE</div>
                 <div style="color: #64748b; font-size: 9px; margin-top: 4px;">UUID: {{ $documentUuid }}</div>
                 <div style="color: #64748b; font-size: 9px; margin-top: 2px;">Généré le : {{ $generatedAt }}</div>
                 <div style="color: #64748b; font-size: 9px; margin-top: 2px;">Généré par : <strong>{{ $userName }}</strong></div>
@@ -125,7 +125,7 @@
     <!-- PIED DE PAGE -->
     <table className="footer-table">
         <tr>
-            <td>ApexPOS &bull; Logiciel de Gestion de Caisse Enterprise Multi-Boutiques</td>
+            <td>DLS POS &bull; Logiciel de Gestion de Caisse Enterprise Multi-Boutiques</td>
             <td style="text-align: right;">Document certifié &bull; Page 1/1</td>
         </tr>
     </table>

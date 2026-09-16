@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $subject ?? 'ApexPOS — Notification Système' }}</title>
+    <title>{{ $subject ?? 'DLS POS — Notification Système' }}</title>
     <style>
         body {
             margin: 0;
@@ -149,7 +149,7 @@
             <!-- HEADER -->
             <tr>
                 <td class="header">
-                    <div class="header-title">ApexPOS</div>
+                    <div class="header-title">DLS POS</div>
                     <div class="header-subtitle">GESTION COMMERCIALE & ENCAISSEMENT SAAS</div>
                 </td>
             </tr>
@@ -170,7 +170,7 @@
                     </p>
                     <div class="footer-divider"></div>
                     <p style="margin: 0; color: #94a3b8;">
-                        © {{ date('Y') }} ApexPOS — Tous droits réservés. Une solution éditée par DLS Corporation.
+                        © {{ date('Y') }} DLS POS — Tous droits réservés. Une solution éditée par DLS Corporation.
                     </p>
                 </td>
             </tr>

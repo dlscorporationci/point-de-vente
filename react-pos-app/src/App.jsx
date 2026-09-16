@@ -154,7 +154,7 @@ function MainContent() {
           window.history.replaceState({}, document.title, window.location.pathname);
           const isSuperAdminUser = (userObj.role === 'super-admin' || userObj.role?.slug === 'super-admin' || userObj.is_superadmin);
           const target = isSuperAdminUser ? 'backoffice' : 'dashboard';
-          sessionStorage.setItem('apex_active_tab', target);
+          sessionStorage.setItem('dls_active_tab', target);
           setActiveTabState(target);
         } catch (e) {
           console.error("Erreur de décodage du jeton Google OAuth:", e);
@@ -181,14 +181,14 @@ function MainContent() {
       }
       return 'home';
     }
-    const savedTab = sessionStorage.getItem('apex_active_tab');
+    const savedTab = sessionStorage.getItem('dls_active_tab');
     if (savedTab && savedTab !== 'home' && savedTab !== 'auth') return savedTab;
     if (isSuperAdmin) return 'backoffice';
     return 'dashboard';
   });
 
   const setActiveTab = (tab) => {
-    sessionStorage.setItem('apex_active_tab', tab);
+    sessionStorage.setItem('dls_active_tab', tab);
     setActiveTabState(tab);
   };
 
@@ -203,7 +203,7 @@ function MainContent() {
       if (isEmailVerified && !tokenParam) {
         window.history.replaceState({}, document.title, '/');
         const target = isSuperAdmin ? 'backoffice' : 'dashboard';
-        sessionStorage.setItem('apex_active_tab', target);
+        sessionStorage.setItem('dls_active_tab', target);
         setActiveTabState(target);
       } else {
         setActiveTabState('verify-email');
@@ -221,10 +221,10 @@ function MainContent() {
         setActiveTabState('verify-email');
         return;
       }
-      const savedTab = sessionStorage.getItem('apex_active_tab');
+      const savedTab = sessionStorage.getItem('dls_active_tab');
       if (!savedTab || savedTab === 'home' || savedTab === 'auth' || savedTab === 'verify-email' || (isSuperAdmin && savedTab === 'select-branch')) {
         const target = isSuperAdmin ? 'backoffice' : 'dashboard';
-        sessionStorage.setItem('apex_active_tab', target);
+        sessionStorage.setItem('dls_active_tab', target);
         setActiveTabState(target);
       }
     }
@@ -255,7 +255,7 @@ function MainContent() {
   useEffect(() => {
     const handleAppNavigate = (e) => {
       const tab = e.detail?.tab || 'auth';
-      sessionStorage.removeItem('apex_active_tab');
+      sessionStorage.removeItem('dls_active_tab');
       setActiveTabState(tab);
       setMenuOpen(false);
     };
@@ -340,7 +340,7 @@ function MainContent() {
 
   // Partie 7 : Verrouillage automatique de session par inactivité (3 minutes)
   const [isSessionLocked, setIsSessionLocked] = useState(() => {
-    return sessionStorage.getItem('apex_session_locked') === 'true';
+    return sessionStorage.getItem('dls_session_locked') === 'true';
   });
   const { logout } = useApp();
 
@@ -360,7 +360,7 @@ function MainContent() {
     const startTimer = () => {
       if (idleTimer) clearTimeout(idleTimer);
       idleTimer = setTimeout(() => {
-        sessionStorage.setItem('apex_session_locked', 'true');
+        sessionStorage.setItem('dls_session_locked', 'true');
         setIsSessionLocked(true);
       }, IDLE_TIMEOUT);
     };
@@ -602,11 +602,11 @@ function MainContent() {
       <SessionLockScreen
         user={user}
         onUnlock={() => {
-          sessionStorage.removeItem('apex_session_locked');
+          sessionStorage.removeItem('dls_session_locked');
           setIsSessionLocked(false);
         }}
         onSwitchAccount={() => {
-          sessionStorage.removeItem('apex_session_locked');
+          sessionStorage.removeItem('dls_session_locked');
           setIsSessionLocked(false);
           logout();
         }}
@@ -753,7 +753,7 @@ function MainContent() {
               <span style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
                 {user?.company?.name ? (
                   <>
-                    <span className="logo-text-apex" style={{ fontSize: '0.95rem', fontWeight: 800 }}>
+                    <span className="logo-text-dls" style={{ fontSize: '0.95rem', fontWeight: 800 }}>
                       {user.company.name}
                     </span>
                     {user.company.slogan && (
@@ -764,7 +764,7 @@ function MainContent() {
                   </>
                 ) : (
                   <>
-                    <span className="logo-text-apex">Apex</span>
+                    <span className="logo-text-dls">DLS </span>
                     <span className="logo-text-pos">POS</span>
                   </>
                 )}
@@ -928,7 +928,7 @@ function MainContent() {
               <span style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
                 {user?.company?.name ? (
                   <>
-                    <span className="logo-text-apex" style={{ fontSize: '0.95rem', fontWeight: 800 }}>
+                    <span className="logo-text-dls" style={{ fontSize: '0.95rem', fontWeight: 800 }}>
                       {user.company.name}
                     </span>
                     {user.company.slogan && (
@@ -938,7 +938,7 @@ function MainContent() {
                     )}
                   </>
                 ) : (
-                  <span><span className="logo-text-apex">Apex</span><span className="logo-text-pos">POS</span></span>
+                  <span><span className="logo-text-dls">DLS </span><span className="logo-text-pos">POS</span></span>
                 )}
               </span>
             </div>
@@ -1242,7 +1242,7 @@ function MainContent() {
           transition: all var(--transition-normal);
         }
         .navbar-logo:hover .navbar-logo-img { box-shadow: 0 0 15px var(--color-primary); transform: rotate(5deg); }
-        .logo-text-apex {
+        .logo-text-dls {
           background: linear-gradient(135deg, #3b82f6 0%, #10b981 100%);
           -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 900;
         }

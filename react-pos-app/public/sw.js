@@ -1,5 +1,5 @@
 /* ==========================================================================
-   SERVICE WORKER APEXPOS — NOTIFICATIONS MOBILES STYLES WHATSAPP
+   SERVICE WORKER DLS POS — NOTIFICATIONS MOBILES STYLES WHATSAPP
    ========================================================================== */
 
 const CACHE_NAME = 'apexpos-sw-v1';
@@ -16,7 +16,7 @@ self.addEventListener('activate', (event) => {
 
 // Écoute des événements Push Web (Push Server / VAPID)
 self.addEventListener('push', (event) => {
-  let data = { title: 'ApexPOS', body: 'Nouvelle notification ApexPOS' };
+  let data = { title: 'DLS POS', body: 'Nouvelle notification DLS POS' };
   if (event.data) {
     try {
       data = event.data.json();
@@ -36,12 +36,12 @@ self.addEventListener('push', (event) => {
       url: data.url || '/'
     },
     actions: [
-      { action: 'open', title: '📱 Ouvrir ApexPOS' }
+      { action: 'open', title: '📱 Ouvrir DLS POS' }
     ]
   };
 
   event.waitUntil(
-    self.registration.showNotification(data.title || '🔔 ApexPOS', options)
+    self.registration.showNotification(data.title || '🔔 DLS POS', options)
   );
 });
 
@@ -59,7 +59,7 @@ self.addEventListener('message', (event) => {
       data: { url: url || '/' }
     };
 
-    self.registration.showNotification(title || '🔔 ApexPOS', options);
+    self.registration.showNotification(title || '🔔 DLS POS', options);
   }
 });
 

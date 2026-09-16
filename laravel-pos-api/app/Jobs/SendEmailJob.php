@@ -9,7 +9,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Mail;
 use App\Models\EmailLog;
-use App\Mail\ApexPosGenericMail;
+use App\Mail\DlsPosGenericMail;
 use Throwable;
 
 class SendEmailJob implements ShouldQueue
@@ -76,7 +76,7 @@ class SendEmailJob implements ShouldQueue
         }
 
         try {
-            $mailable = new ApexPosGenericMail($this->subject, $this->viewName, $this->viewData);
+            $mailable = new DlsPosGenericMail($this->subject, $this->viewName, $this->viewData);
             Mail::to($this->recipient)->send($mailable);
 
             $log->update([

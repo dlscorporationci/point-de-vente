@@ -1,4 +1,4 @@
-# 🛒 ApexPOS - Système de Gestion & Point de Vente (POS / ERP Multi-Boutiques)
+# 🛒 DLS POS - Système de Gestion & Point de Vente (POS / ERP Multi-Boutiques)
 
 Solution complète et professionnelle de Gestion Commerciale, d'Approvisionnements, de Stocks et de Caisse Tactique Multi-Entreprises & Multi-Points de Vente.
 
@@ -23,7 +23,7 @@ Solution complète et professionnelle de Gestion Commerciale, d'Approvisionnemen
 - **Framework** : Laravel 12 / PHP 8.4
 - **Base de Données** : MySQL / MariaDB (Transactions InnoDB)
 - **Authentification** : Laravel Sanctum + PIN Caisse
-- **Documentation API** : OpenAPI 3.0 (`Documentation_API_ApexPOS.md`)
+- **Documentation API** : OpenAPI 3.0 (`Documentation_API_DLS_POS.md`)
 
 ### Frontend (Application Web POS)
 - **Framework** : React 19 / Vite

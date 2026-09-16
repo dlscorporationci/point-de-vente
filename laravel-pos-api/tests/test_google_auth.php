@@ -183,7 +183,7 @@ logGoogleTestResult(
 // ────────────────────────────────────────────────────────────────────────────
 // 5. Compte Utilisateur Suspendu/Inactif
 // ────────────────────────────────────────────────────────────────────────────
-logGoogleTestHeader('5. Compte Utilisateur ApexPOS Suspendu');
+logGoogleTestHeader('5. Compte Utilisateur DLS POS Suspendu');
 
 $existingUser->status = 'inactive';
 $existingUser->save();

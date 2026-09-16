@@ -91,7 +91,7 @@ class GitHubAuthController extends Controller
 
         // Récupération du profil utilisateur GitHub
         $userResponse = Http::withToken($accessToken)
-            ->withHeaders(['User-Agent' => 'ApexPOS-App'])
+            ->withHeaders(['User-Agent' => 'DLS POS-App'])
             ->get('https://api.github.com/user');
 
         if ($userResponse->failed()) {
@@ -108,7 +108,7 @@ class GitHubAuthController extends Controller
         // Si l'e-mail est privé ou nul dans le profil public, récupérer l'e-mail principal via l'API GitHub Emails
         if (empty($email)) {
             $emailsResponse = Http::withToken($accessToken)
-                ->withHeaders(['User-Agent' => 'ApexPOS-App'])
+                ->withHeaders(['User-Agent' => 'DLS POS-App'])
                 ->get('https://api.github.com/user/emails');
 
             if ($emailsResponse->successful()) {
@@ -198,7 +198,7 @@ class GitHubAuthController extends Controller
         }
 
         if ($user->status !== 'active') {
-            return $this->returnError($request, 'USER_SUSPENDED', 'Votre compte ApexPOS est inactif ou suspendu. Veuillez contacter votre administrateur.', 403);
+            return $this->returnError($request, 'USER_SUSPENDED', 'Votre compte DLS POS est inactif ou suspendu. Veuillez contacter votre administrateur.', 403);
         }
 
         // Résolution Tenant & Isolation
@@ -212,7 +212,7 @@ class GitHubAuthController extends Controller
 
         $user->load(['role.permissions', 'branch']);
 
-        // Génération du Token Sanctum ApexPOS
+        // Génération du Token Sanctum DLS POS
         $token = $user->createToken('pos-github-token')->plainTextToken;
 
         $effectiveRoleSlug = ($user->role && $user->role->slug === 'super-admin' && $user->company_id !== null && $user->email !== 'superadmin@dls.com') ? 'admin' : ($user->role->slug ?? 'caissier');

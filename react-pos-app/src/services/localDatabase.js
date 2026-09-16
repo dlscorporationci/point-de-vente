@@ -3,7 +3,7 @@
  * Permet l'indexation 0ms, les transactions atomiques et le fonctionnement hors-ligne résilient.
  */
 
-const DB_NAME = 'ApexPOS_LocalDB';
+const DB_NAME = 'DLS POS_LocalDB';
 const DB_VERSION = 1;
 
 class LocalDatabase {
@@ -61,7 +61,7 @@ class LocalDatabase {
       };
 
       request.onerror = (event) => {
-        console.error('Erreur d\'initialisation IndexedDB ApexPOS:', event.target.error);
+        console.error('Erreur d\'initialisation IndexedDB DLS POS:', event.target.error);
         reject(event.target.error);
       };
     });

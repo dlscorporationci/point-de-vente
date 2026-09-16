@@ -87,7 +87,7 @@ export const sendMobileNativeNotification = async (title, body, options = {}) =>
       }
 
       if (registration && registration.showNotification) {
-        await registration.showNotification(title || '🔔 ApexPOS', {
+        await registration.showNotification(title || '🔔 DLS POS', {
           body: body || 'Nouvelle alerte mobile reçue.',
           icon: options.icon || '/icon-192.png',
           badge: '/icon-192.png',
@@ -101,7 +101,7 @@ export const sendMobileNativeNotification = async (title, body, options = {}) =>
     }
 
     // 2. Fallback de l'API Web Notification
-    new Notification(title || '🔔 ApexPOS', {
+    new Notification(title || '🔔 DLS POS', {
       body: body || 'Nouvelle alerte mobile reçue.',
       icon: options.icon || '/icon-192.png',
       vibrate: [200, 100, 200, 100, 200]

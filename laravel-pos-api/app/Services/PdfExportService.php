@@ -14,7 +14,7 @@ class PdfExportService
      */
     public function generatePdf(array $contract, array $data, ?Company $company, ?Branch $branch, ?User $user): string
     {
-        $companyName  = $company ? $company->name : 'ApexPOS Enterprise';
+        $companyName  = $company ? $company->name : 'DLS POS Enterprise';
         $companyCode  = $company ? $company->code : '';
         $companyLogo  = $company ? $company->logo_path : null;
         $branchName   = $branch ? $branch->name : 'Toutes les boutiques';

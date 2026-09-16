@@ -286,7 +286,7 @@ class DocumentService
         $contract  = $contracts[$type] ?? [
             'type'     => $type,
             'title'    => strtoupper(str_replace('_', ' ', $type)),
-            'subtitle' => 'Rapport généré par le système ApexPOS',
+            'subtitle' => 'Rapport généré par le système DLS POS',
             'columns'  => [
                 ['key' => 'id', 'label' => 'ID', 'align' => 'left'],
                 ['key' => 'name', 'label' => 'Libellé / Désignation', 'align' => 'left'],

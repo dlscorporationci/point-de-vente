@@ -1,11 +1,11 @@
-@extends('emails.layouts.apexpos')
+@extends('emails.layouts.dlspos')
 
 @section('content')
 <h1>Abonnement SaaS Activé / Renouvelé 🚀</h1>
 
 <p>Bonjour <strong>{{ $user['name'] ?? 'Administrateur' }}</strong>,</p>
 
-<p>Nous avons le plaisir de vous informer que l'abonnement ApexPOS de votre entreprise <strong>{{ $company['name'] }}</strong> a été activé / renouvelé avec succès.</p>
+<p>Nous avons le plaisir de vous informer que l'abonnement DLS POS de votre entreprise <strong>{{ $company['name'] }}</strong> a été activé / renouvelé avec succès.</p>
 
 <div class="info-card">
     <table>
@@ -51,6 +51,6 @@
 <p>Vos accès, boutiques et fonctionnalités restent pleinement opérationnels sans interruption.</p>
 
 <div class="btn-container">
-    <a href="{{ $appUrl ?? 'http://localhost:5173' }}" class="btn">Accéder au Backoffice ApexPOS</a>
+    <a href="{{ $appUrl ?? 'http://localhost:5173' }}" class="btn">Accéder au Backoffice DLS POS</a>
 </div>
 @endsection

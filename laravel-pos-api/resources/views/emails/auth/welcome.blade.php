@@ -1,11 +1,11 @@
-@extends('emails.layouts.apexpos')
+@extends('emails.layouts.dlspos')
 
 @section('content')
-<h1>Bienvenue sur ApexPOS ! 🎉</h1>
+<h1>Bienvenue sur DLS POS ! 🎉</h1>
 
 <p>Bonjour <strong>{{ $user['name'] }}</strong>,</p>
 
-<p>Félicitations et bienvenue sur <strong>ApexPOS Enterprise</strong>. Votre compte utilisateur et votre entreprise ont été initialisés avec succès sur la plateforme.</p>
+<p>Félicitations et bienvenue sur <strong>DLS POS Enterprise</strong>. Votre compte utilisateur et votre entreprise ont été initialisés avec succès sur la plateforme.</p>
 
 <div class="info-card">
     <table>
@@ -39,7 +39,7 @@
 <p>Vous pouvez dès à présent vous connecter à votre espace de gestion, configurer vos boutiques, ajouter votre catalogue de produits et commencer vos encaissements en caisse.</p>
 
 <div class="btn-container">
-    <a href="{{ $loginUrl ?? 'https://pos.dlscorporation.ci' }}" class="btn">Accéder à ApexPOS</a>
+    <a href="{{ $loginUrl ?? 'https://pos.dlscorporation.ci' }}" class="btn">Accéder à DLS POS</a>
 </div>
 
 <p style="font-size: 13px; color: #64748b;"><em>Remarque : Pour des raisons de sécurité, ne partagez jamais votre mot de passe ni vos PINs de caisse.</em></p>

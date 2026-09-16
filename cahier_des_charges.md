@@ -4,7 +4,7 @@
 ---
 
 ## 1. Présentation du Projet
-Le projet consiste à concevoir une solution logicielle SaaS (Software as a Service) de **Point de Vente (POS)** et de gestion commerciale moderne, performante et hautement sécurisée. Baptisée **ApexPOS**, cette plateforme est structurée pour fonctionner en mode multi-entreprise (multi-tenant) et multi-boutiques (multi-point de vente).
+Le projet consiste à concevoir une solution logicielle SaaS (Software as a Service) de **Point de Vente (POS)** et de gestion commerciale moderne, performante et hautement sécurisée. Baptisée **DLS POS**, cette plateforme est structurée pour fonctionner en mode multi-entreprise (multi-tenant) et multi-boutiques (multi-point de vente).
 
 Chaque entreprise cliente peut configurer et piloter plusieurs points de vente physiques à partir d'un espace d'administration centralisé. Le système permet de gérer de manière cloisonnée ou centralisée les stocks, les ventes, les approvisionnements, le personnel, et les données financières de chaque entité. 
 
@@ -20,7 +20,7 @@ Les commerces physiques de toute taille (quincailleries, supermarchés, pharmaci
 * **Paiements fragmentés :** Difficulté à réconcilier les paiements en espèces, cartes bancaires et surtout les services de Mobile Money (Wave, Orange Money, MTN, Moov) très répandus en Afrique de l'Ouest et centrale.
 * **Instabilité réseau :** Les pannes d'internet bloquent souvent les applications entièrement cloud, d'où la nécessité d'une application résiliente qui préserve la continuité de service locale.
 
-**ApexPOS** résout ces problématiques en fournissant une plateforme cloud réactive, dotée d'un module de caisse optimisé pour une saisie ultra-rapide (tactile et code-barres), connectable aux passerelles de Mobile Money locales, et conçue pour être tolérante aux micro-déconnexions.
+**DLS POS** résout ces problématiques en fournissant une plateforme cloud réactive, dotée d'un module de caisse optimisé pour une saisie ultra-rapide (tactile et code-barres), connectable aux passerelles de Mobile Money locales, et conçue pour être tolérante aux micro-déconnexions.
 
 ---
 
@@ -172,7 +172,7 @@ Processus d'approvisionnement des produits pour alimenter les stocks.
 ```mermaid
 sequenceDiagram
     participant G as Gérant Boutique
-    participant S as Système ApexPOS
+    participant S as Système DLS POS
     participant F as Fournisseur
     G->>S: Créer Bon de Commande (Statut: Brouillon)
     G->>S: Valider la commande (Statut: Commandé)
@@ -239,7 +239,7 @@ Le terminal de point de vente (POS) est l'écran le plus critique de l'applicati
 ---
 
 ## 16. Gestion des Paiements
-ApexPOS supporte une grande variété de modes de paiement pour s'adapter à tous les comportements d'achat, notamment à travers l'intégration d'une API/Passerelle de paiement.
+DLS POS supporte une grande variété de modes de paiement pour s'adapter à tous les comportements d'achat, notamment à travers l'intégration d'une API/Passerelle de paiement.
 
 ### 16.1 Règles de Gestion par Mode de Paiement
 * **Espèces (Cash) :** Le mode de paiement par défaut. Les flux d'espèces doivent alimenter directement le solde de la caisse physique active.
@@ -389,7 +389,7 @@ Ce module permet d'extraire des données agrégées pour l'analyse financière e
 ---
 
 ## 22. Système de Notifications
-ApexPOS maintient les collaborateurs informés des événements importants du système via trois canaux de distribution : *In-App*, *Email*, et *SMS*.
+DLS POS maintient les collaborateurs informés des événements importants du système via trois canaux de distribution : *In-App*, *Email*, et *SMS*.
 
 ### 22.1 Matrice de routage des notifications
 

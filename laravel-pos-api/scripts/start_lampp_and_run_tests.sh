@@ -1,10 +1,10 @@
 #!/bin/bash
-# Script de démarrage + réparation MySQL LAMPP pour ApexPOS Phase 2 Tests
+# Script de démarrage + réparation MySQL LAMPP pour DLS POS Phase 2 Tests
 # Usage : bash /opt/lampp/htdocs/point_de_vente/laravel-pos-api/scripts/start_lampp_mysql.sh
 
 set -e
 
-echo "=== ApexPOS — Démarrage MySQL LAMPP ==="
+echo "=== DLS POS — Démarrage MySQL LAMPP ==="
 
 # 1. Tuer les processus sudo bloqués
 echo "[1/5] Nettoyage des processus sudo bloqués..."

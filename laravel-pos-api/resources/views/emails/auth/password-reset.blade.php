@@ -1,4 +1,4 @@
-@extends('emails.layouts.apexpos')
+@extends('emails.layouts.dlspos')
 
 @section('content')
 <h1>Réinitialisation de votre mot de passe 🔒</h1>

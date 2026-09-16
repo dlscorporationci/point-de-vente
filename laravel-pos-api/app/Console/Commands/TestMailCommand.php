@@ -7,8 +7,8 @@ use App\Services\EmailService;
 
 class TestMailCommand extends Command
 {
-    protected $signature = 'apexpos:test-mail {--to=infos@dlscorporation.ci : Adresse e-mail destinataire pour le test}';
-    protected $description = 'Tester la connectivité SMTP et l’envoi d’e-mail transactionnel ApexPOS';
+    protected $signature = 'dlspos:test-mail {--to=infos@dlscorporation.ci : Adresse e-mail destinataire pour le test}';
+    protected $description = 'Tester la connectivité SMTP et l’envoi d’e-mail transactionnel DLS POS';
 
     public function handle(EmailService $emailService): int
     {

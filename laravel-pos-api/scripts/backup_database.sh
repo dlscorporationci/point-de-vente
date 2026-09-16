@@ -32,7 +32,7 @@ BACKUP_FILENAME="apexpos_${DB_NAME}_${TIMESTAMP}.sql.gz"
 BACKUP_FILE="${BACKUP_DIR}/${BACKUP_FILENAME}"
 
 echo "========================================================="
-echo "   ApexPOS Enterprise — Backup Database Task"
+echo "   DLS POS Enterprise — Backup Database Task"
 echo "========================================================="
 echo "▶ Host        : ${DB_HOST}:${DB_PORT}"
 echo "▶ Database    : ${DB_NAME}"
