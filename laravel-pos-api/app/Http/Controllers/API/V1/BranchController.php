@@ -30,11 +30,21 @@ class BranchController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
-            'name'    => 'required|string|max:100',
-            'address' => 'nullable|string|max:255',
-            'phone'   => 'nullable|string|max:30',
-        ]);
+        $rules = [
+            'name'    => ['required', 'string', 'min:2', 'max:100', 'regex:/[\pL\pN]/u'],
+            'address' => 'nullable|string|min:3|max:255',
+            'phone'   => ['nullable', 'string', 'max:30', 'regex:/^[\+\d\s\(\)\-\.]{8,30}$/'],
+        ];
+
+        $messages = [
+            'name.required' => 'Le nom de la boutique est obligatoire.',
+            'name.min'      => 'Le nom de la boutique doit comporter au moins 2 caractères.',
+            'name.regex'    => 'Le nom de la boutique doit contenir des lettres ou chiffres valides.',
+            'phone.regex'   => 'Le numéro de téléphone est invalide. Il doit comporter au moins 8 chiffres et ne contenir aucun caractère alphabétique.',
+            'address.min'   => 'L\'adresse de la boutique doit comporter au moins 3 caractères.',
+        ];
+
+        $request->validate($rules, $messages);
 
         // Vérification automatique des quotas selon la formule souscrite
         $company = app(\App\Services\TenantManager::class)->getCompany();
@@ -86,14 +96,24 @@ class BranchController extends Controller
     {
         $branch = Branch::findOrFail($id);
 
-        $request->validate([
-            'name'         => 'sometimes|required|string|max:100',
-            'address'      => 'nullable|string|max:255',
-            'phone'        => 'nullable|string|max:30',
+        $rules = [
+            'name'         => ['sometimes', 'required', 'string', 'min:2', 'max:100', 'regex:/[\pL\pN]/u'],
+            'address'      => 'nullable|string|min:3|max:255',
+            'phone'        => ['nullable', 'string', 'max:30', 'regex:/^[\+\d\s\(\)\-\.]{8,30}$/'],
             'type'         => 'nullable|in:store,warehouse',
             'is_warehouse' => 'nullable|boolean',
             'status'       => 'nullable|in:open,closed,maintenance,suspended,archived,active,inactive',
-        ]);
+        ];
+
+        $messages = [
+            'name.required' => 'Le nom de la boutique est obligatoire.',
+            'name.min'      => 'Le nom de la boutique doit comporter au moins 2 caractères.',
+            'name.regex'    => 'Le nom de la boutique doit contenir des lettres ou chiffres valides.',
+            'phone.regex'   => 'Le numéro de téléphone est invalide. Il doit comporter au moins 8 chiffres et ne contenir aucun caractère alphabétique.',
+            'address.min'   => 'L\'adresse de la boutique doit comporter au moins 3 caractères.',
+        ];
+
+        $request->validate($rules, $messages);
 
         $data = $request->only(['name', 'address', 'phone', 'type', 'is_warehouse', 'settings']);
         if ($request->filled('status')) {

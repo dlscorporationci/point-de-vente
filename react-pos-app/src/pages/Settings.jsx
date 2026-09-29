@@ -365,7 +365,32 @@ export const Settings = () => {
 
   const handleSaveBranch = async (e) => {
     e.preventDefault();
-    setBranchSaving(true); setError(null);
+    setError(null);
+
+    const nameClean = (branchForm.name || '').trim();
+    if (!nameClean || nameClean.length < 2) {
+      setError('Le nom de la boutique doit comporter au moins 2 caractères.');
+      return;
+    }
+    if (!/[a-zA-ZÀ-ÿ0-9]/.test(nameClean)) {
+      setError('Le nom de la boutique doit contenir des lettres ou chiffres valides.');
+      return;
+    }
+
+    if (branchForm.phone && branchForm.phone.trim()) {
+      const digits = branchForm.phone.replace(/\D/g, '');
+      if (digits.length < 8) {
+        setError('Le numéro de téléphone est invalide (minimum 8 chiffres, ex: +225 07 00 00 00).');
+        return;
+      }
+    }
+
+    if (branchForm.address && branchForm.address.trim() && branchForm.address.trim().length < 3) {
+      setError("L'adresse de la boutique doit comporter au moins 3 caractères.");
+      return;
+    }
+
+    setBranchSaving(true);
     try {
       if (editingBranch) {
         await axios.put(`/v1/branches/${editingBranch.id}`, branchForm);
@@ -377,7 +402,7 @@ export const Settings = () => {
       setShowBranchForm(false);
       loadBranches();
     } catch (err) {
-      setError(err.response?.data?.error || "Erreur lors de la sauvegarde.");
+      setError(err.response?.data?.error || err.response?.data?.message || "Erreur lors de la sauvegarde.");
     } finally {
       setBranchSaving(false);
     }
@@ -780,13 +805,15 @@ export const Settings = () => {
                       <div className="row">
                         <div className="col-md-6 form-group">
                           <label className="form-label">Nom de la boutique *</label>
-                          <input type="text" className="form-control" required
+                          <input type="text" className="form-control" required minLength={2} maxLength={100}
+                            placeholder="Ex: Boutique Centre-ville"
                             value={branchForm.name} onChange={e => setBranchForm({...branchForm, name: e.target.value})} />
                         </div>
                         <div className="col-md-6 form-group">
                           <label className="form-label">Téléphone</label>
-                          <input type="text" className="form-control"
-                            value={branchForm.phone} onChange={e => setBranchForm({...branchForm, phone: e.target.value})} />
+                          <input type="tel" className="form-control"
+                            placeholder="Ex: +225 07 00 00 00"
+                            value={branchForm.phone} onChange={e => setBranchForm({...branchForm, phone: e.target.value.replace(/[^0-9+\s-()]/g, '')})} />
                         </div>
                       </div>
                       <div className="form-group">

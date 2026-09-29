@@ -51,6 +51,30 @@ export const Branches = () => {
     e.preventDefault();
     setFormError(null);
     setFormSuccess(null);
+
+    const nameClean = (branchForm.name || '').trim();
+    if (!nameClean || nameClean.length < 2) {
+      setFormError('Le nom de la boutique doit comporter au moins 2 caractères.');
+      return;
+    }
+    if (!/[a-zA-ZÀ-ÿ0-9]/.test(nameClean)) {
+      setFormError('Le nom de la boutique doit contenir au moins une lettre ou un chiffre valide.');
+      return;
+    }
+
+    if (branchForm.phone && branchForm.phone.trim()) {
+      const digits = branchForm.phone.replace(/\D/g, '');
+      if (digits.length < 8) {
+        setFormError('Le numéro de téléphone est invalide. Il doit comporter au moins 8 chiffres (ex: +225 07 00 00 00).');
+        return;
+      }
+    }
+
+    if (branchForm.address && branchForm.address.trim() && branchForm.address.trim().length < 3) {
+      setFormError("L'adresse de la boutique doit comporter au moins 3 caractères.");
+      return;
+    }
+
     setSaving(true);
     try {
       if (editingBranch) {
@@ -278,16 +302,20 @@ export const Branches = () => {
           <div className="form-group">
             <label className="form-label">Nom de la boutique *</label>
             <input type="text" className="form-control" required
+              minLength={2} maxLength={100}
               placeholder="Ex: Boutique Centre-ville"
               value={branchForm.name}
               onChange={e => setBranchForm({ ...branchForm, name: e.target.value })} />
           </div>
           <div className="form-group">
             <label className="form-label">Téléphone</label>
-            <input type="text" className="form-control"
+            <input type="tel" className="form-control"
               placeholder="Ex: +225 07 00 00 00"
               value={branchForm.phone}
-              onChange={e => setBranchForm({ ...branchForm, phone: e.target.value })} />
+              onChange={e => setBranchForm({ ...branchForm, phone: e.target.value.replace(/[^0-9+\s-()]/g, '') })} />
+            <small className="text-muted" style={{ fontSize: '11px', marginTop: '4px', display: 'block' }}>
+              💡 Seuls les chiffres, espaces et indicatifs (+, -) sont autorisés.
+            </small>
           </div>
           <div className="form-group">
             <label className="form-label">Adresse</label>
