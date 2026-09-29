@@ -188,8 +188,11 @@ class TransferController extends Controller
 
                 $transfer->update(['status' => 'shipped']);
             });
-        } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 422);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('TransferController ship error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            $isDb = \App\Services\ErrorSanitizer::isDatabaseError($e);
+            $safeMsg = \App\Services\ErrorSanitizer::sanitize($e, 'Échec lors de l\'expédition du transfert.');
+            return response()->json(['error' => $safeMsg], $isDb ? 500 : 422);
         }
 
         $transfer->load(['fromBranch', 'toBranch', 'details.product']);

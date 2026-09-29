@@ -368,9 +368,11 @@ class SuperAdminController extends Controller
             $result = $emailService->sendTestEmail($request->recipient, sync: true);
             return response()->json($result);
         } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Échec test mail : " . $e->getMessage());
+            $safeMsg = \App\Services\ErrorSanitizer::sanitize($e, "Échec de l'envoi de l'e-mail de test.");
             return response()->json([
                 'success' => false,
-                'error'   => "Échec de l'envoi de l'e-mail de test : " . $e->getMessage(),
+                'error'   => $safeMsg,
             ], 500);
         }
     }
@@ -901,8 +903,10 @@ class SuperAdminController extends Controller
                 'created_at' => date('Y-m-d H:i:s'),
             ]);
         } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Erreur sauvegarde DB : " . $e->getMessage());
+            $safeMsg = \App\Services\ErrorSanitizer::sanitize($e, 'Erreur lors de la génération de la sauvegarde.');
             return response()->json([
-                'error' => 'Erreur lors de la génération de la sauvegarde : ' . $e->getMessage()
+                'error' => $safeMsg
             ], 500);
         }
     }
@@ -967,8 +971,10 @@ class SuperAdminController extends Controller
 
         try {
             \Illuminate\Support\Facades\DB::unprepared($sql);
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'Erreur lors de la restauration SQL : ' . $e->getMessage()], 422);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Erreur restauration SQL : " . $e->getMessage());
+            $safeMsg = \App\Services\ErrorSanitizer::sanitize($e, 'Erreur lors de la restauration de la base de données.');
+            return response()->json(['error' => $safeMsg], 422);
         }
 
         return response()->json([

@@ -356,9 +356,12 @@ class SaleController extends Controller
                 ], 201);
             });
         } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('SaleController store error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            $isDb = \App\Services\ErrorSanitizer::isDatabaseError($e);
+            $safeMsg = \App\Services\ErrorSanitizer::sanitize($e, 'Une erreur est survenue lors de l\'enregistrement de la vente.');
             return response()->json([
-                'error' => $e->getMessage()
-            ], 400);
+                'error' => $safeMsg
+            ], $isDb ? 500 : 400);
         }
     }
 

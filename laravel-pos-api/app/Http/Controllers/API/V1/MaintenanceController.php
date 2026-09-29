@@ -101,8 +101,9 @@ class MaintenanceController extends Controller
             ]);
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error("Erreur toggle maintenance : " . $e->getMessage() . "\n" . $e->getTraceAsString());
+            $safeMsg = \App\Services\ErrorSanitizer::sanitize($e, 'Échec de la modification du mode maintenance.');
             return response()->json([
-                'error' => 'Échec de la modification du mode maintenance : ' . $e->getMessage()
+                'error' => $safeMsg
             ], 500);
         }
     }

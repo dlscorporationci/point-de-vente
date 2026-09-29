@@ -739,9 +739,10 @@ class AuthController extends Controller
                 'email' => $cleanEmail
             ]);
 
+            $safeMsg = \App\Services\ErrorSanitizer::sanitize($e, 'Une erreur est survenue lors de la création de l\'entreprise.');
             return response()->json([
-                'message' => 'Une erreur est survenue lors de la création de l\'entreprise : ' . $e->getMessage(),
-                'error'   => $e->getMessage()
+                'message' => $safeMsg,
+                'error'   => $safeMsg
             ], 500);
         }
     }

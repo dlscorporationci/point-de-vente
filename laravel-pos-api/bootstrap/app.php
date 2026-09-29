@@ -125,13 +125,49 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
-        // 500 — Erreurs non gérées (masquage stack trace en production)
-        $exceptions->render(function (\Throwable $e, Request $request) use ($getReqId) {
-            if ($request->is('api/*') && !($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface)) {
-                $safeMsg = config('app.debug') ? $e->getMessage() : 'Une erreur interne s\'est produite sur le serveur.';
+        // 500 — Erreurs SQL / Base de données (Masquage strict des détails SQL)
+        $exceptions->render(function (\Illuminate\Database\QueryException $e, Request $request) use ($getReqId) {
+            \Illuminate\Support\Facades\Log::error('QueryException: ' . $e->getMessage(), [
+                'sql' => $e->getSql(),
+                'bindings' => $e->getBindings(),
+                'code' => $e->getCode(),
+            ]);
+
+            if ($request->is('api/*')) {
+                $safeMsg = \App\Services\ErrorSanitizer::sanitize($e);
                 return response()->json([
                     'status'     => 'error',
-                    'code'       => 'INTERNAL_SERVER_ERROR',
+                    'code'       => 'DATABASE_ERROR',
+                    'message'    => $safeMsg,
+                    'error'      => $safeMsg,
+                    'request_id' => $getReqId($request),
+                ], 500);
+            }
+        });
+
+        $exceptions->render(function (\PDOException $e, Request $request) use ($getReqId) {
+            \Illuminate\Support\Facades\Log::error('PDOException: ' . $e->getMessage());
+
+            if ($request->is('api/*')) {
+                $safeMsg = \App\Services\ErrorSanitizer::sanitize($e);
+                return response()->json([
+                    'status'     => 'error',
+                    'code'       => 'DATABASE_ERROR',
+                    'message'    => $safeMsg,
+                    'error'      => $safeMsg,
+                    'request_id' => $getReqId($request),
+                ], 500);
+            }
+        });
+
+        // 500 — Erreurs non gérées (masquage stack trace & SQL en production)
+        $exceptions->render(function (\Throwable $e, Request $request) use ($getReqId) {
+            if ($request->is('api/*') && !($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface)) {
+                $isDb = \App\Services\ErrorSanitizer::isDatabaseError($e);
+                $safeMsg = \App\Services\ErrorSanitizer::sanitize($e, 'Une erreur interne s\'est produite sur le serveur.');
+                return response()->json([
+                    'status'     => 'error',
+                    'code'       => $isDb ? 'DATABASE_ERROR' : 'INTERNAL_SERVER_ERROR',
                     'message'    => $safeMsg,
                     'error'      => $safeMsg,
                     'request_id' => $getReqId($request),
