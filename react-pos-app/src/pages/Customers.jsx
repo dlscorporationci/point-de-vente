@@ -5,6 +5,7 @@ import { db } from '../services/db';
 import { ExportModal } from '../components/ExportModal';
 import { SlidePanel } from '../components/SlidePanel';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { PhoneInput } from '../components/PhoneInput';
 
 const getCustomerInitials = (name) => {
   if (!name) return 'CL';
@@ -496,13 +497,10 @@ export const Customers = () => {
               <div className="form-row-grid">
                 <div className="form-group">
                   <label className="form-label">Téléphone</label>
-                  <input 
-                    type="tel" 
-                    className="form-control" 
+                  <PhoneInput 
                     value={formData.phone} 
-                    onChange={(e) => setFormData({...formData, phone: e.target.value.replace(/[^0-9+\s-]/g, '')})} 
-                    inputMode="tel"
-                    placeholder="Ex: +225 0700000000"
+                    onChange={(val) => setFormData({...formData, phone: val})} 
+                    placeholder="07 00 00 00 00"
                   />
                 </div>
                 <div className="form-group">

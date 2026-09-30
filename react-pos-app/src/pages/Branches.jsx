@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useApp } from '../context/AppContext';
 import { SlidePanel } from '../components/SlidePanel';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { PhoneInput } from '../components/PhoneInput';
 
 export const Branches = () => {
   const { token, user } = useApp();
@@ -174,6 +175,9 @@ export const Branches = () => {
           <div>
             <h2 className="section-title">
               <i className="fa-solid fa-store me-2 text-primary"></i> Gestion des Boutiques
+              <span className="badge bg-primary-subtle text-primary ms-2" style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '6px', fontWeight: 600 }}>
+                <i className="fa-solid fa-shield-halved me-1"></i> Contrôle Qualité V2.4
+              </span>
             </h2>
             <p className="customers-subtitle">
               Créez, modifiez et gérez les points de vente de votre entreprise.
@@ -315,27 +319,41 @@ export const Branches = () => {
         {formError && <div className="error-banner mb-3"><i className="fa-solid fa-circle-exclamation me-1"></i> {formError}</div>}
         {formSuccess && <div className="success-banner mb-3"><i className="fa-solid fa-circle-check me-1"></i> {formSuccess}</div>}
 
+        <div style={{
+          fontSize: '12px',
+          background: 'rgba(37, 99, 235, 0.08)',
+          border: '1px solid rgba(37, 99, 235, 0.2)',
+          borderRadius: '8px',
+          padding: '10px 14px',
+          marginBottom: '16px',
+          color: 'var(--color-text, #1e293b)'
+        }}>
+          <i className="fa-solid fa-shield-halved me-2 text-primary"></i>
+          <strong>Filtre Qualité V2.4 Activé :</strong> Nom min 3 car. (sans répétitions "ffff"), adresse valide et téléphone avec drapeau pays (ex: 🇨🇮 +225).
+        </div>
+
         <form id="branch-form" onSubmit={handleSave}>
           <div className="form-group">
             <label className="form-label">Nom de la boutique *</label>
             <input type="text" className="form-control" required
-              minLength={2} maxLength={100}
+              minLength={3} maxLength={100}
               placeholder="Ex: Boutique Centre-ville"
               value={branchForm.name}
               onChange={e => setBranchForm({ ...branchForm, name: e.target.value })} />
           </div>
           <div className="form-group">
-            <label className="form-label">Téléphone</label>
-            <input type="tel" className="form-control"
-              placeholder="Ex: +225 07 00 00 00"
+            <label className="form-label">Téléphone de la boutique</label>
+            <PhoneInput
               value={branchForm.phone}
-              onChange={e => setBranchForm({ ...branchForm, phone: e.target.value.replace(/[^0-9+\s-()]/g, '') })} />
+              onChange={val => setBranchForm({ ...branchForm, phone: val })}
+              placeholder="07 00 00 00 00"
+            />
             <small className="text-muted" style={{ fontSize: '11px', marginTop: '4px', display: 'block' }}>
-              💡 Seuls les chiffres, espaces et indicatifs (+, -) sont autorisés.
+              💡 Sélectionnez l'indicatif du pays (ex: 🇨🇮 +225) et saisissez les chiffres.
             </small>
           </div>
           <div className="form-group">
-            <label className="form-label">Adresse</label>
+            <label className="form-label">Adresse physique</label>
             <input type="text" className="form-control"
               placeholder="Ex: Rue des Palmiers, Plateau"
               value={branchForm.address}

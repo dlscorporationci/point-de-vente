@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useApp } from '../context/AppContext';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { PasswordInput } from '../components/PasswordInput';
+import { PhoneInput } from '../components/PhoneInput';
 import { BusinessRulesPanel } from '../components/BusinessRulesPanel';
 import { CustomRolesModal } from '../components/CustomRolesModal';
 import { AccessZonesModal } from '../components/AccessZonesModal';
@@ -625,8 +626,8 @@ export const Settings = () => {
                 </div>
                 <div className="row">
                   <div className="col-md-6 form-group">
-                    <label className="form-label">Téléphone de la boutique</label>
-                    <input type="text" className="form-control" value={companyPhone} onChange={(e) => setCompanyPhone(e.target.value)} />
+                    <label className="form-label">Téléphone de l'entreprise</label>
+                    <PhoneInput value={companyPhone} onChange={setCompanyPhone} placeholder="07 00 00 00 00" />
                   </div>
                   <div className="col-md-6 form-group">
                     <label className="form-label">Adresse physique</label>
@@ -827,10 +828,12 @@ export const Settings = () => {
                             value={branchForm.name} onChange={e => setBranchForm({...branchForm, name: e.target.value})} />
                         </div>
                         <div className="col-md-6 form-group">
-                          <label className="form-label">Téléphone</label>
-                          <input type="tel" className="form-control"
-                            placeholder="Ex: +225 07 00 00 00"
-                            value={branchForm.phone} onChange={e => setBranchForm({...branchForm, phone: e.target.value.replace(/[^0-9+\s-()]/g, '')})} />
+                          <label className="form-label">Téléphone de la boutique</label>
+                          <PhoneInput
+                            value={branchForm.phone}
+                            onChange={val => setBranchForm({ ...branchForm, phone: val })}
+                            placeholder="07 00 00 00 00"
+                          />
                         </div>
                       </div>
                       <div className="form-group">
