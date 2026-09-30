@@ -368,16 +368,26 @@ export const Settings = () => {
     setError(null);
 
     const nameClean = (branchForm.name || '').trim();
-    if (!nameClean || nameClean.length < 2) {
-      setError('Le nom de la boutique doit comporter au moins 2 caractères.');
+    if (!nameClean || nameClean.length < 3) {
+      setError('Le nom de la boutique doit comporter au moins 3 caractères.');
       return;
     }
-    if (!/[a-zA-ZÀ-ÿ0-9]/.test(nameClean)) {
-      setError('Le nom de la boutique doit contenir des lettres ou chiffres valides.');
+    if (/(.)\1{2,}/.test(nameClean)) {
+      setError('Le nom de la boutique ne peut pas contenir de répétitions abusives (ex: "ffff").');
+      return;
+    }
+    const letters = (nameClean.match(/[a-zA-ZÀ-ÿ]/g) || []);
+    const uniqueLetters = new Set(letters.map(l => l.toLowerCase()));
+    if (uniqueLetters.size < 2) {
+      setError('Le nom de la boutique doit contenir au moins 2 lettres distinctes.');
       return;
     }
 
     if (branchForm.phone && branchForm.phone.trim()) {
+      if (/[a-zA-Z]/.test(branchForm.phone)) {
+        setError('Le numéro de téléphone ne doit contenir aucune lettre alphabétique.');
+        return;
+      }
       const digits = branchForm.phone.replace(/\D/g, '');
       if (digits.length < 8) {
         setError('Le numéro de téléphone est invalide (minimum 8 chiffres, ex: +225 07 00 00 00).');
@@ -385,9 +395,16 @@ export const Settings = () => {
       }
     }
 
-    if (branchForm.address && branchForm.address.trim() && branchForm.address.trim().length < 3) {
-      setError("L'adresse de la boutique doit comporter au moins 3 caractères.");
-      return;
+    if (branchForm.address && branchForm.address.trim()) {
+      const addrClean = branchForm.address.trim();
+      if (addrClean.length < 4) {
+        setError("L'adresse de la boutique doit comporter au moins 4 caractères.");
+        return;
+      }
+      if (/(.)\1{2,}/.test(addrClean)) {
+        setError("L'adresse de la boutique ne peut pas contenir de répétitions abusives (ex: \"ffff\").");
+        return;
+      }
     }
 
     setBranchSaving(true);
