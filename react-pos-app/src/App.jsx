@@ -37,6 +37,7 @@ import { CommunicationCenter } from './pages/CommunicationCenter'
 import { MaintenanceCenter } from './pages/MaintenanceCenter'
 import { MaintenanceScreen } from './components/MaintenanceScreen'
 import { VerifyEmail } from './pages/VerifyEmail'
+import { LegalPage } from './pages/LegalPage'
 import { registerMobileServiceWorker } from './utils/mobilePushNotification'
 
 const getRoleSlug = (r) => {
@@ -410,6 +411,10 @@ function MainContent() {
         case 'verify-email': return <VerifyEmail onNavigate={(t) => setActiveTab(t)} />
         case 'register':     return <Register setActiveTab={setActiveTab} />
         case 'home':         return <Home setActiveTab={setActiveTab} />
+        case 'cgu':             return <LegalPage type="cgu" onNavigate={setActiveTab} />
+        case 'cgv':             return <LegalPage type="cgv" onNavigate={setActiveTab} />
+        case 'delivery-policy': return <LegalPage type="delivery" onNavigate={setActiveTab} />
+        case 'refund-policy':   return <LegalPage type="refund" onNavigate={setActiveTab} />
         case 'auth':
         default:             return <Login setActiveTab={setActiveTab} />
       }
@@ -489,6 +494,10 @@ function MainContent() {
       case 'userguide':     return <UserGuide />
       case 'sync-center':   return <SyncCenter />
       case 'notifications': return <Notifications setActiveTab={setActiveTab} />
+      case 'cgu':             return <LegalPage type="cgu" onNavigate={setActiveTab} />
+      case 'cgv':             return <LegalPage type="cgv" onNavigate={setActiveTab} />
+      case 'delivery-policy': return <LegalPage type="delivery" onNavigate={setActiveTab} />
+      case 'refund-policy':   return <LegalPage type="refund" onNavigate={setActiveTab} />
       default:              return isSuperAdmin ? <BackOffice /> : <Dashboard setActiveTab={setActiveTab} />
     }
   }
@@ -538,6 +547,10 @@ function MainContent() {
     auth:          { icon: user ? 'fa-user' : 'fa-key', label: user ? 'Mon Profil' : 'Connexion', show: true },
     register:      { icon: 'fa-pen-to-square',   label: "S'inscrire",    show: !user },
     userguide:     { icon: 'fa-book-open',       label: 'Aide & Guide',  show: !!user },
+    cgu:               { icon: 'fa-file-contract',       label: 'CGU (Utilisation)', show: true },
+    cgv:               { icon: 'fa-file-invoice-dollar', label: 'CGV (Vente)',       show: true },
+    'delivery-policy': { icon: 'fa-truck-fast',          label: 'Politique Livraison', show: true },
+    'refund-policy':   { icon: 'fa-rotate-left',         label: 'Politique Remboursement', show: true },
   };
 
   // Groupes d'onglets pliables (Accordion)
@@ -574,7 +587,7 @@ function MainContent() {
       title: '🔄 Système & Support',
       icon: 'fa-circle-info',
       collapsible: true,
-      items: ['sync-center', 'communication', 'notifications', 'auth', 'register', 'userguide']
+      items: ['sync-center', 'communication', 'notifications', 'auth', 'register', 'userguide', 'cgu', 'cgv', 'delivery-policy', 'refund-policy']
     }
   ];
 

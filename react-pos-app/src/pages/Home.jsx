@@ -695,6 +695,51 @@ export const Home = ({ setActiveTab }) => {
         </div>
       </section>
 
+      {/* ══════════ PIED DE PAGE & MENTIONS LÉGALES ══════════ */}
+      <footer style={{ background: '#0f172a', color: '#94a3b8', padding: '60px 40px 30px', borderTop: '1px solid #1e293b' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '40px' }}>
+          <div>
+            <h4 style={{ color: '#ffffff', fontWeight: 800, fontSize: '18px', marginBottom: '12px' }}>DLS POS</h4>
+            <p style={{ fontSize: '13px', lineHeight: 1.6 }}>
+              Plateforme SaaS de gestion commerciale, encaissement POS et gestion des stocks pour commerces et réseaux de boutiques.
+            </p>
+          </div>
+          <div>
+            <h5 style={{ color: '#ffffff', fontWeight: 700, fontSize: '14px', marginBottom: '14px' }}>Informations Légales</h5>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
+              <li>
+                <a href="#" onClick={(e) => { e.preventDefault(); setActiveTab('cgu'); }} style={{ color: '#94a3b8', textDecoration: 'none' }}>
+                  📜 Conditions Générales d'Utilisation (CGU)
+                </a>
+              </li>
+              <li>
+                <a href="#" onClick={(e) => { e.preventDefault(); setActiveTab('cgv'); }} style={{ color: '#94a3b8', textDecoration: 'none' }}>
+                  🛍️ Conditions Générales de Vente (CGV)
+                </a>
+              </li>
+              <li>
+                <a href="#" onClick={(e) => { e.preventDefault(); setActiveTab('delivery-policy'); }} style={{ color: '#94a3b8', textDecoration: 'none' }}>
+                  🚚 Politique de Livraison
+                </a>
+              </li>
+              <li>
+                <a href="#" onClick={(e) => { e.preventDefault(); setActiveTab('refund-policy'); }} style={{ color: '#94a3b8', textDecoration: 'none' }}>
+                  💳 Politique de Remboursement
+                </a>
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h5 style={{ color: '#ffffff', fontWeight: 700, fontSize: '14px', marginBottom: '14px' }}>Support & Contact</h5>
+            <p style={{ fontSize: '13px', margin: '0 0 6px' }}><i className="fa-solid fa-envelope me-2 text-primary"></i> support@dlscorporation.ci</p>
+            <p style={{ fontSize: '13px', margin: 0 }}><i className="fa-solid fa-phone me-2 text-success"></i> +225 07 00 00 00 00</p>
+          </div>
+        </div>
+        <div style={{ maxWidth: '1200px', margin: '40px auto 0', paddingTop: '20px', borderTop: '1px solid #1e293b', textAlign: 'center', fontSize: '12px' }}>
+          © 2026 DLS Corporation CI. Tous droits réservés.
+        </div>
+      </footer>
+
       <style>{`
         .home-v2 {
           width: 100%;
