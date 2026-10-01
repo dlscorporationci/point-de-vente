@@ -188,7 +188,7 @@ export const LegalPage = ({ type = 'cgu', onNavigate }) => {
             <strong>DLS CORPORATION CI</strong> — Éditeur de solutions logicielles et d'intégration Monétique.
           </div>
           <div>
-            E-mail : <strong>dlscorporation2020@gmail.com</strong> | Tél : <strong>+225 07 08 74 41 15 / +225 05 66 28 93 94</strong>
+            E-mail : <strong>infos@dlscorporation.ci</strong> | Tél : <strong>+225 07 08 74 41 15 / +225 05 66 28 93 94</strong>
           </div>
         </div>
       </div>

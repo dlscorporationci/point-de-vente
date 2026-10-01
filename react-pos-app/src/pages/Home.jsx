@@ -602,14 +602,14 @@ export const Home = ({ setActiveTab }) => {
                 <div className="info-icon"><i className="fa-solid fa-envelope"></i></div>
                 <div>
                   <strong>Adresse E-mail</strong>
-                  <p>dlscorporation2020@gmail.com</p>
+                  <p>infos@dlscorporation.ci</p>
                 </div>
               </div>
               <div className="info-item">
                 <div className="info-icon"><i className="fa-solid fa-location-dot"></i></div>
                 <div>
                   <strong>Siège social</strong>
-                  <p>Angré-CHU, Abidjan, Côte d'Ivoire</p>
+                  <p>ABIDJAN COCODY ANGRE COTE D'IVOIRE</p>
                 </div>
               </div>
             </div>
@@ -731,7 +731,7 @@ export const Home = ({ setActiveTab }) => {
           </div>
           <div>
             <h5 style={{ color: '#ffffff', fontWeight: 700, fontSize: '14px', marginBottom: '14px' }}>Support & Contact</h5>
-            <p style={{ fontSize: '13px', margin: '0 0 6px' }}><i className="fa-solid fa-envelope me-2 text-primary"></i> <a href="mailto:dlscorporation2020@gmail.com" style={{ color: '#94a3b8', textDecoration: 'none' }}>dlscorporation2020@gmail.com</a></p>
+            <p style={{ fontSize: '13px', margin: '0 0 6px' }}><i className="fa-solid fa-envelope me-2 text-primary"></i> <a href="mailto:infos@dlscorporation.ci" style={{ color: '#94a3b8', textDecoration: 'none' }}>infos@dlscorporation.ci</a></p>
             <p style={{ fontSize: '13px', margin: 0 }}><i className="fa-solid fa-phone me-2 text-success"></i> +225 07 08 74 41 15 / +225 05 66 28 93 94</p>
           </div>
         </div>

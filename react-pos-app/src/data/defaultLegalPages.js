@@ -14,7 +14,7 @@ export const DEFAULT_LEGAL_PAGES = {
 
   <p>
     La plateforme <strong>DLS POS</strong> est éditée et exploitée par <strong>DLS CORPORATION</strong> (ABIDJAN COCODY ANGRE COTE D'IVOIRE).
-    Pour toute question ou assistance, contactez-nous à <a href="mailto:dlscorporation2020@gmail.com">dlscorporation2020@gmail.com</a> ou au <strong>+225 07 08 74 41 15 / +225 05 66 28 93 94</strong>.
+    Pour toute question ou assistance, contactez-nous à <a href="mailto:infos@dlscorporation.ci">infos@dlscorporation.ci</a> ou au <strong>+225 07 08 74 41 15 / +225 05 66 28 93 94</strong>.
   </p>
   <p>L'utilisation de la plateforme et du logiciel implique l'acceptation pleine et entière des présentes conditions.</p>
 
@@ -52,7 +52,7 @@ export const DEFAULT_LEGAL_PAGES = {
   <p>
     <strong>DLS CORPORATION</strong><br />
     Adresse : ABIDJAN COCODY ANGRE COTE D'IVOIRE<br />
-    E-mail : <a href="mailto:dlscorporation2020@gmail.com">dlscorporation2020@gmail.com</a><br />
+    E-mail : <a href="mailto:infos@dlscorporation.ci">infos@dlscorporation.ci</a><br />
     Téléphone : <strong>+225 07 08 74 41 15 / +225 05 66 28 93 94</strong>
   </p>
 </article>`,
@@ -99,7 +99,7 @@ export const DEFAULT_LEGAL_PAGES = {
 
   <h3>5. Assistance et remboursement</h3>
   <p>
-    Toute difficulté doit être signalée à <a href="mailto:dlscorporation2020@gmail.com">dlscorporation2020@gmail.com</a> en précisant la référence de commande.
+    Toute difficulté doit être signalée à <a href="mailto:infos@dlscorporation.ci">infos@dlscorporation.ci</a> en précisant la référence de commande.
     Les demandes de remboursement sont traitées conformément à notre <strong>Politique de Remboursement</strong>.
   </p>
 
@@ -107,7 +107,7 @@ export const DEFAULT_LEGAL_PAGES = {
   <p>
     <strong>DLS CORPORATION</strong><br />
     Adresse : ABIDJAN COCODY ANGRE COTE D'IVOIRE<br />
-    E-mail : <a href="mailto:dlscorporation2020@gmail.com">dlscorporation2020@gmail.com</a><br />
+    E-mail : <a href="mailto:infos@dlscorporation.ci">infos@dlscorporation.ci</a><br />
     Téléphone : <strong>+225 07 08 74 41 15 / +225 05 66 28 93 94</strong>
   </p>
 </article>`,
@@ -147,7 +147,7 @@ export const DEFAULT_LEGAL_PAGES = {
   <p>
     <strong>DLS CORPORATION</strong><br />
     Adresse : ABIDJAN COCODY ANGRE COTE D'IVOIRE<br />
-    E-mail : <a href="mailto:dlscorporation2020@gmail.com">dlscorporation2020@gmail.com</a><br />
+    E-mail : <a href="mailto:infos@dlscorporation.ci">infos@dlscorporation.ci</a><br />
     Téléphone : <strong>+225 07 08 74 41 15 / +225 05 66 28 93 94</strong>
   </p>
 </article>`,
@@ -174,7 +174,7 @@ export const DEFAULT_LEGAL_PAGES = {
   </ul>
 
   <h3>3. Modalités de Demande</h3>
-  <p>Le client doit écrire à <a href="mailto:dlscorporation2020@gmail.com">dlscorporation2020@gmail.com</a> en indiquant :</p>
+  <p>Le client doit écrire à <a href="mailto:infos@dlscorporation.ci">infos@dlscorporation.ci</a> en indiquant :</p>
   <ul>
     <li>Le nom de l'entreprise et l'e-mail du compte ;</li>
     <li>La référence de commande ou de transaction ;</li>
@@ -186,7 +186,7 @@ export const DEFAULT_LEGAL_PAGES = {
   <p>
     <strong>DLS CORPORATION</strong><br />
     Adresse : ABIDJAN COCODY ANGRE COTE D'IVOIRE<br />
-    E-mail : <a href="mailto:dlscorporation2020@gmail.com">dlscorporation2020@gmail.com</a><br />
+    E-mail : <a href="mailto:infos@dlscorporation.ci">infos@dlscorporation.ci</a><br />
     Téléphone : <strong>+225 07 08 74 41 15 / +225 05 66 28 93 94</strong>
   </p>
 </article>`,
@@ -222,7 +222,7 @@ export const DEFAULT_LEGAL_PAGES = {
   <p>
     <strong>DLS CORPORATION</strong><br />
     Adresse : ABIDJAN COCODY ANGRE COTE D'IVOIRE<br />
-    E-mail relatif aux données personnelles : <a href="mailto:dlscorporation2020@gmail.com">dlscorporation2020@gmail.com</a><br />
+    E-mail relatif aux données personnelles : <a href="mailto:infos@dlscorporation.ci">infos@dlscorporation.ci</a><br />
     Téléphone : <strong>+225 07 08 74 41 15 / +225 05 66 28 93 94</strong>
   </p>
 </article>`

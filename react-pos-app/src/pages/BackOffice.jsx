@@ -2173,7 +2173,7 @@ export const BackOffice = () => {
                           <button
                             type="button"
                             className="btn btn-light btn-sm text-dark font-monospace"
-                            onClick={() => insertHtmlSnippet('<p>Contact support : <a href="mailto:dlscorporation2020@gmail.com">dlscorporation2020@gmail.com</a> | Tél : <strong>+225 07 08 74 41 15 / +225 05 66 28 93 94</strong></p>', activeLegalTab)}
+                            onClick={() => insertHtmlSnippet('<p>Contact support : <a href="mailto:infos@dlscorporation.ci">infos@dlscorporation.ci</a> | Tél : <strong>+225 07 08 74 41 15 / +225 05 66 28 93 94</strong></p>', activeLegalTab)}
                             title="Insérer bloc contact"
                             style={{ fontSize: '11.5px', borderRadius: '6px' }}
                           >
