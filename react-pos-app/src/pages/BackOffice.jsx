@@ -2210,6 +2210,26 @@ export const BackOffice = () => {
                       </div>
                     </div>
                   )}
+
+                  {/* ── BARRE D'ENREGISTREMENT AU BAS DU FORMULAIRE ── */}
+                  <div className="mt-4 pt-3 border-top d-flex justify-content-between align-items-center flex-wrap gap-3" style={{ borderColor: 'var(--border-color, #e2e8f0)' }}>
+                    <div className="text-muted small" style={{ fontSize: '13px' }}>
+                      <i className="fa-solid fa-shield-halved text-primary me-1"></i>
+                      Les modifications enregistrées sont immédiatement publiées sur le site et accessibles à tous les utilisateurs.
+                    </div>
+                    <button
+                      className="btn btn-primary fw-bold px-4 py-2 shadow-sm"
+                      onClick={saveLegalPages}
+                      disabled={legalSaving}
+                      style={{ borderRadius: '10px', fontSize: '15px' }}
+                    >
+                      {legalSaving ? (
+                        <><i className="fa-solid fa-spinner fa-spin me-2"></i> Enregistrement en cours...</>
+                      ) : (
+                        <><i className="fa-solid fa-floppy-disk me-2"></i> 💾 Enregistrer les Modifications</>
+                      )}
+                    </button>
+                  </div>
                 </>
               )}
             </div>
