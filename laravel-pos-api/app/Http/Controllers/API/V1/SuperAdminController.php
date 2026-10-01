@@ -2019,4 +2019,57 @@ class SuperAdminController extends Controller
             abort(403, "Action réservée aux administrateurs globaux du système.");
         }
     }
+
+    /**
+     * Obtenir le contenu dynamique des pages légales (Public & App).
+     */
+    public function getLegalPages()
+    {
+        $filePath = storage_path('app/legal_pages.json');
+        if (file_exists($filePath)) {
+            $content = json_decode(file_get_contents($filePath), true);
+            return response()->json($content ?: []);
+        }
+        return response()->json([]);
+    }
+
+    /**
+     * Mettre à jour les pages légales (SuperAdmin uniquement).
+     */
+    public function updateLegalPages(Request $request)
+    {
+        $this->authorizeSuperAdmin($request);
+
+        $request->validate([
+            'cgu'             => 'nullable|string',
+            'cgv'             => 'nullable|string',
+            'delivery_policy' => 'nullable|string',
+            'refund_policy'   => 'nullable|string',
+            'privacy_policy'  => 'nullable|string',
+        ]);
+
+        $filePath = storage_path('app/legal_pages.json');
+        $existing = file_exists($filePath) ? json_decode(file_get_contents($filePath), true) : [];
+
+        $data = array_merge($existing ?: [], [
+            'cgu'             => $request->input('cgu', $existing['cgu'] ?? null),
+            'cgv'             => $request->input('cgv', $existing['cgv'] ?? null),
+            'delivery_policy' => $request->input('delivery_policy', $existing['delivery_policy'] ?? null),
+            'refund_policy'   => $request->input('refund_policy', $existing['refund_policy'] ?? null),
+            'privacy_policy'  => $request->input('privacy_policy', $existing['privacy_policy'] ?? null),
+            'updated_at'      => date('Y-m-d H:i:s'),
+            'updated_by'      => $request->user() ? $request->user()->name : 'SuperAdmin',
+        ]);
+
+        if (!is_dir(storage_path('app'))) {
+            mkdir(storage_path('app'), 0755, true);
+        }
+
+        file_put_contents($filePath, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
+        return response()->json([
+            'message' => 'Pages légales mises à jour avec succès.',
+            'data'    => $data,
+        ]);
+    }
 }

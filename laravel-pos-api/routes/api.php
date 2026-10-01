@@ -60,6 +60,7 @@ Route::prefix('v1')->middleware('tenant')->group(function () {
         });
         Route::get('/maintenance/status', [\App\Http\Controllers\API\V1\MaintenanceController::class, 'status']);
         Route::get('/public/documents/{uuid}/download', [\App\Http\Controllers\API\V1\DocumentController::class, 'publicDownload']);
+        Route::get('/public/legal-pages', [\App\Http\Controllers\API\V1\SuperAdminController::class, 'getLegalPages']);
     });
 
     // Routes d'authentification protégées par Sanctum
@@ -358,6 +359,7 @@ Route::prefix('v1')->middleware('tenant')->group(function () {
             // Mode Maintenance Applicatif (Console SuperAdmin)
             Route::get('/maintenance',        [\App\Http\Controllers\API\V1\MaintenanceController::class, 'index']);
             Route::post('/maintenance/toggle', [\App\Http\Controllers\API\V1\MaintenanceController::class, 'toggle']);
+            Route::post('/admin/legal-pages',  [\App\Http\Controllers\API\V1\SuperAdminController::class, 'updateLegalPages']);
         });
 
         // Statut public de maintenance applicative (déplacé dans le groupe public ci-dessus)

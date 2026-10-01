@@ -99,6 +99,14 @@ export const BackOffice = () => {
   const [emailLogFilterStatus, setEmailLogFilterStatus] = useState('');
   const [emailLogSearchTerm, setEmailLogSearchTerm] = useState('');
 
+  // ── PAGES LÉGALES ──
+  const [legalPages, setLegalPages] = useState({ cgu: '', cgv: '', delivery_policy: '', refund_policy: '', privacy_policy: '' });
+  const [legalLoading, setLegalLoading] = useState(false);
+  const [legalSaving, setLegalSaving] = useState(false);
+  const [legalMessage, setLegalMessage] = useState('');
+  const [legalError, setLegalError] = useState('');
+  const [activeLegalTab, setActiveLegalTab] = useState('cgu');
+
   // ── MESSAGES ET ÉTATS ──
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -261,8 +269,41 @@ export const BackOffice = () => {
       setSystemInfo(res.data);
     } catch (err) {
       console.error("System info error:", err);
-    } finally {
       setSystemLoading(false);
+    }
+  };
+
+  const loadLegalPages = async () => {
+    setLegalLoading(true);
+    try {
+      const res = await axios.get('/v1/public/legal-pages');
+      if (res.data) {
+        setLegalPages({
+          cgu: res.data.cgu || '',
+          cgv: res.data.cgv || '',
+          delivery_policy: res.data.delivery_policy || '',
+          refund_policy: res.data.refund_policy || '',
+          privacy_policy: res.data.privacy_policy || '',
+        });
+      }
+    } catch (e) {
+      console.error('Erreur chargement pages légales:', e);
+    } finally {
+      setLegalLoading(false);
+    }
+  };
+
+  const saveLegalPages = async () => {
+    setLegalSaving(true);
+    setLegalMessage('');
+    setLegalError('');
+    try {
+      const res = await axios.post('/v1/admin/legal-pages', legalPages);
+      setLegalMessage(res.data?.message || 'Pages légales mises à jour avec succès.');
+    } catch (e) {
+      setLegalError(e.response?.data?.message || 'Erreur lors de la sauvegarde des pages légales.');
+    } finally {
+      setLegalSaving(false);
     }
   };
 
@@ -281,6 +322,7 @@ export const BackOffice = () => {
     if (activeSubTab === 'system') loadSystemInfo();
     if (activeSubTab === 'ranking') loadRankings(dateFilter, sortBy);
     if (activeSubTab === 'risk') loadCompaniesAtRisk();
+    if (activeSubTab === 'legal') loadLegalPages();
   }, [token, activeSubTab, dateFilter, sortBy]);
 
   // Action Handlers Abonnements & Facturation
@@ -801,6 +843,9 @@ export const BackOffice = () => {
             </button>
             <button className={`subtab-btn ${activeSubTab === 'emails' ? 'active' : ''}`} onClick={() => { setActiveSubTab('emails'); loadEmailSettings(); loadEmailLogs(); }} style={{ border: '1.5px solid #0284c7', color: activeSubTab === 'emails' ? '#fff' : '#0284c7', fontWeight: 800 }}>
               <i className="fa-solid fa-envelope me-1"></i> E-mails &amp; SMTP
+            </button>
+            <button className={`subtab-btn ${activeSubTab === 'legal' ? 'active' : ''}`} onClick={() => setActiveSubTab('legal')} style={{ border: '1.5px solid #8b5cf6', color: activeSubTab === 'legal' ? '#fff' : '#8b5cf6', fontWeight: 800 }}>
+              📜 Pages Légales
             </button>
           </div>
         </div>
@@ -1876,6 +1921,86 @@ export const BackOffice = () => {
                     </tbody>
                   </table>
                 </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeSubTab === 'legal' && (
+          <div>
+            <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+              <div>
+                <h4 className="fw-bold m-0"><i className="fa-solid fa-file-contract me-2 text-primary"></i> Gestion des Pages Légales</h4>
+                <p className="text-muted small m-0 mt-1">Modifiez le contenu des pages légales affichées à tous les utilisateurs (CGU, CGV, Politiques, Confidentialité).</p>
+              </div>
+              <button
+                className="btn btn-primary fw-bold px-4 py-2"
+                onClick={saveLegalPages}
+                disabled={legalSaving}
+                style={{ borderRadius: '10px', fontSize: '14px' }}
+              >
+                {legalSaving ? <><i className="fa-solid fa-spinner fa-spin me-2"></i> Enregistrement...</> : <><i className="fa-solid fa-floppy-disk me-2"></i> Enregistrer les Modifications</>}
+              </button>
+            </div>
+
+            {legalMessage && (
+              <div className="alert alert-success d-flex align-items-center gap-2 py-2 px-3 mb-3" style={{ borderRadius: '10px', fontSize: '13px' }}>
+                <i className="fa-solid fa-circle-check"></i> {legalMessage}
+              </div>
+            )}
+            {legalError && (
+              <div className="alert alert-danger d-flex align-items-center gap-2 py-2 px-3 mb-3" style={{ borderRadius: '10px', fontSize: '13px' }}>
+                <i className="fa-solid fa-triangle-exclamation"></i> {legalError}
+              </div>
+            )}
+
+            <div className="card shadow-sm p-4" style={{ borderRadius: '16px', background: 'var(--color-surface, #ffffff)' }}>
+              {/* Onglets internes des pages légales */}
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid var(--color-border, #e2e8f0)', paddingBottom: '12px', overflowX: 'auto' }}>
+                {[
+                  { key: 'cgu', label: '📜 CGU', icon: 'fa-file-contract' },
+                  { key: 'cgv', label: '🛍️ CGV', icon: 'fa-file-invoice-dollar' },
+                  { key: 'delivery_policy', label: '🚚 Livraison', icon: 'fa-truck-fast' },
+                  { key: 'refund_policy', label: '💳 Remboursement', icon: 'fa-rotate-left' },
+                  { key: 'privacy_policy', label: '🔒 Confidentialité', icon: 'fa-shield-halved' },
+                ].map(tab => (
+                  <button
+                    key={tab.key}
+                    className={`btn btn-sm ${activeLegalTab === tab.key ? 'btn-primary' : 'btn-light'}`}
+                    onClick={() => setActiveLegalTab(tab.key)}
+                    style={{ borderRadius: '8px', fontWeight: 600, fontSize: '13px', whiteSpace: 'nowrap' }}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {legalLoading ? (
+                <div className="text-center py-5">
+                  <i className="fa-solid fa-spinner fa-spin fa-2x text-primary mb-3"></i>
+                  <p className="text-muted">Chargement du contenu...</p>
+                </div>
+              ) : (
+                <>
+                  <div className="mb-3">
+                    <label className="form-label fw-bold" style={{ fontSize: '14px' }}>
+                      <i className="fa-solid fa-pen-to-square me-2 text-primary"></i>
+                      Contenu HTML de la page : {activeLegalTab === 'cgu' ? 'CGU (Conditions Générales d\'Utilisation)' : activeLegalTab === 'cgv' ? 'CGV (Conditions Générales de Vente)' : activeLegalTab === 'delivery_policy' ? 'Politique de Livraison' : activeLegalTab === 'refund_policy' ? 'Politique de Remboursement' : 'Politique de Confidentialité'}
+                    </label>
+                    <textarea
+                      className="form-control"
+                      rows={18}
+                      value={legalPages[activeLegalTab] || ''}
+                      onChange={(e) => setLegalPages(prev => ({ ...prev, [activeLegalTab]: e.target.value }))}
+                      placeholder={`Saisissez le contenu HTML de la page ${activeLegalTab}...\n\nExemple :\n<h3>1. Titre de la section</h3>\n<p>Contenu du paragraphe...</p>`}
+                      style={{ fontFamily: 'monospace', fontSize: '13px', borderRadius: '10px', minHeight: '350px', resize: 'vertical' }}
+                    />
+                  </div>
+                  <div className="d-flex align-items-center gap-2 text-muted" style={{ fontSize: '12px' }}>
+                    <i className="fa-solid fa-circle-info"></i>
+                    <span>Utilisez du HTML standard pour formater le contenu (titres <code>&lt;h3&gt;</code>, paragraphes <code>&lt;p&gt;</code>, listes <code>&lt;ul&gt;&lt;li&gt;</code>, liens <code>&lt;a&gt;</code>). Si le champ est vide, le contenu par défaut sera affiché.</span>
+                  </div>
+                </>
               )}
             </div>
           </div>

@@ -415,6 +415,7 @@ function MainContent() {
         case 'cgv':             return <LegalPage type="cgv" onNavigate={setActiveTab} />
         case 'delivery-policy': return <LegalPage type="delivery" onNavigate={setActiveTab} />
         case 'refund-policy':   return <LegalPage type="refund" onNavigate={setActiveTab} />
+        case 'privacy-policy':  return <LegalPage type="privacy" onNavigate={setActiveTab} />
         case 'auth':
         default:             return <Login setActiveTab={setActiveTab} />
       }
@@ -433,7 +434,7 @@ function MainContent() {
     const isModulePermitted = (tabKey) => {
       if (isSuperAdmin || role === 'admin') return true;
       if (!allowedModules || !Array.isArray(allowedModules) || allowedModules.length === 0) return true;
-      const alwaysAllowed = ['home', 'dashboard', 'auth', 'userguide', 'notifications', 'sync-center', 'select-branch'];
+      const alwaysAllowed = ['home', 'dashboard', 'auth', 'userguide', 'notifications', 'sync-center', 'select-branch', 'cgu', 'cgv', 'delivery-policy', 'refund-policy', 'privacy-policy', 'documents', 'audit'];
       if (alwaysAllowed.includes(tabKey)) return true;
       if (allowedModules.includes(tabKey)) return true;
       // Compatibilité des alias étendus
@@ -498,6 +499,7 @@ function MainContent() {
       case 'cgv':             return <LegalPage type="cgv" onNavigate={setActiveTab} />
       case 'delivery-policy': return <LegalPage type="delivery" onNavigate={setActiveTab} />
       case 'refund-policy':   return <LegalPage type="refund" onNavigate={setActiveTab} />
+      case 'privacy-policy':  return <LegalPage type="privacy" onNavigate={setActiveTab} />
       default:              return isSuperAdmin ? <BackOffice /> : <Dashboard setActiveTab={setActiveTab} />
     }
   }
@@ -507,7 +509,7 @@ function MainContent() {
   const canAccessModule = (tabKey) => {
     if (isSuperAdmin || role === 'admin') return true;
     if (!allowedModulesList || !Array.isArray(allowedModulesList) || allowedModulesList.length === 0) return true;
-    const alwaysAllowed = ['home', 'dashboard', 'auth', 'userguide', 'notifications', 'sync-center', 'select-branch'];
+    const alwaysAllowed = ['home', 'dashboard', 'auth', 'userguide', 'notifications', 'sync-center', 'select-branch', 'cgu', 'cgv', 'delivery-policy', 'refund-policy', 'privacy-policy', 'documents', 'audit'];
     if (alwaysAllowed.includes(tabKey)) return true;
     if (allowedModulesList.includes(tabKey)) return true;
     // Compatibilité des alias étendus
@@ -551,6 +553,7 @@ function MainContent() {
     cgv:               { icon: 'fa-file-invoice-dollar', label: 'CGV (Vente)',       show: true },
     'delivery-policy': { icon: 'fa-truck-fast',          label: 'Politique Livraison', show: true },
     'refund-policy':   { icon: 'fa-rotate-left',         label: 'Politique Remboursement', show: true },
+    'privacy-policy':  { icon: 'fa-shield-halved',       label: 'Confidentialité', show: true },
   };
 
   // Groupes d'onglets pliables (Accordion)
@@ -587,7 +590,7 @@ function MainContent() {
       title: '🔄 Système & Support',
       icon: 'fa-circle-info',
       collapsible: true,
-      items: ['sync-center', 'communication', 'notifications', 'auth', 'register', 'userguide', 'cgu', 'cgv', 'delivery-policy', 'refund-policy']
+      items: ['sync-center', 'communication', 'notifications', 'auth', 'register', 'userguide', 'cgu', 'cgv', 'delivery-policy', 'refund-policy', 'privacy-policy']
     }
   ];
 

@@ -731,8 +731,8 @@ export const Home = ({ setActiveTab }) => {
           </div>
           <div>
             <h5 style={{ color: '#ffffff', fontWeight: 700, fontSize: '14px', marginBottom: '14px' }}>Support & Contact</h5>
-            <p style={{ fontSize: '13px', margin: '0 0 6px' }}><i className="fa-solid fa-envelope me-2 text-primary"></i> support@dlscorporation.ci</p>
-            <p style={{ fontSize: '13px', margin: 0 }}><i className="fa-solid fa-phone me-2 text-success"></i> +225 07 00 00 00 00</p>
+            <p style={{ fontSize: '13px', margin: '0 0 6px' }}><i className="fa-solid fa-envelope me-2 text-primary"></i> <a href="mailto:dlscorporation2020@gmail.com" style={{ color: '#94a3b8', textDecoration: 'none' }}>dlscorporation2020@gmail.com</a></p>
+            <p style={{ fontSize: '13px', margin: 0 }}><i className="fa-solid fa-phone me-2 text-success"></i> +225 07 08 74 41 15 / +225 05 66 28 93 94</p>
           </div>
         </div>
         <div style={{ maxWidth: '1200px', margin: '40px auto 0', paddingTop: '20px', borderTop: '1px solid #1e293b', textAlign: 'center', fontSize: '12px' }}>
