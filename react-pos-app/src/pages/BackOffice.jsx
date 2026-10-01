@@ -8,6 +8,7 @@ import { ExportModal } from '../components/ExportModal';
 import { GlobalDateRangeFilter } from '../components/GlobalDateRangeFilter';
 import { CompanyInspection } from './CompanyInspection';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { DEFAULT_LEGAL_PAGES } from '../data/defaultLegalPages';
 
 export const BackOffice = () => {
   const { token, user, logout } = useApp();
@@ -100,12 +101,19 @@ export const BackOffice = () => {
   const [emailLogSearchTerm, setEmailLogSearchTerm] = useState('');
 
   // ── PAGES LÉGALES ──
-  const [legalPages, setLegalPages] = useState({ cgu: '', cgv: '', delivery_policy: '', refund_policy: '', privacy_policy: '' });
+  const [legalPages, setLegalPages] = useState({
+    cgu: '', cgu_pdf: '',
+    cgv: '', cgv_pdf: '',
+    delivery_policy: '', delivery_policy_pdf: '',
+    refund_policy: '', refund_policy_pdf: '',
+    privacy_policy: '', privacy_policy_pdf: ''
+  });
   const [legalLoading, setLegalLoading] = useState(false);
   const [legalSaving, setLegalSaving] = useState(false);
   const [legalMessage, setLegalMessage] = useState('');
   const [legalError, setLegalError] = useState('');
   const [activeLegalTab, setActiveLegalTab] = useState('cgu');
+  const [legalPreviewMode, setLegalPreviewMode] = useState(false);
 
   // ── MESSAGES ET ÉTATS ──
   const [error, setError] = useState(null);
@@ -279,11 +287,16 @@ export const BackOffice = () => {
       const res = await axios.get('/v1/public/legal-pages');
       if (res.data) {
         setLegalPages({
-          cgu: res.data.cgu || '',
-          cgv: res.data.cgv || '',
-          delivery_policy: res.data.delivery_policy || '',
-          refund_policy: res.data.refund_policy || '',
-          privacy_policy: res.data.privacy_policy || '',
+          cgu: res.data.cgu || DEFAULT_LEGAL_PAGES.cgu,
+          cgu_pdf: res.data.cgu_pdf || '',
+          cgv: res.data.cgv || DEFAULT_LEGAL_PAGES.cgv,
+          cgv_pdf: res.data.cgv_pdf || '',
+          delivery_policy: res.data.delivery_policy || DEFAULT_LEGAL_PAGES.delivery_policy,
+          delivery_policy_pdf: res.data.delivery_policy_pdf || '',
+          refund_policy: res.data.refund_policy || DEFAULT_LEGAL_PAGES.refund_policy,
+          refund_policy_pdf: res.data.refund_policy_pdf || '',
+          privacy_policy: res.data.privacy_policy || DEFAULT_LEGAL_PAGES.privacy_policy,
+          privacy_policy_pdf: res.data.privacy_policy_pdf || '',
         });
       }
     } catch (e) {
@@ -293,13 +306,44 @@ export const BackOffice = () => {
     }
   };
 
+  const handlePdfUpload = (e, pageKey) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.type !== 'application/pdf') {
+      alert('Veuillez sélectionner un fichier au format PDF (.pdf).');
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      alert('Le fichier PDF ne doit pas dépasser 15 Mo.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      setLegalPages(prev => ({
+        ...prev,
+        [pageKey + '_pdf']: evt.target.result
+      }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const insertHtmlSnippet = (snippet, pageKey) => {
+    setLegalPages(prev => ({
+      ...prev,
+      [pageKey]: (prev[pageKey] || '') + '\n' + snippet
+    }));
+  };
+
   const saveLegalPages = async () => {
     setLegalSaving(true);
     setLegalMessage('');
     setLegalError('');
     try {
       const res = await axios.post('/v1/admin/legal-pages', legalPages);
-      setLegalMessage(res.data?.message || 'Pages légales mises à jour avec succès.');
+      setLegalMessage(res.data?.message || 'Pages légales et documents PDF mis à jour avec succès.');
+      if (res.data?.data) {
+        setLegalPages(res.data.data);
+      }
     } catch (e) {
       setLegalError(e.response?.data?.message || 'Erreur lors de la sauvegarde des pages légales.');
     } finally {
@@ -1930,17 +1974,27 @@ export const BackOffice = () => {
           <div>
             <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
               <div>
-                <h4 className="fw-bold m-0"><i className="fa-solid fa-file-contract me-2 text-primary"></i> Gestion des Pages Légales</h4>
-                <p className="text-muted small m-0 mt-1">Modifiez le contenu des pages légales affichées à tous les utilisateurs (CGU, CGV, Politiques, Confidentialité).</p>
+                <h4 className="fw-bold m-0"><i className="fa-solid fa-file-contract me-2 text-primary"></i> Gestion des Pages Légales & Documents PDF</h4>
+                <p className="text-muted small m-0 mt-1">Gérez le contenu web et téléversez des documents PDF officiels pour chaque page légale (CGU, CGV, Politiques, Confidentialité).</p>
               </div>
-              <button
-                className="btn btn-primary fw-bold px-4 py-2"
-                onClick={saveLegalPages}
-                disabled={legalSaving}
-                style={{ borderRadius: '10px', fontSize: '14px' }}
-              >
-                {legalSaving ? <><i className="fa-solid fa-spinner fa-spin me-2"></i> Enregistrement...</> : <><i className="fa-solid fa-floppy-disk me-2"></i> Enregistrer les Modifications</>}
-              </button>
+              <div className="d-flex gap-2">
+                <button
+                  className={`btn btn-sm ${legalPreviewMode ? 'btn-outline-primary' : 'btn-light'}`}
+                  onClick={() => setLegalPreviewMode(!legalPreviewMode)}
+                  style={{ borderRadius: '10px', fontWeight: 600, fontSize: '13px', padding: '8px 16px' }}
+                >
+                  <i className={`fa-solid ${legalPreviewMode ? 'fa-pen-to-square' : 'fa-eye'} me-2`}></i>
+                  {legalPreviewMode ? 'Retour à l\'Édition' : '👁️ Aperçu Utilisateur'}
+                </button>
+                <button
+                  className="btn btn-primary fw-bold px-4 py-2"
+                  onClick={saveLegalPages}
+                  disabled={legalSaving}
+                  style={{ borderRadius: '10px', fontSize: '14px' }}
+                >
+                  {legalSaving ? <><i className="fa-solid fa-spinner fa-spin me-2"></i> Enregistrement...</> : <><i className="fa-solid fa-floppy-disk me-2"></i> Enregistrer tout</>}
+                </button>
+              </div>
             </div>
 
             {legalMessage && (
@@ -1958,8 +2012,8 @@ export const BackOffice = () => {
               {/* Onglets internes des pages légales */}
               <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid var(--color-border, #e2e8f0)', paddingBottom: '12px', overflowX: 'auto' }}>
                 {[
-                  { key: 'cgu', label: '📜 CGU', icon: 'fa-file-contract' },
-                  { key: 'cgv', label: '🛍️ CGV', icon: 'fa-file-invoice-dollar' },
+                  { key: 'cgu', label: '📜 CGU (Utilisation)', icon: 'fa-file-contract' },
+                  { key: 'cgv', label: '🛍️ CGV (Vente)', icon: 'fa-file-invoice-dollar' },
                   { key: 'delivery_policy', label: '🚚 Livraison', icon: 'fa-truck-fast' },
                   { key: 'refund_policy', label: '💳 Remboursement', icon: 'fa-rotate-left' },
                   { key: 'privacy_policy', label: '🔒 Confidentialité', icon: 'fa-shield-halved' },
@@ -1978,28 +2032,184 @@ export const BackOffice = () => {
               {legalLoading ? (
                 <div className="text-center py-5">
                   <i className="fa-solid fa-spinner fa-spin fa-2x text-primary mb-3"></i>
-                  <p className="text-muted">Chargement du contenu...</p>
+                  <p className="text-muted">Chargement des contenus et documents...</p>
                 </div>
               ) : (
                 <>
-                  <div className="mb-3">
-                    <label className="form-label fw-bold" style={{ fontSize: '14px' }}>
-                      <i className="fa-solid fa-pen-to-square me-2 text-primary"></i>
-                      Contenu HTML de la page : {activeLegalTab === 'cgu' ? 'CGU (Conditions Générales d\'Utilisation)' : activeLegalTab === 'cgv' ? 'CGV (Conditions Générales de Vente)' : activeLegalTab === 'delivery_policy' ? 'Politique de Livraison' : activeLegalTab === 'refund_policy' ? 'Politique de Remboursement' : 'Politique de Confidentialité'}
-                    </label>
-                    <textarea
-                      className="form-control"
-                      rows={18}
-                      value={legalPages[activeLegalTab] || ''}
-                      onChange={(e) => setLegalPages(prev => ({ ...prev, [activeLegalTab]: e.target.value }))}
-                      placeholder={`Saisissez le contenu HTML de la page ${activeLegalTab}...\n\nExemple :\n<h3>1. Titre de la section</h3>\n<p>Contenu du paragraphe...</p>`}
-                      style={{ fontFamily: 'monospace', fontSize: '13px', borderRadius: '10px', minHeight: '350px', resize: 'vertical' }}
-                    />
+                  {/* ── SECTION 1 : DOCUMENT PDF ATTACHÉ ── */}
+                  <div className="p-3 mb-4 rounded-3 border" style={{ background: 'var(--bg-card-subtle, #f8fafc)', borderColor: 'var(--border-color, #e2e8f0)' }}>
+                    <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                      <label className="fw-bold m-0 text-primary" style={{ fontSize: '14px' }}>
+                        <i className="fa-solid fa-file-pdf me-2 text-danger"></i>
+                        Document PDF Officiel Téléchargeable (
+                        {activeLegalTab === 'cgu' ? 'CGU' : activeLegalTab === 'cgv' ? 'CGV' : activeLegalTab === 'delivery_policy' ? 'Livraison' : activeLegalTab === 'refund_policy' ? 'Remboursement' : 'Confidentialité'}
+                        )
+                      </label>
+                      {legalPages[activeLegalTab + '_pdf'] ? (
+                        <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-1" style={{ fontSize: '12px' }}>
+                          <i className="fa-solid fa-circle-check me-1"></i> Document PDF Actif
+                        </span>
+                      ) : (
+                        <span className="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1" style={{ fontSize: '12px' }}>
+                          <i className="fa-solid fa-triangle-exclamation me-1"></i> Aucun PDF joint (HTML seul)
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="text-muted small mb-3" style={{ fontSize: '12.5px' }}>
+                      Téléversez un fichier PDF officiel. Les utilisateurs pourront lire ce document directement en ligne et le télécharger.
+                    </p>
+
+                    <div className="row g-3 align-items-center">
+                      <div className="col-md-6">
+                        <label className="form-label small fw-semibold text-muted">Uploader un fichier PDF (.pdf)</label>
+                        <input
+                          type="file"
+                          accept=".pdf"
+                          className="form-control form-control-sm"
+                          onChange={(e) => handlePdfUpload(e, activeLegalTab)}
+                          style={{ borderRadius: '8px' }}
+                        />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label small fw-semibold text-muted">Ou saisir l'URL directe du fichier PDF</label>
+                        <input
+                          type="text"
+                          className="form-control form-control-sm"
+                          placeholder="https://domaine.com/documents/cgu.pdf"
+                          value={legalPages[activeLegalTab + '_pdf'] || ''}
+                          onChange={(e) => setLegalPages(prev => ({ ...prev, [activeLegalTab + '_pdf']: e.target.value }))}
+                          style={{ borderRadius: '8px' }}
+                        />
+                      </div>
+                    </div>
+
+                    {legalPages[activeLegalTab + '_pdf'] && (
+                      <div className="mt-3 p-2 rounded bg-white border d-flex justify-content-between align-items-center flex-wrap gap-2" style={{ fontSize: '13px' }}>
+                        <div className="d-flex align-items-center gap-2 overflow-hidden" style={{ maxWidth: '70%' }}>
+                          <i className="fa-solid fa-file-pdf text-danger fa-lg"></i>
+                          <span className="text-truncate fw-medium">
+                            {legalPages[activeLegalTab + '_pdf'].startsWith('data:') ? 'Fichier PDF prêt à enregistrer (Base64)' : legalPages[activeLegalTab + '_pdf']}
+                          </span>
+                        </div>
+                        <div className="d-flex gap-2">
+                          <a
+                            href={legalPages[activeLegalTab + '_pdf']}
+                            target="_blank"
+                            rel="noreferrer"
+                            download={`document_${activeLegalTab}.pdf`}
+                            className="btn btn-outline-primary btn-sm px-3 fw-semibold"
+                            style={{ borderRadius: '6px' }}
+                          >
+                            <i className="fa-solid fa-download me-1"></i> Tester Téléchargement
+                          </a>
+                          <button
+                            type="button"
+                            className="btn btn-outline-danger btn-sm px-2"
+                            onClick={() => setLegalPages(prev => ({ ...prev, [activeLegalTab + '_pdf']: '' }))}
+                            title="Supprimer le document PDF"
+                            style={{ borderRadius: '6px' }}
+                          >
+                            <i className="fa-solid fa-trash-can me-1"></i> Retirer PDF
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="d-flex align-items-center gap-2 text-muted" style={{ fontSize: '12px' }}>
-                    <i className="fa-solid fa-circle-info"></i>
-                    <span>Utilisez du HTML standard pour formater le contenu (titres <code>&lt;h3&gt;</code>, paragraphes <code>&lt;p&gt;</code>, listes <code>&lt;ul&gt;&lt;li&gt;</code>, liens <code>&lt;a&gt;</code>). Si le champ est vide, le contenu par défaut sera affiché.</span>
-                  </div>
+
+                  {/* ── SECTION 2 : ÉDITEUR HTML / APERÇU ── */}
+                  {legalPreviewMode ? (
+                    <div className="border rounded-3 p-4 bg-white">
+                      <div className="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                        <span className="badge bg-primary px-3 py-2" style={{ fontSize: '13px' }}>
+                          👁️ Aperçu Utilisateur Final : {activeLegalTab.toUpperCase()}
+                        </span>
+                        <span className="text-muted small">Tel qu'affiché sur le site public</span>
+                      </div>
+                      {legalPages[activeLegalTab] ? (
+                        <article className="legal-document" dangerouslySetInnerHTML={{ __html: legalPages[activeLegalTab] }} />
+                      ) : (
+                        <div className="text-center py-4 text-muted">
+                          <em>Aucun contenu HTML personnalisé. Le texte par défaut du système sera affiché aux utilisateurs.</em>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                        <label className="form-label fw-bold m-0" style={{ fontSize: '14px' }}>
+                          <i className="fa-solid fa-code me-2 text-primary"></i>
+                          Contenu Web HTML ({activeLegalTab.toUpperCase()})
+                        </label>
+                        {/* Barre d'outils rapide */}
+                        <div className="d-flex gap-1 flex-wrap">
+                          <button
+                            type="button"
+                            className="btn btn-light btn-sm text-dark font-monospace"
+                            onClick={() => insertHtmlSnippet('<h3>Nouveau Titre de Section</h3>', activeLegalTab)}
+                            title="Insérer un titre"
+                            style={{ fontSize: '11.5px', borderRadius: '6px' }}
+                          >
+                            + Titre &lt;h3&gt;
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-light btn-sm text-dark font-monospace"
+                            onClick={() => insertHtmlSnippet('<p>Insérez votre paragraphe d\'explication ici...</p>', activeLegalTab)}
+                            title="Insérer un paragraphe"
+                            style={{ fontSize: '11.5px', borderRadius: '6px' }}
+                          >
+                            + Paragraphe &lt;p&gt;
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-light btn-sm text-dark font-monospace"
+                            onClick={() => insertHtmlSnippet('<ul>\n  <li>Élément de liste 1</li>\n  <li>Élément de liste 2</li>\n</ul>', activeLegalTab)}
+                            title="Insérer une liste"
+                            style={{ fontSize: '11.5px', borderRadius: '6px' }}
+                          >
+                            + Liste &lt;ul&gt;
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-light btn-sm text-dark font-monospace"
+                            onClick={() => insertHtmlSnippet('<p>Contact support : <a href="mailto:dlscorporation2020@gmail.com">dlscorporation2020@gmail.com</a> | Tél : <strong>+225 07 08 74 41 15 / +225 05 66 28 93 94</strong></p>', activeLegalTab)}
+                            title="Insérer bloc contact"
+                            style={{ fontSize: '11.5px', borderRadius: '6px' }}
+                          >
+                            + Bloc Contact
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-outline-warning btn-sm fw-semibold"
+                            onClick={() => {
+                              if (window.confirm('Voulez-vous réinitialiser cette page au texte modèle par défaut ?')) {
+                                setLegalPages(prev => ({ ...prev, [activeLegalTab]: DEFAULT_LEGAL_PAGES[activeLegalTab] }));
+                              }
+                            }}
+                            title="Réinitialiser au texte modèle par défaut"
+                            style={{ fontSize: '11.5px', borderRadius: '6px' }}
+                          >
+                            🔄 Modèle par Défaut
+                          </button>
+                        </div>
+                      </div>
+
+                      <textarea
+                        className="form-control"
+                        rows={14}
+                        value={legalPages[activeLegalTab] || ''}
+                        onChange={(e) => setLegalPages(prev => ({ ...prev, [activeLegalTab]: e.target.value }))}
+                        placeholder={`Saisissez le contenu HTML de la page ${activeLegalTab}...\n\nExemple :\n<h3>1. Objet et champ d'application</h3>\n<p>Les présentes conditions définissent l'utilisation de DLS POS par DLS CORPORATION...</p>`}
+                        style={{ fontFamily: 'monospace', fontSize: '13px', borderRadius: '10px', minHeight: '300px', resize: 'vertical' }}
+                      />
+
+                      <div className="d-flex align-items-center gap-2 text-muted mt-2" style={{ fontSize: '12px' }}>
+                        <i className="fa-solid fa-circle-info text-primary"></i>
+                        <span>Vous pouvez combiner le contenu texte HTML ci-dessus et un document PDF officiel joint. Le bouton d'aperçu en haut permet de vérifier le rendu.</span>
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
             </div>

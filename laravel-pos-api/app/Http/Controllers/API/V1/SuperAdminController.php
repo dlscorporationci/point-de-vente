@@ -2035,30 +2035,76 @@ class SuperAdminController extends Controller
 
     /**
      * Mettre à jour les pages légales (SuperAdmin uniquement).
+     * Supporte le contenu HTML et les fichiers/liens PDF joints.
      */
     public function updateLegalPages(Request $request)
     {
         $this->authorizeSuperAdmin($request);
 
         $request->validate([
-            'cgu'             => 'nullable|string',
-            'cgv'             => 'nullable|string',
-            'delivery_policy' => 'nullable|string',
-            'refund_policy'   => 'nullable|string',
-            'privacy_policy'  => 'nullable|string',
+            'cgu'                 => 'nullable|string',
+            'cgu_pdf'             => 'nullable|string',
+            'cgv'                 => 'nullable|string',
+            'cgv_pdf'             => 'nullable|string',
+            'delivery_policy'     => 'nullable|string',
+            'delivery_policy_pdf' => 'nullable|string',
+            'refund_policy'       => 'nullable|string',
+            'refund_policy_pdf'   => 'nullable|string',
+            'privacy_policy'      => 'nullable|string',
+            'privacy_policy_pdf'  => 'nullable|string',
         ]);
 
         $filePath = storage_path('app/legal_pages.json');
         $existing = file_exists($filePath) ? json_decode(file_get_contents($filePath), true) : [];
 
+        $pdfKeys = ['cgu_pdf', 'cgv_pdf', 'delivery_policy_pdf', 'refund_policy_pdf', 'privacy_policy_pdf'];
+        $uploadedPdfs = [];
+        $uploadDir = public_path('uploads/legal');
+
+        // 1. Traitement des fichiers PDF transmis en Multipart (FormData)
+        foreach (['cgu', 'cgv', 'delivery_policy', 'refund_policy', 'privacy_policy'] as $pageKey) {
+            $fileInputName = $pageKey . '_pdf_file';
+            if ($request->hasFile($fileInputName)) {
+                $file = $request->file($fileInputName);
+                if (!file_exists($uploadDir)) {
+                    mkdir($uploadDir, 0755, true);
+                }
+                $filename = $pageKey . '_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+                $file->move($uploadDir, $filename);
+                $uploadedPdfs[$pageKey . '_pdf'] = '/uploads/legal/' . $filename;
+            }
+        }
+
+        // 2. Traitement des données Base64 (si le PDF est envoyé encodé depuis le React frontend)
+        foreach ($pdfKeys as $pdfKey) {
+            $val = $request->input($pdfKey);
+            if ($val && str_starts_with($val, 'data:application/pdf;base64,')) {
+                $base64Data = substr($val, strpos($val, ',') + 1);
+                $decoded = base64_decode($base64Data);
+                if ($decoded !== false) {
+                    if (!file_exists($uploadDir)) {
+                        mkdir($uploadDir, 0755, true);
+                    }
+                    $filename = str_replace('_pdf', '', $pdfKey) . '_' . time() . '_' . uniqid() . '.pdf';
+                    file_put_contents($uploadDir . '/' . $filename, $decoded);
+                    $uploadedPdfs[$pdfKey] = '/uploads/legal/' . $filename;
+                }
+            }
+        }
+
         $data = array_merge($existing ?: [], [
-            'cgu'             => $request->input('cgu', $existing['cgu'] ?? null),
-            'cgv'             => $request->input('cgv', $existing['cgv'] ?? null),
-            'delivery_policy' => $request->input('delivery_policy', $existing['delivery_policy'] ?? null),
-            'refund_policy'   => $request->input('refund_policy', $existing['refund_policy'] ?? null),
-            'privacy_policy'  => $request->input('privacy_policy', $existing['privacy_policy'] ?? null),
-            'updated_at'      => date('Y-m-d H:i:s'),
-            'updated_by'      => $request->user() ? $request->user()->name : 'SuperAdmin',
+            'cgu'                 => $request->input('cgu', $existing['cgu'] ?? null),
+            'cgu_pdf'             => array_key_exists('cgu_pdf', $uploadedPdfs) ? $uploadedPdfs['cgu_pdf'] : $request->input('cgu_pdf', $existing['cgu_pdf'] ?? null),
+            'cgv'                 => $request->input('cgv', $existing['cgv'] ?? null),
+            'cgv_pdf'             => array_key_exists('cgv_pdf', $uploadedPdfs) ? $uploadedPdfs['cgv_pdf'] : $request->input('cgv_pdf', $existing['cgv_pdf'] ?? null),
+            'delivery_policy'     => $request->input('delivery_policy', $existing['delivery_policy'] ?? null),
+            'delivery_policy_pdf' => array_key_exists('delivery_policy_pdf', $uploadedPdfs) ? $uploadedPdfs['delivery_policy_pdf'] : $request->input('delivery_policy_pdf', $existing['delivery_policy_pdf'] ?? null),
+            'refund_policy'       => $request->input('refund_policy', $existing['refund_policy'] ?? null),
+            'refund_policy_pdf'   => array_key_exists('refund_policy_pdf', $uploadedPdfs) ? $uploadedPdfs['refund_policy_pdf'] : $request->input('refund_policy_pdf', $existing['refund_policy_pdf'] ?? null),
+            'privacy_policy'      => $request->input('privacy_policy', $existing['privacy_policy'] ?? null),
+            'privacy_policy_pdf'  => array_key_exists('privacy_policy_pdf', $uploadedPdfs) ? $uploadedPdfs['privacy_policy_pdf'] : $request->input('privacy_policy_pdf', $existing['privacy_policy_pdf'] ?? null),
+            'updated_at'          => date('Y-m-d H:i:s'),
+            'updated_by'          => $request->user() ? $request->user()->name : 'SuperAdmin',
         ]);
 
         if (!is_dir(storage_path('app'))) {
@@ -2068,7 +2114,7 @@ class SuperAdminController extends Controller
         file_put_contents($filePath, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
         return response()->json([
-            'message' => 'Pages légales mises à jour avec succès.',
+            'message' => 'Pages légales et documents PDF mis à jour avec succès.',
             'data'    => $data,
         ]);
     }
