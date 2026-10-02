@@ -33,6 +33,15 @@ export const LegalPage = ({ type = 'cgu', onNavigate }) => {
     }
   };
 
+  // Retourner à la page d'accueil ou au tableau de bord
+  const handleGoHome = () => {
+    if (onNavigate) {
+      onNavigate('home');
+    } else if (typeof window !== 'undefined') {
+      window.location.href = '/';
+    }
+  };
+
   // Copier le lien direct réutilisable
   const copyDirectLink = () => {
     const slug = tabToUrlSlug[activeType] || activeType;
@@ -58,15 +67,37 @@ export const LegalPage = ({ type = 'cgu', onNavigate }) => {
   }, []);
 
   const currentApiKey = typeToApiKey[activeType] || 'cgu';
-  const currentHtml = apiContent[currentApiKey] || DEFAULT_LEGAL_PAGES[currentApiKey];
+  const rawApiHtml = apiContent[currentApiKey];
+  // Si le contenu renvoyé par l'API est vide ou trop court, utiliser le texte complet officiel par défaut
+  const currentHtml = (rawApiHtml && typeof rawApiHtml === 'string' && rawApiHtml.trim().length >= 50)
+    ? rawApiHtml
+    : DEFAULT_LEGAL_PAGES[currentApiKey];
   const currentPdfUrl = apiContent[currentApiKey + '_pdf'];
 
   return (
     <div className="customers-container" style={{ padding: '24px', maxWidth: '1100px', margin: '0 auto' }}>
+      {/* ── BARRE DE NAVIGATION RETOUR ACCUEIL SUPÉRIEURE ── */}
+      <div className="mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <button
+          onClick={handleGoHome}
+          className="btn btn-outline-dark btn-sm fw-bold px-3 shadow-sm"
+          style={{ borderRadius: '8px', fontSize: '13px', background: 'var(--color-surface, #ffffff)' }}
+        >
+          <i className="fa-solid fa-arrow-left me-2 text-primary"></i> 🏠 Retourner à l'Accueil DLS POS
+        </button>
+        <span className="text-muted small" style={{ fontSize: '12.5px' }}>
+          <i className="fa-solid fa-shield-halved text-primary me-1"></i> Document Légal Officiel Certifié (DLS CORPORATION)
+        </span>
+      </div>
+
       {/* ── EN-TÊTE DE PAGE ── */}
       <div className="card shadow-sm p-4 mb-4" style={{ borderRadius: '16px', background: 'var(--color-surface, #ffffff)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div
+            onClick={handleGoHome}
+            style={{ display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer' }}
+            title="Cliquer pour retourner à l'accueil"
+          >
             <img src={logo} alt="DLS POS Logo" style={{ width: '48px', height: '48px', borderRadius: '12px', objectFit: 'cover' }} />
             <div>
               <h2 style={{ fontSize: '22px', fontWeight: 800, margin: 0, color: 'var(--color-text, #1e293b)' }}>
@@ -79,13 +110,21 @@ export const LegalPage = ({ type = 'cgu', onNavigate }) => {
           </div>
           <div className="d-flex gap-2 flex-wrap">
             <button
+              className="btn btn-dark btn-sm px-3 fw-bold"
+              onClick={handleGoHome}
+              style={{ borderRadius: '8px', fontSize: '13px' }}
+              title="Retourner à l'accueil DLS POS"
+            >
+              <i className="fa-solid fa-house me-1 text-warning"></i> 🏠 Accueil
+            </button>
+            <button
               className="btn btn-outline-primary btn-sm fw-bold"
               onClick={copyDirectLink}
               style={{ borderRadius: '8px', fontSize: '13px' }}
               title="Copier le lien direct de cette page pour la partager par e-mail, WhatsApp ou réseaux sociaux"
             >
               <i className={`fa-solid ${copiedLink ? 'fa-check text-success' : 'fa-share-nodes'} me-1`}></i>
-              {copiedLink ? 'Lien Copié !' : '🔗 Partager / Copier le Lien'}
+              {copiedLink ? 'Lien Copié !' : '🔗 Partager le Lien'}
             </button>
             {currentPdfUrl ? (
               <a
@@ -235,7 +274,13 @@ export const LegalPage = ({ type = 'cgu', onNavigate }) => {
         {/* Pied de page du document */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', fontSize: '12px', color: '#64748b' }}>
           <div>
-            <strong>DLS CORPORATION CI</strong> — Éditeur de solutions logicielles et d'intégration Monétique.
+            <strong>DLS CORPORATION CI</strong> — Éditeur de solutions logicielles et d'intégration Monétique.{' '}
+            <button
+              onClick={handleGoHome}
+              style={{ border: 'none', background: 'none', color: '#2563eb', fontWeight: 700, padding: 0, cursor: 'pointer', marginLeft: '8px' }}
+            >
+              🏠 Retourner à l'Accueil DLS POS
+            </button>
           </div>
           <div>
             E-mail : <strong>infos@dlscorporation.ci</strong> | Tél : <strong>+225 07 08 74 41 15 / +225 05 66 28 93 94</strong>
