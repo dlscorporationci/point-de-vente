@@ -1,11 +1,11 @@
 /**
  * Modèles de textes officiels exacts pour les 5 pages légales DLS POS.
- * Extraits fidèlement des documents PDF fournis.
+ * Conformes mot pour mot aux 5 documents PDF fournis.
  */
 export const DEFAULT_LEGAL_PAGES = {
   cgu: `<article className="legal-document">
   <div className="mb-4">
-    <h2 style="font-size: 20px; font-weight: 800; color: #1e293b;">
+    <h2 style="font-size: 22px; font-weight: 800; color: #1e293b;">
       Conditions générales d’utilisation — CGU
     </h2>
     <p style="font-size: 13px; color: #64748b;">Dernière mise à jour : 01/10/2026</p>
@@ -45,7 +45,7 @@ export const DEFAULT_LEGAL_PAGES = {
   <h3>Contact</h3>
   <p>
     <strong>DLS CORPORATION</strong><br />
-    Adresse : ABIDJAN COCODY ANGRE COTE D'IVOIRE<br />
+    Adresse : <strong>ABIDJAN COCODY ANGRE COTE D'IVOIRE</strong><br />
     E-mail : <a href="mailto:infos@dlscorporation.ci">infos@dlscorporation.ci</a><br />
     Téléphone : <strong>+225 07 08 74 41 15 / +225 05 66 28 93 94</strong>
   </p>
@@ -53,7 +53,7 @@ export const DEFAULT_LEGAL_PAGES = {
 
   cgv: `<article className="legal-document">
   <div className="mb-4">
-    <h2 style="font-size: 20px; font-weight: 800; color: #1e293b;">
+    <h2 style="font-size: 22px; font-weight: 800; color: #1e293b;">
       Conditions générales de vente — CGV
     </h2>
     <p style="font-size: 13px; color: #64748b;">Dernière mise à jour : 01/10/2026</p>
@@ -73,7 +73,7 @@ export const DEFAULT_LEGAL_PAGES = {
 
   <h3>Prix et paiement</h3>
   <p>
-    Les prix sont affichés en Francs CFA (XOF) / Euros (€). Les taxes et frais éventuels sont précisés avant la validation de la commande.
+    Les prix sont affichés en <strong>Francs CFA (XOF) / Euros (€)</strong>. Les taxes et frais éventuels sont précisés avant la validation de la commande.
   </p>
   <p>
     La commande est confirmée après validation du paiement. Aucun accès payant n’est délivré tant que le paiement n’est pas confirmé.
@@ -105,8 +105,8 @@ export const DEFAULT_LEGAL_PAGES = {
 
   <h3>Contact</h3>
   <p>
-    <strong>DLS CORPORATION</strong><br />
-    Adresse : ABIDJAN COCODY ANGRE COTE D'IVOIRE<br />
+    Entreprise : <strong>DLS CORPORATION</strong><br />
+    Adresse : <strong>ABIDJAN COCODY ANGRE COTE D'IVOIRE</strong><br />
     E-mail : <a href="mailto:infos@dlscorporation.ci">infos@dlscorporation.ci</a><br />
     Téléphone : <strong>+225 07 08 74 41 15 / +225 05 66 28 93 94</strong>
   </p>
@@ -114,7 +114,7 @@ export const DEFAULT_LEGAL_PAGES = {
 
   delivery_policy: `<article className="legal-document">
   <div className="mb-4">
-    <h2 style="font-size: 20px; font-weight: 800; color: #1e293b;">
+    <h2 style="font-size: 22px; font-weight: 800; color: #1e293b;">
       Politique de livraison et d’activation de DLS POS
     </h2>
     <p style="font-size: 13px; color: #64748b;">Dernière mise à jour : 01/10/2026</p>
@@ -176,7 +176,7 @@ export const DEFAULT_LEGAL_PAGES = {
   <h3>8. Contact</h3>
   <p>
     <strong>DLS CORPORATION</strong><br />
-    Adresse : ABIDJAN COCODY ANGRE COTE D'IVOIRE<br />
+    Adresse : <strong>ABIDJAN COCODY ANGRE COTE D'IVOIRE</strong><br />
     E-mail : <a href="mailto:infos@dlscorporation.ci">infos@dlscorporation.ci</a><br />
     Téléphone : <strong>+225 07 08 74 41 15 / +225 05 66 28 93 94</strong>
   </p>
@@ -184,7 +184,7 @@ export const DEFAULT_LEGAL_PAGES = {
 
   refund_policy: `<article className="legal-document">
   <div className="mb-4">
-    <h2 style="font-size: 20px; font-weight: 800; color: #1e293b;">
+    <h2 style="font-size: 22px; font-weight: 800; color: #1e293b;">
       Politique de remboursement de DLS POS
     </h2>
     <p style="font-size: 13px; color: #64748b;">Dernière mise à jour : 01/10/2026</p>
@@ -258,7 +258,7 @@ export const DEFAULT_LEGAL_PAGES = {
   <h3>9. Contact</h3>
   <p>
     <strong>DLS CORPORATION</strong><br />
-    Adresse : ABIDJAN COCODY ANGRE COTE D'IVOIRE<br />
+    Adresse : <strong>ABIDJAN COCODY ANGRE COTE D'IVOIRE</strong><br />
     E-mail : <a href="mailto:infos@dlscorporation.ci">infos@dlscorporation.ci</a><br />
     Téléphone : <strong>+225 07 08 74 41 15 / +225 05 66 28 93 94</strong>
   </p>
@@ -266,7 +266,7 @@ export const DEFAULT_LEGAL_PAGES = {
 
   privacy_policy: `<article className="legal-document">
   <div className="mb-4">
-    <h2 style="font-size: 20px; font-weight: 800; color: #1e293b;">
+    <h2 style="font-size: 22px; font-weight: 800; color: #1e293b;">
       Politique de confidentialité de DLS POS
     </h2>
     <p style="font-size: 13px; color: #64748b;">Dernière mise à jour : 01/10/2026</p>
@@ -310,7 +310,11 @@ export const DEFAULT_LEGAL_PAGES = {
 
   <h3>4. Accès et prestataires</h3>
   <p>
-    L’accès est limité aux personnes et prestataires qui en ont besoin pour leurs missions, notamment l’hébergement, le paiement (dont Xpaye si applicable) et l’assistance.
+    L’accès est limité aux personnes et prestataires qui en ont besoin pour leurs missions, notamment l’hébergement, le paiement et l’assistance.
+  </p>
+  <p>
+    <strong>Hébergement :</strong> Hébergement Cloud sécurisé (France / Côte d'Ivoire)<br />
+    <strong>Paiement :</strong> Services de paiement sécurisés (Orange Money, Wave, MTN MoMo, Moov Money, Carte Bancaire)
   </p>
   <p><strong>DLS CORPORATION ne vend pas les données commerciales du client.</strong></p>
   <p>
@@ -320,6 +324,9 @@ export const DEFAULT_LEGAL_PAGES = {
   <h3>5. Sécurité et sauvegardes</h3>
   <p>
     DLS CORPORATION met en œuvre des mesures techniques et organisationnelles adaptées, notamment la gestion des accès et la protection des échanges.
+  </p>
+  <p>
+    <strong>Modalités de sauvegarde :</strong> Sauvegardes quotidiennes automatiques conservées pendant 30 jours avec restauration sur demande.
   </p>
   <p>
     Le client doit également sécuriser ses appareils, gérer les droits de ses utilisateurs et conserver les exports nécessaires à ses activités.
@@ -355,7 +362,7 @@ export const DEFAULT_LEGAL_PAGES = {
   <h3>9. Contact</h3>
   <p>
     <strong>DLS CORPORATION</strong><br />
-    Adresse : ABIDJAN COCODY ANGRE COTE D'IVOIRE<br />
+    Adresse : <strong>ABIDJAN COCODY ANGRE COTE D'IVOIRE</strong><br />
     E-mail relatif aux données personnelles : <a href="mailto:infos@dlscorporation.ci">infos@dlscorporation.ci</a><br />
     Téléphone : <strong>+225 07 08 74 41 15 / +225 05 66 28 93 94</strong>
   </p>
