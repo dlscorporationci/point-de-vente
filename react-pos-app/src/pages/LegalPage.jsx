@@ -17,8 +17,30 @@ export const LegalPage = ({ type = 'cgu', onNavigate }) => {
   const [loadingApi, setLoadingApi] = useState(true);
   const [showPdfViewer, setShowPdfViewer] = useState(false);
 
-  // Mapping des types frontend vers les clés API
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  // Mapping des types frontend vers les clés API et URLs
   const typeToApiKey = { cgu: 'cgu', cgv: 'cgv', delivery: 'delivery_policy', refund: 'refund_policy', privacy: 'privacy_policy' };
+  const tabToUrlSlug = { cgu: 'cgu', cgv: 'cgv', delivery: 'delivery-policy', refund: 'refund-policy', privacy: 'privacy-policy' };
+
+  // Changer d'onglet et synchroniser l'URL du navigateur
+  const handleTabChange = (newType) => {
+    setActiveType(newType);
+    setShowPdfViewer(false);
+    const slug = tabToUrlSlug[newType] || newType;
+    if (typeof window !== 'undefined') {
+      window.history.pushState({}, '', '/' + slug);
+    }
+  };
+
+  // Copier le lien direct réutilisable
+  const copyDirectLink = () => {
+    const slug = tabToUrlSlug[activeType] || activeType;
+    const directUrl = `${window.location.origin}/${slug}`;
+    navigator.clipboard.writeText(directUrl);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2500);
+  };
 
   // Charger le contenu dynamique depuis l'API
   useEffect(() => {
@@ -55,7 +77,16 @@ export const LegalPage = ({ type = 'cgu', onNavigate }) => {
               </p>
             </div>
           </div>
-          <div className="d-flex gap-2">
+          <div className="d-flex gap-2 flex-wrap">
+            <button
+              className="btn btn-outline-primary btn-sm fw-bold"
+              onClick={copyDirectLink}
+              style={{ borderRadius: '8px', fontSize: '13px' }}
+              title="Copier le lien direct de cette page pour la partager par e-mail, WhatsApp ou réseaux sociaux"
+            >
+              <i className={`fa-solid ${copiedLink ? 'fa-check text-success' : 'fa-share-nodes'} me-1`}></i>
+              {copiedLink ? 'Lien Copié !' : '🔗 Partager / Copier le Lien'}
+            </button>
             {currentPdfUrl ? (
               <a
                 href={currentPdfUrl}
@@ -83,35 +114,35 @@ export const LegalPage = ({ type = 'cgu', onNavigate }) => {
         <div style={{ display: 'flex', gap: '8px', marginTop: '20px', borderBottom: '1px solid var(--color-border, #e2e8f0)', paddingBottom: '12px', overflowX: 'auto' }}>
           <button
             className={`btn btn-sm ${activeType === 'cgu' ? 'btn-primary' : 'btn-light'}`}
-            onClick={() => { setActiveType('cgu'); setShowPdfViewer(false); }}
+            onClick={() => handleTabChange('cgu')}
             style={{ borderRadius: '8px', fontWeight: 600, fontSize: '13px', whiteSpace: 'nowrap' }}
           >
             📜 CGU (Utilisation)
           </button>
           <button
             className={`btn btn-sm ${activeType === 'cgv' ? 'btn-primary' : 'btn-light'}`}
-            onClick={() => { setActiveType('cgv'); setShowPdfViewer(false); }}
+            onClick={() => handleTabChange('cgv')}
             style={{ borderRadius: '8px', fontWeight: 600, fontSize: '13px', whiteSpace: 'nowrap' }}
           >
             🛍️ CGV (Vente)
           </button>
           <button
             className={`btn btn-sm ${activeType === 'delivery' ? 'btn-primary' : 'btn-light'}`}
-            onClick={() => { setActiveType('delivery'); setShowPdfViewer(false); }}
+            onClick={() => handleTabChange('delivery')}
             style={{ borderRadius: '8px', fontWeight: 600, fontSize: '13px', whiteSpace: 'nowrap' }}
           >
             🚚 Politique de Livraison
           </button>
           <button
             className={`btn btn-sm ${activeType === 'refund' ? 'btn-primary' : 'btn-light'}`}
-            onClick={() => { setActiveType('refund'); setShowPdfViewer(false); }}
+            onClick={() => handleTabChange('refund')}
             style={{ borderRadius: '8px', fontWeight: 600, fontSize: '13px', whiteSpace: 'nowrap' }}
           >
             💳 Remboursement
           </button>
           <button
             className={`btn btn-sm ${activeType === 'privacy' ? 'btn-primary' : 'btn-light'}`}
-            onClick={() => { setActiveType('privacy'); setShowPdfViewer(false); }}
+            onClick={() => handleTabChange('privacy')}
             style={{ borderRadius: '8px', fontWeight: 600, fontSize: '13px', whiteSpace: 'nowrap' }}
           >
             🔒 Confidentialité

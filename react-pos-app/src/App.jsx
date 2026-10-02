@@ -172,7 +172,32 @@ function MainContent() {
   const isAdminOrGerant = role === 'admin' || isSuperAdmin;
   const isAdmin = role === 'admin' || isSuperAdmin;
 
+  // Extraire la page légale depuis le path (/privacy-policy) ou la query (?page=privacy-policy)
+  const getLegalTabFromUrl = () => {
+    if (typeof window === 'undefined') return null;
+    const path = window.location.pathname.toLowerCase().replace(/^\/+|\/+$/g, '');
+    const searchParams = new URLSearchParams(window.location.search);
+    const queryTab = (searchParams.get('page') || searchParams.get('tab') || searchParams.get('legal'))?.toLowerCase();
+
+    const checkTab = (str) => {
+      if (!str) return null;
+      if (['privacy-policy', 'privacy', 'confidentialite'].includes(str)) return 'privacy-policy';
+      if (['cgu', 'conditions-generales-utilisation'].includes(str)) return 'cgu';
+      if (['cgv', 'conditions-generales-vente'].includes(str)) return 'cgv';
+      if (['delivery-policy', 'livraison'].includes(str)) return 'delivery-policy';
+      if (['refund-policy', 'remboursement'].includes(str)) return 'refund-policy';
+      return null;
+    };
+
+    return checkTab(queryTab) || checkTab(path);
+  };
+
+  const legalTabsList = ['cgu', 'cgv', 'delivery-policy', 'refund-policy', 'privacy-policy'];
+
   const [activeTab, setActiveTabState] = useState(() => {
+    const urlLegal = getLegalTabFromUrl();
+    if (urlLegal) return urlLegal;
+
     if (!user) {
       if (typeof window !== 'undefined') {
         const search = window.location.search;
@@ -190,6 +215,11 @@ function MainContent() {
 
   const setActiveTab = (tab) => {
     sessionStorage.setItem('dls_active_tab', tab);
+    if (legalTabsList.includes(tab) && typeof window !== 'undefined') {
+      window.history.pushState({}, '', '/' + tab);
+    } else if (tab === 'home' && typeof window !== 'undefined') {
+      window.history.pushState({}, '', '/');
+    }
     setActiveTabState(tab);
   };
 
@@ -198,6 +228,12 @@ function MainContent() {
     const params = new URLSearchParams(window.location.search);
     const path = window.location.pathname;
     const tokenParam = params.get('token');
+    const urlLegal = getLegalTabFromUrl();
+
+    if (urlLegal) {
+      setActiveTabState(urlLegal);
+      return;
+    }
 
     if (path.includes('verify-email')) {
       const isEmailVerified = !!(user?.email_verified_at || user?.google_id || user?.google_verified_at || user?.is_pin_auth || isSuperAdmin);
@@ -214,9 +250,13 @@ function MainContent() {
     }
   }, [user, isSuperAdmin]);
 
-  // Synchronisation automatique : lorsqu'un utilisateur se connecte, le diriger immédiatement sur le Dashboard / BackOffice
+  // Synchronisation automatique lors de la connexion
   useEffect(() => {
     if (user) {
+      const urlLegal = getLegalTabFromUrl();
+      if (urlLegal || legalTabsList.includes(activeTab)) {
+        return; // Conserver la page légale ouverte par l'utilisateur
+      }
       const isEmailVerified = !!(user.email_verified_at || user.google_id || user.google_verified_at || user.is_pin_auth || isSuperAdmin);
       if (!isEmailVerified && !isSuperAdmin) {
         setActiveTabState('verify-email');
