@@ -148,6 +148,25 @@ export const LegalPage = ({ type = 'cgu', onNavigate }) => {
             🔒 Confidentialité
           </button>
         </div>
+
+        {/* ── BARRE DE PARTAGE DU LIEN DIRECT DÉDIÉ ── */}
+        <div className="p-2 px-3 mt-3 rounded-3 bg-light border d-flex justify-content-between align-items-center flex-wrap gap-2" style={{ fontSize: '12.5px' }}>
+          <div style={{ color: '#475569' }}>
+            <i className="fa-solid fa-link text-primary me-2"></i>
+            <strong>Lien direct à partager :</strong>{' '}
+            <code style={{ background: '#e2e8f0', padding: '3px 8px', borderRadius: '4px', color: '#0f172a', fontWeight: 700 }}>
+              {typeof window !== 'undefined' ? `${window.location.origin}/${tabToUrlSlug[activeType] || activeType}` : ''}
+            </code>
+          </div>
+          <button
+            onClick={copyDirectLink}
+            className="btn btn-sm btn-outline-primary py-1 px-3 fw-bold"
+            style={{ borderRadius: '6px', fontSize: '12px' }}
+          >
+            <i className={`fa-solid ${copiedLink ? 'fa-check text-success' : 'fa-copy'} me-1`}></i>
+            {copiedLink ? 'Lien Copié !' : 'Copier le Lien Direct'}
+          </button>
+        </div>
       </div>
 
       {/* ── CONTENU DU DOCUMENT SÉLECTIONNÉ ── */}
